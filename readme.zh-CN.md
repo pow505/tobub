@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://tobub.com"><img src="../public/tobub.svg" width="96" alt="Tobub logo"></a>
+  <a href="https://tobub.com"><img src="./public/tobub.svg" width="96" alt="Tobub logo"></a>
 </p>
 
 <h1 align="center">Tobub</h1>
