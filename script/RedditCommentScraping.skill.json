@@ -1,0 +1,397 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:user_1785702085285_2mnckb@1",
+  "package_version": "1",
+  "source": "user",
+  "created_at": "2026-08-02T20:21:25.286Z",
+  "requirements": {
+    "platform": "required",
+    "rule": "required"
+  },
+  "skill": {
+    "market_skill_id": "user_1785702085285_2mnckb",
+    "release_id": "user_1785702085285_2mnckb",
+    "name": "RedditCommentScraping",
+    "source_type": "local",
+    "skill_code": "await tobub.domainAdapter.bootstrap()\nawait tobub.domainAdapter.performAction('pageReady')\n\n// https://www.reddit.com/r/wow/comments/1vdommg\nawait tobub.domainAdapter.navigateTo({\n  url: tobub.params.url,\n})\n\nawait tobub.atoms.waitFor({ delay: [1000, 2600] })\n\nconst times = Math.floor(Math.random() * 5) + 100;\nconst allRecords = []\nconst allRecordIds = new Set()\nlet noNewDataCount = 0\n\nconst infoHtml = await tobub.domainAdapter.extractData('fetchPostInfo')\nconst info = infoHtml.records?.[0] ?? {}\n\nfor (let i = 0; i < times; i++) {\n  await tobub.domainAdapter.performAction('watchPostList')\n\n  const result = await tobub.domainAdapter.extractData('comment_list')\n  \n  for (const record of result.records) {\n    if (allRecordIds.has(record.id)) continue\n    allRecordIds.add(record.id)\n    allRecords.push(record)\n\n    await tobub.db.saveContent({\n      platform: 'reddit',\n      contentType: 'article',\n      externalId: record.id,\n      title: info.fields.title ?? '',\n      summary: record.fields.author ?? '',\n      url: record.fields.url ?? '',\n      metadata: record.fields,\n      rawData: {},\n    })\n  }\n\n  noNewDataCount = result.newCount === 0 ? noNewDataCount + 1 : 0\n  if (noNewDataCount >= 3) break\n}\n",
+    "version": "1",
+    "platform": "reddit",
+    "layer": "L1",
+    "form_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "url",
+          "label": "url",
+          "type": "input",
+          "required": true
+        }
+      ]
+    },
+    "default_params": {},
+    "default_browser": {
+      "locale": "en-US",
+      "headless": false,
+      "browser_type": "cloak"
+    },
+    "default_execution": {
+      "update_session_state": false,
+      "domain_mode": "optional"
+    },
+    "metadata": {}
+  },
+  "platform": {
+    "code": "reddit",
+    "name": "reddit",
+    "version": "1",
+    "base_url": "https://www.reddit.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "reddit.com",
+        "domain_type": "primary"
+      },
+      {
+        "domain": "http",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "5050a2ddb685e9ee699069529379ca958ffa5d5773498ee82a95eecbdeab0b63"
+  },
+  "rule": {
+    "platform": "reddit",
+    "version": "local-dev",
+    "schema_version": "1",
+    "hash": "40dc953b28f7f4b7f7be6654c8bc26d19d8b09f9eb975241b16c69053d92a610",
+    "rules": {
+      "platform": "reddit",
+      "version": "local-dev",
+      "meta": {
+        "name": "reddit",
+        "baseUrl": "https://www.reddit.com",
+        "capabilities": []
+      },
+      "routes": {
+        "home": {
+          "locator": "a#reddit-logo",
+          "url": "https://www.reddit.com"
+        },
+        "r": {
+          "url": "https://www.reddit.com/r/${params.subreddit}"
+        }
+      },
+      "extractors": {
+        "post_list": {
+          "itemSelector": "${params.itemSelector}",
+          "idField": "postId",
+          "dedupe": "field",
+          "maxItems": 1000,
+          "scan": {
+            "mode": "rescan",
+            "scope": "viewport-buffer",
+            "viewportBufferScreens": 2
+          },
+          "fields": [
+            {
+              "name": "postId",
+              "source": {
+                "attr": "data-post-id"
+              }
+            },
+            {
+              "name": "author",
+              "selector": "span[slot=\"authorName\"] span[dir=\"auto\"]",
+              "source": "text"
+            },
+            {
+              "name": "url",
+              "selector": "a[slot=\"full-post-link\"]",
+              "source": "href"
+            },
+            {
+              "name": "time",
+              "selector": "time[datetime]",
+              "source": {
+                "attr": "datetime"
+              }
+            },
+            {
+              "name": "title",
+              "selector": "a[slot=\"title\"]",
+              "source": "text"
+            },
+            {
+              "name": "summary",
+              "selector": "shreddit-post-text-body[slot=\"text-body\"]",
+              "source": "text"
+            },
+            {
+              "name": "likes",
+              "selector": "shreddit-vote-animations faceplate-number[number]",
+              "source": {
+                "attr": "number"
+              }
+            },
+            {
+              "name": "comments",
+              "selector": "a[name=\"comments-action-button\"] faceplate-number[number]",
+              "source": {
+                "attr": "number"
+              }
+            }
+          ]
+        },
+        "comment_list": {
+          "itemSelector": "shreddit-comment",
+          "idField": "postId",
+          "dedupe": "field",
+          "maxItems": 1000,
+          "scan": {
+            "mode": "rescan",
+            "scope": "viewport-buffer",
+            "viewportBufferScreens": 2
+          },
+          "fields": [
+            {
+              "name": "postId",
+              "source": {
+                "attr": "thingid"
+              }
+            },
+            {
+              "name": "author",
+              "source": {
+                "attr": "author"
+              }
+            },
+            {
+              "name": "time",
+              "source": {
+                "attr": "created"
+              }
+            },
+            {
+              "name": "content",
+              "selector": "details div[slot=\"comment\"]",
+              "source": "text"
+            },
+            {
+              "name": "likes",
+              "selector": "div[data-testid=\"seeker-action-row\"] faceplate-number[number]",
+              "source": {
+                "attr": "number"
+              }
+            }
+          ]
+        },
+        "fetchPostInfo": {
+          "itemSelector": "shreddit-post[view-context=\"CommentsPage\"]",
+          "fields": [
+            {
+              "name": "postId",
+              "source": {
+                "attr": "id"
+              }
+            },
+            {
+              "name": "author",
+              "source": {
+                "attr": "author"
+              }
+            },
+            {
+              "name": "title",
+              "source": {
+                "attr": "post-title"
+              }
+            }
+          ]
+        }
+      },
+      "selectors": {
+        "ready": "a#reddit-logo",
+        "postScrollDiv": "div.main-container",
+        "postCommentButton": "a[name=\"comments-action-button\"]",
+        "postLockedBanner": "div[slot=\"post-locked-banner\"]",
+        "viewMoreComments": "faceplate-tracker[noun=\"view_more_comments\"]",
+        "detailBackButton": "pdp-back-button",
+        "detailScrollDiv": "div#subgrid-container"
+      },
+      "actions": {
+        "pageReady": {
+          "steps": [
+            {
+              "atom": "waitFor",
+              "options": {
+                "delay": [
+                  2000,
+                  3500
+                ]
+              }
+            },
+            {
+              "atom": "waitFor",
+              "options": {
+                "selector": "${selectors.ready}",
+                "timeout": 10000,
+                "delay": [
+                  10000,
+                  15500
+                ]
+              }
+            }
+          ]
+        },
+        "postsScroll": {
+          "steps": [
+            {
+              "atom": "scroll",
+              "options": {
+                "mode": "mouse",
+                "containerSelector": "${selectors.postScrollDiv}",
+                "distance": [
+                  600,
+                  1000
+                ],
+                "steps": [
+                  8,
+                  15
+                ]
+              }
+            },
+            {
+              "atom": "waitFor",
+              "options": {
+                "delay": [
+                  1000,
+                  1500
+                ]
+              }
+            }
+          ]
+        },
+        "detailScrollOnce": {
+          "steps": [
+            {
+              "atom": "scroll",
+              "options": {
+                "mode": "mouse",
+                "containerSelector": "${selectors.detailScrollDiv}",
+                "distance": [
+                  600,
+                  1000
+                ],
+                "steps": [
+                  8,
+                  15
+                ]
+              }
+            },
+            {
+              "atom": "waitFor",
+              "options": {
+                "delay": [
+                  3000,
+                  5000
+                ]
+              }
+            },
+            {
+              "atom": "click",
+              "options": {
+                "selector": "${selectors.viewMoreComments}"
+              },
+              "when": {
+                "all": [
+                  {
+                    "selector": "${selectors.postLockedBanner}",
+                    "state": "hidden"
+                  },
+                  {
+                    "selector": "${selectors.viewMoreComments}",
+                    "state": "visible"
+                  }
+                ]
+              },
+              "onFailure": {
+                "policy": "continue"
+              }
+            }
+          ]
+        },
+        "watchPostComments": {
+          "steps": [
+            {
+              "atom": "click",
+              "options": {
+                "selector": "${selectors.postCommentButton}",
+                "timeout": 3500,
+                "visibleOnly": true,
+                "where": {
+                  "selector": "faceplate-number",
+                  "source": "attr",
+                  "attr": "number",
+                  "type": "number",
+                  "gt": 10
+                }
+              },
+              "probability": 0.5
+            },
+            {
+              "atom": "waitFor",
+              "options": {
+                "selector": "${selectors.detailBackButton}",
+                "selectorState": "visible",
+                "timeout": 10000
+              }
+            },
+            {
+              "action": "detailScrollOnce",
+              "repeat": {
+                "min": 5,
+                "max": 20
+              },
+              "when": {
+                "selector": "div[slot=\"post-locked-banner\"]",
+                "state": "hidden"
+              },
+              "onFailure": {
+                "policy": "continue"
+              }
+            },
+            {
+              "atom": "click",
+              "options": {
+                "selector": "${selectors.detailBackButton}",
+                "timeout": 10000
+              },
+              "when": {
+                "selector": "${selectors.detailBackButton}",
+                "state": "visible"
+              }
+            }
+          ]
+        },
+        "watchPostList": {
+          "steps": [
+            {
+              "action": "postsScroll"
+            },
+            {
+              "atom": "waitFor",
+              "options": {
+                "delay": [
+                  30000,
+                  50000
+                ]
+              },
+              "probability": 0.006666666666666667
+            }
+          ]
+        }
+      }
+    }
+  }
+}

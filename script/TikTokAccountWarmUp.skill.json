@@ -1,0 +1,244 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:user_1785644546305_gad5yp@1",
+  "package_version": "1",
+  "source": "user",
+  "created_at": "2026-08-02T04:22:26.305Z",
+  "requirements": {
+    "platform": "required",
+    "rule": "required"
+  },
+  "skill": {
+    "market_skill_id": "user_1785644546305_gad5yp",
+    "release_id": "user_1785644546305_gad5yp",
+    "name": "TikTokAccountWarmUp",
+    "source_type": "local",
+    "skill_code": "await tobub.domainAdapter.bootstrap()\nawait tobub.domainAdapter.performAction('pageReady')\n\nconst times = Math.floor(Math.random() * 5) + 10\n\nfor (let i = 0; i < times; i++) {\n  const roll = Math.random()\n\n  if (roll < 0.1) {\n    await tobub.domainAdapter.navigateTo({ name: 'discover' })\n    await tobub.domainAdapter.performAction('discoverWarmup')\n  } else {\n    await tobub.domainAdapter.navigateTo({ name: 'home' })\n\n    const shortTimes = Math.floor(Math.random() * 5) + tobub.params.times\n    for (let i = 0; i < shortTimes; i++) {\n      await tobub.domainAdapter.performAction('watchReady')\n      await tobub.domainAdapter.performAction('watchShort')\n    }\n  }\n}\n",
+    "version": "1",
+    "platform": "tiktok",
+    "layer": "L1",
+    "form_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "times",
+          "label": "times",
+          "type": "number",
+          "required": false,
+          "default": 20
+        }
+      ]
+    },
+    "default_params": {},
+    "default_browser": {
+      "locale": "en-US",
+      "headless": false,
+      "browser_type": "cloak"
+    },
+    "default_execution": {
+      "update_session_state": false,
+      "domain_mode": "optional"
+    },
+    "metadata": {}
+  },
+  "platform": {
+    "code": "tiktok",
+    "name": "tiktok",
+    "version": "1",
+    "base_url": "https://www.tiktok.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "tiktok.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "0a7991bc848ef034e54ff614fb0b6eb7a5f03ca960cee2a7bb5c6afda69edb88"
+  },
+  "rule": {
+    "platform": "tiktok",
+    "version": "1.0.0",
+    "schema_version": "1",
+    "hash": "464ab1a2f6d54115d106ca870c7e776ea4afc369a548f1953b43bec7f3967301",
+    "rules": {
+      "platform": "tiktok",
+      "version": "1.0.0",
+      "meta": {
+        "name": "TikTok",
+        "baseUrl": "https://www.tiktok.com",
+        "capabilities": []
+      },
+      "routes": {
+        "home": {
+          "locator": "a[data-e2e=\"nav-foryou\"]",
+          "url": "https://www.tiktok.com"
+        },
+        "discover": {
+          "locator": "a[data-e2e=\"nav-explore\"]"
+        }
+      },
+      "extractors": {},
+      "selectors": {
+        "showMenu": "div[class*='DivMainNavContainer']",
+        "discoverContainer": "div#main-content-explore_page",
+        "showVideo": "div#column-list-container",
+        "closeAll": [
+          "div[data-e2e=\"modal-close-inner-button\"]",
+          "div[class*='DivCloseButtonWrapper']"
+        ]
+      },
+      "actions": {
+        "pageReady": {
+          "steps": [
+            {
+              "atom": "waitFor",
+              "options": {
+                "title": "TikTok",
+                "titleMatch": "contains",
+                "timeout": 5000
+              }
+            },
+            {
+              "atom": "waitFor",
+              "options": {
+                "delay": [
+                  2000,
+                  3500
+                ]
+              }
+            },
+            {
+              "atom": "waitFor",
+              "options": {
+                "selector": "${selectors.showMenu}",
+                "timeout": 10000,
+                "delay": [
+                  10000,
+                  15500
+                ]
+              }
+            }
+          ]
+        },
+        "watchReady": {
+          "steps": [
+            {
+              "atom": "waitFor",
+              "options": {
+                "selector": "${selectors.showVideo}",
+                "selectorState": "visible",
+                "timeout": 10000,
+                "delay": [
+                  2000,
+                  3500
+                ]
+              }
+            }
+          ]
+        },
+        "shortsScroll": {
+          "steps": [
+            {
+              "atom": "dismiss",
+              "options": {
+                "selectors": "${selectors.closeAll}"
+              }
+            },
+            {
+              "atom": "scroll",
+              "options": {
+                "mode": "mouse",
+                "containerSelector": "${selectors.showVideo}",
+                "distance": [
+                  600,
+                  1000
+                ],
+                "steps": [
+                  1,
+                  3
+                ]
+              }
+            },
+            {
+              "atom": "waitFor",
+              "options": {
+                "delay": [
+                  3000,
+                  5000
+                ]
+              }
+            }
+          ]
+        },
+        "watchShort": {
+          "steps": [
+            {
+              "action": "shortsScroll"
+            },
+            {
+              "atom": "waitFor",
+              "options": {
+                "delay": [
+                  30000,
+                  50000
+                ]
+              },
+              "probability": 0.05
+            }
+          ]
+        },
+        "discoverScroll": {
+          "steps": [
+            {
+              "atom": "dismiss",
+              "options": {
+                "selectors": "${selectors.closeAll}"
+              }
+            },
+            {
+              "atom": "scroll",
+              "options": {
+                "mode": "mouse",
+                "containerSelector": "${selectors.discoverContainer}",
+                "distance": [
+                  700,
+                  1200
+                ],
+                "steps": [
+                  8,
+                  15
+                ],
+                "stepPauseRange": [
+                  10,
+                  25
+                ]
+              }
+            },
+            {
+              "atom": "waitFor",
+              "options": {
+                "delay": [
+                  3000,
+                  10000
+                ]
+              }
+            }
+          ]
+        },
+        "discoverWarmup": {
+          "steps": [
+            {
+              "action": "discoverScroll",
+              "repeat": {
+                "min": 5,
+                "max": 12
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

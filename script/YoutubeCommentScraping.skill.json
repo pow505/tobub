@@ -1,0 +1,172 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:user_1785638268756_ueav3j@1",
+  "package_version": "1",
+  "source": "user",
+  "created_at": "2026-08-02T02:37:48.756Z",
+  "requirements": {
+    "platform": "required",
+    "rule": "optional"
+  },
+  "skill": {
+    "market_skill_id": "user_1785638268756_ueav3j",
+    "release_id": "user_1785638268756_ueav3j",
+    "name": "YoutubeCommentScraping",
+    "source_type": "local",
+    "skill_code": "await tobub.domainAdapter.navigateTo({ name: 'video' });\nawait tobub.domainAdapter.performAction('pageReady');\n\nlet totalCount = 0;\nconst scrollTimes = Math.floor(Math.random() * 5) + tobub.params.times;\nlet noNewDataLimit = 6;\n\nfor (let i = 0; i < scrollTimes; i++) {\n  const result = await tobub.domainAdapter.extractData('comments');\n  totalCount += result.newCount;\n\n  for (const record of result.records) {\n    console.log(\n      `[评论] ${record.fields.name?.trim()}(${record.fields.time?.trim()})-${record.fields.likes?.trim()}: ${record.fields.comment}`,\n    );\n  }\n\n  if (result.scannedCount === 0) {\n    if (noNewDataLimit > 0) {\n      noNewDataLimit--;\n    } else {\n      break;\n    }\n  } else {\n    noNewDataLimit = 6;\n  }\n\n  await tobub.domainAdapter.performAction('scrollComments');\n}",
+    "version": "1",
+    "platform": "youtube",
+    "layer": "L1",
+    "form_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "url",
+          "label": "url",
+          "type": "input",
+          "required": true,
+          "default": "https://www.youtube.com/watch?v=k8tdg6v0FQo"
+        },
+        {
+          "key": "times",
+          "label": "times",
+          "type": "number",
+          "required": true,
+          "default": 20
+        }
+      ]
+    },
+    "default_params": {},
+    "default_browser": {
+      "locale": "en-US",
+      "headless": false,
+      "browser_type": "cloak"
+    },
+    "default_execution": {
+      "update_session_state": false,
+      "domain_mode": "optional"
+    },
+    "metadata": {}
+  },
+  "platform": {
+    "code": "youtube",
+    "name": "youtube",
+    "version": "1",
+    "base_url": "https://www.youtube.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "youtube.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "1bb55b28a51f7db733c8f8f573fdf18d7104419c7ba1d4919dc6dbd55327253d"
+  },
+  "rule": {
+    "platform": "youtube",
+    "version": "1.0.0",
+    "schema_version": "1",
+    "hash": "852f875248f5421c1c7efd69bab634b84a73566a4285b9f7de6c091972e15f9e",
+    "rules": {
+      "platform": "youtube",
+      "version": "1.0.0",
+      "meta": {
+        "name": "YouTube",
+        "baseUrl": "https://www.youtube.com",
+        "capabilities": []
+      },
+      "routes": {
+        "video": {
+          "url": "https://www.youtube.com/watch?v=k8tdg6v0FQo",
+          "waitUntil": "domcontentloaded"
+        }
+      },
+      "extractors": {
+        "comments": {
+          "itemSelector": "${selectors.commentItem}",
+          "idField": null,
+          "maxItems": 100,
+          "scan": {
+            "mode": "append"
+          },
+          "fields": [
+            {
+              "name": "name",
+              "selector": "div#header-author a#author-text",
+              "source": "text"
+            },
+            {
+              "name": "comment",
+              "selector": "div#content",
+              "source": "text"
+            },
+            {
+              "name": "time",
+              "selector": "div#header-author #published-time-text",
+              "source": "text"
+            },
+            {
+              "name": "likes",
+              "selector": "#vote-count-middle",
+              "source": "text",
+              "fallback": "0"
+            }
+          ]
+        }
+      },
+      "selectors": {
+        "commentItem": "div#contents > ytd-comment-thread-renderer"
+      },
+      "actions": {
+        "pageReady": {
+          "steps": [
+            {
+              "atom": "waitFor",
+              "options": {
+                "title": "YouTube",
+                "titleMatch": "contains",
+                "timeout": 10000
+              }
+            },
+            {
+              "atom": "waitFor",
+              "options": {
+                "delay": 3000
+              }
+            }
+          ]
+        },
+        "scrollComments": {
+          "steps": [
+            {
+              "atom": "scroll",
+              "options": {
+                "mode": "viewport",
+                "distance": [
+                  390,
+                  1200
+                ],
+                "steps": [
+                  3,
+                  15
+                ],
+                "stepPauseRange": [
+                  10,
+                  25
+                ]
+              }
+            },
+            {
+              "atom": "waitFor",
+              "options": {
+                "delay": 5000
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

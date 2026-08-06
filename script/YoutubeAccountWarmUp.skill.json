@@ -1,0 +1,293 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:user_1785611750077_anmpjb@1",
+  "package_version": "1",
+  "source": "user",
+  "created_at": "2026-08-01T19:15:50.077Z",
+  "requirements": {
+    "platform": "required",
+    "rule": "required"
+  },
+  "skill": {
+    "market_skill_id": "user_1785611750077_anmpjb",
+    "release_id": "user_1785611750077_anmpjb",
+    "name": "YoutubeAccountWarmUp",
+    "source_type": "local",
+    "skill_code": "await tobub.domainAdapter.bootstrap();\n\nawait tobub.domainAdapter.performAction('pageReady');\n\nconst times = Math.floor(Math.random() * 5) + 10;\n\nfor (let i = 0; i < times; i++) {\n  const roll = Math.random();\n\n  if (roll < 0.1) {\n    await tobub.domainAdapter.navigateTo({ name: 'home' });\n\n    const rawSelector = await tobub.domainAdapter.getSelector('homeNotEmpty');\n    const selector = Array.isArray(rawSelector) ? rawSelector[0] : rawSelector;\n\n    try {\n      await tobub.atoms.waitFor({ selector, selectorState: 'attached', timeout: 0 });\n      await tobub.domainAdapter.performAction('homeWarmup');\n    } catch {\n      // 首页内容为空时跳过首页预热。\n    }\n  } else if (roll < 0.1) {\n    const routeRoll = Math.random();\n    if (routeRoll < 0.4) {\n      await tobub.domainAdapter.navigateTo({ name: 'news' });\n    } else if (routeRoll < 0.7) {\n      await tobub.domainAdapter.navigateTo({ name: 'music' });\n    } else {\n      await tobub.domainAdapter.navigateTo({ name: 'video' });\n    }\n    await tobub.atoms.waitFor({ delay: [3000, 10000] });\n  } else {\n    await tobub.domainAdapter.navigateTo({ name: 'shorts' });\n\n    const shortTimes = Math.floor(Math.random() * 5) + tobub.params.times;\n    for (let i = 0; i < shortTimes; i++) {\n      await tobub.domainAdapter.performAction('waitShortsReady');\n      await tobub.domainAdapter.performAction('watchShort');\n    }\n  }\n}",
+    "version": "1",
+    "platform": "youtube",
+    "layer": "L1",
+    "form_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "times",
+          "label": "times",
+          "type": "number",
+          "required": true,
+          "default": 20
+        }
+      ]
+    },
+    "default_params": {},
+    "default_browser": {
+      "locale": "en-US",
+      "headless": false,
+      "browser_type": "cloak"
+    },
+    "default_execution": {
+      "update_session_state": false,
+      "domain_mode": "optional"
+    },
+    "metadata": {}
+  },
+  "platform": {
+    "code": "youtube",
+    "name": "youtube",
+    "version": "1",
+    "base_url": "https://www.youtube.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "youtube.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "1bb55b28a51f7db733c8f8f573fdf18d7104419c7ba1d4919dc6dbd55327253d"
+  },
+  "rule": {
+    "platform": "youtube",
+    "version": "1.0.0",
+    "schema_version": "1",
+    "hash": "e5dc02473146ecf338b38208dcfc5ddeb6886e91f40a7434c0c167760717f2d3",
+    "rules": {
+      "platform": "youtube",
+      "version": "1.0.0",
+      "meta": {
+        "name": "YouTube",
+        "baseUrl": "https://www.youtube.com",
+        "capabilities": []
+      },
+      "routes": {
+        "home": {
+          "locator": "div#sections div#items yt-formatted-string.title >> text=首页",
+          "url": "https://www.youtube.com"
+        },
+        "shorts": {
+          "locator": "div#sections div#items a[title=\"Shorts\"], div#items span.title:text-is(\"Shorts\")"
+        },
+        "news": {
+          "locator": "a[href=\"/channel/UC-9-kyTW8ZkZNDHQJ6FgpwQ\"]"
+        },
+        "video": {
+          "locator": "a[href=\"/channel/UC-9-kyTW8ZkZNDHQJ6FgpwQ\"]"
+        },
+        "music": {
+          "locator": "a[href=\"/channel/UC-9-kyTW8ZkZNDHQJ6FgpwQ\"]"
+        }
+      },
+      "extractors": {},
+      "selectors": {
+        "homeNotEmpty": "div#chips-content",
+        "shortsVideo": "div#reel-overlay-container",
+        "shortsContainer": "div#shorts-container",
+        "likeButton": "like-button-view-model.ytLikeButtonViewModelHost",
+        "commentsButton": "reel-action-bar-view-model button:has(svg path[d^=\"M1 6a4 4 0 014-4h14a4 4 0 014 4v10\"])",
+        "homeContainer": "div#contents"
+      },
+      "actions": {
+        "pageReady": {
+          "steps": [
+            {
+              "atom": "waitFor",
+              "options": {
+                "title": "YouTube",
+                "titleMatch": "contains",
+                "timeout": 10000
+              }
+            },
+            {
+              "atom": "waitFor",
+              "options": {
+                "delay": [
+                  2000,
+                  3500
+                ]
+              }
+            }
+          ]
+        },
+        "waitShortsReady": {
+          "steps": [
+            {
+              "atom": "waitFor",
+              "options": {
+                "selector": "${selectors.shortsVideo}",
+                "selectorState": "visible",
+                "timeout": 10000,
+                "delay": [
+                  2000,
+                  3500
+                ]
+              }
+            }
+          ]
+        },
+        "shortsScroll": {
+          "steps": [
+            {
+              "atom": "scroll",
+              "options": {
+                "mode": "mouse",
+                "containerSelector": "${selectors.shortsContainer}",
+                "distance": [
+                  500,
+                  1100
+                ],
+                "steps": [
+                  1,
+                  3
+                ]
+              }
+            },
+            {
+              "atom": "waitFor",
+              "options": {
+                "delay": [
+                  3000,
+                  5000
+                ]
+              }
+            }
+          ]
+        },
+        "shortsLike": {
+          "steps": [
+            {
+              "atom": "click",
+              "options": {
+                "selector": "${selectors.likeButton}",
+                "timeout": 1500
+              },
+              "when": {
+                "selector": "${selectors.likeButton}",
+                "state": "visible"
+              },
+              "probability": 0.05,
+              "onFailure": {
+                "policy": "continue"
+              }
+            }
+          ]
+        },
+        "commentsInteraction": {
+          "steps": [
+            {
+              "atom": "click",
+              "options": {
+                "selector": "${selectors.commentsButton}",
+                "timeout": 1500
+              },
+              "when": {
+                "selector": "${selectors.commentsButton}",
+                "state": "visible"
+              },
+              "onFailure": {
+                "policy": "continue"
+              }
+            },
+            {
+              "atom": "waitFor",
+              "options": {
+                "delay": [
+                  1500,
+                  4000
+                ]
+              }
+            }
+          ]
+        },
+        "shortsComments": {
+          "steps": [
+            {
+              "action": "commentsInteraction",
+              "when": {
+                "selector": "${selectors.commentsButton}",
+                "state": "visible"
+              },
+              "probability": 0.5
+            }
+          ]
+        },
+        "watchShort": {
+          "steps": [
+            {
+              "action": "shortsScroll"
+            },
+            {
+              "atom": "waitFor",
+              "options": {
+                "delay": [
+                  30000,
+                  50000
+                ]
+              },
+              "probability": 0.05
+            },
+            {
+              "action": "shortsLike"
+            },
+            {
+              "action": "shortsComments"
+            }
+          ]
+        },
+        "homeScroll": {
+          "steps": [
+            {
+              "atom": "scroll",
+              "options": {
+                "mode": "mouse",
+                "containerSelector": "${selectors.homeContainer}",
+                "distance": [
+                  700,
+                  1200
+                ],
+                "steps": [
+                  8,
+                  15
+                ],
+                "stepPauseRange": [
+                  10,
+                  25
+                ]
+              }
+            },
+            {
+              "atom": "waitFor",
+              "options": {
+                "delay": [
+                  3000,
+                  10000
+                ]
+              }
+            }
+          ]
+        },
+        "homeWarmup": {
+          "steps": [
+            {
+              "action": "homeScroll",
+              "repeat": {
+                "min": 5,
+                "max": 12
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
