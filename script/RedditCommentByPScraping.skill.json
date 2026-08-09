@@ -1,18 +1,18 @@
 {
   "package_type": "tobub_skill",
   "manifest_version": 1,
-  "package_id": "user:user_1784993996111_7lsl84@1",
+  "package_id": "user:user_1785702085285_2mnckb@1",
   "package_version": "1",
   "source": "user",
-  "created_at": "2026-07-25T15:39:56.111Z",
+  "created_at": "2026-08-02T20:21:25.286Z",
   "requirements": {
     "platform": "required",
     "rule": "required"
   },
   "skill": {
-    "market_skill_id": "user_1784993996111_7lsl84",
-    "release_id": "user_1784993996111_7lsl84",
-    "name": "RedditAccountWarmUp",
+    "market_skill_id": "user_1785702085285_2mnckb",
+    "release_id": "user_1785702085285_2mnckb",
+    "name": "RedditCommentByPScraping",
     "source_type": "local",
     "version": "1",
     "platform": "reddit",
@@ -21,18 +21,17 @@
       "version": 1,
       "fields": [
         {
+          "key": "url",
+          "label": "url",
+          "type": "input",
+          "required": true
+        },
+        {
           "key": "times",
           "label": "times",
           "type": "number",
           "required": true,
-          "default": 10
-        },
-        {
-          "key": "viewCommentByCount",
-          "label": "viewCommentByCount",
-          "type": "number",
-          "required": false,
-          "default": 100
+          "default": 5
         }
       ]
     },
@@ -47,7 +46,7 @@
       "domain_mode": "optional"
     },
     "metadata": {},
-    "skill_code": "await tobub.adapter.bootstrap();\n\nawait tobub.adapter.action('pageReady');\n\nconst times = tobub.utils.randInt(1,5) + tobub.params.times;\n\nfor (let i = 0; i < times; i++) {\n  await tobub.adapter.action('watchPostList');\n}\n\n"
+    "skill_code": "await tobub.adapter.bootstrap()\nawait tobub.adapter.action('pageReady')\n\n// https://www.reddit.com/r/wow/comments/1vdommg\nawait tobub.adapter.navigateTo({\n  url: tobub.params.url,\n})\n\nawait tobub.atoms.waitFor({ delay: [1000, 2600] })\n\nconst times = tobub.utils.randInt(1,5) + tobub.params.times\nconst allRecords = []\nconst allRecordIds = new Set()\nlet noNewDataCount = 0\n\nconst infoHtml = await tobub.adapter.extractData('fetchPostInfo')\nconst info = infoHtml.records?.[0] ?? {}\n\nfor (let i = 0; i < times; i++) {\n  await tobub.adapter.action('watchPostList')\n\n  const result = await tobub.adapter.extractData('comment_list')\n  \n  for (const record of result.records) {\n    if (allRecordIds.has(record.id)) continue\n    allRecordIds.add(record.id)\n    allRecords.push(record)\n\n    await tobub.db.saveContent({\n      platform: 'reddit',\n      contentType: 'article',\n      externalId: record.id,\n      title: info.fields.title ?? '',\n      summary: record.fields.author ?? '',\n      url: record.fields.url ?? '',\n      metadata: record.fields,\n      rawData: {},\n    })\n  }\n\n  noNewDataCount = result.newCount === 0 ? noNewDataCount + 1 : 0\n  if (noNewDataCount >= 3) break\n}\n"
   },
   "platform": {
     "code": "reddit",
@@ -70,24 +69,154 @@
   },
   "rule": {
     "platform": "reddit",
-    "version": "1.0.0",
+    "version": "local-dev",
     "schema_version": "1",
-    "hash": "1a862d3227186244ed808b3e440a7d9fc87315dcd8a82859a50f5dcee9766dc1",
+    "hash": "de1b5469fb206f8f8f02edaba29c1fbe1c825ed8616693d6a20475c08d6bcaf5",
     "rules": {
       "platform": "reddit",
-      "version": "1.0.0",
+      "version": "local-dev",
       "meta": {
         "name": "reddit",
-        "baseUrl": "https://www.reddit.com",
+        "baseUrl": "https://www.reddit.com//",
         "capabilities": []
       },
       "routes": {
         "home": {
           "locator": "a#reddit-logo",
           "url": "https://www.reddit.com"
+        },
+        "r": {
+          "url": "https://www.reddit.com/r/${params.subreddit}"
         }
       },
-      "extractors": {},
+      "extractors": {
+        "post_list": {
+          "itemSelector": "${params.itemSelector}",
+          "idField": "postId",
+          "dedupe": "field",
+          "maxItems": 1000,
+          "scan": {
+            "mode": "rescan",
+            "scope": "viewport-buffer",
+            "viewportBufferScreens": 2
+          },
+          "fields": [
+            {
+              "name": "postId",
+              "source": {
+                "attr": "data-post-id"
+              }
+            },
+            {
+              "name": "author",
+              "selector": "span[slot=\"authorName\"] span[dir=\"auto\"]",
+              "source": "text"
+            },
+            {
+              "name": "url",
+              "selector": "a[slot=\"full-post-link\"]",
+              "source": "href"
+            },
+            {
+              "name": "time",
+              "selector": "time[datetime]",
+              "source": {
+                "attr": "datetime"
+              }
+            },
+            {
+              "name": "title",
+              "selector": "a[slot=\"title\"]",
+              "source": "text"
+            },
+            {
+              "name": "summary",
+              "selector": "shreddit-post-text-body[slot=\"text-body\"]",
+              "source": "text"
+            },
+            {
+              "name": "likes",
+              "selector": "shreddit-vote-animations faceplate-number[number]",
+              "source": {
+                "attr": "number"
+              }
+            },
+            {
+              "name": "comments",
+              "selector": "a[name=\"comments-action-button\"] faceplate-number[number]",
+              "source": {
+                "attr": "number"
+              }
+            }
+          ]
+        },
+        "comment_list": {
+          "itemSelector": "shreddit-comment",
+          "idField": "postId",
+          "dedupe": "field",
+          "maxItems": 1000,
+          "scan": {
+            "mode": "rescan",
+            "scope": "viewport-buffer",
+            "viewportBufferScreens": 2
+          },
+          "fields": [
+            {
+              "name": "postId",
+              "source": {
+                "attr": "thingid"
+              }
+            },
+            {
+              "name": "author",
+              "source": {
+                "attr": "author"
+              }
+            },
+            {
+              "name": "time",
+              "source": {
+                "attr": "created"
+              }
+            },
+            {
+              "name": "content",
+              "selector": "details div[slot=\"comment\"]",
+              "source": "text"
+            },
+            {
+              "name": "likes",
+              "selector": "div[data-testid=\"seeker-action-row\"] faceplate-number[number]",
+              "source": {
+                "attr": "number"
+              }
+            }
+          ]
+        },
+        "fetchPostInfo": {
+          "itemSelector": "shreddit-post[view-context=\"CommentsPage\"]",
+          "fields": [
+            {
+              "name": "postId",
+              "source": {
+                "attr": "id"
+              }
+            },
+            {
+              "name": "author",
+              "source": {
+                "attr": "author"
+              }
+            },
+            {
+              "name": "title",
+              "source": {
+                "attr": "post-title"
+              }
+            }
+          ]
+        }
+      },
       "selectors": {
         "ready": "a#reddit-logo",
         "postScrollDiv": "div.main-container",
@@ -143,8 +272,8 @@
               "atom": "waitFor",
               "options": {
                 "delay": [
-                  3000,
-                  5000
+                  1000,
+                  1500
                 ]
               }
             }
@@ -212,7 +341,7 @@
                   "source": "attr",
                   "attr": "number",
                   "type": "number",
-                  "gt": 500
+                  "gt": 10
                 }
               },
               "probability": 0.5
@@ -265,13 +394,7 @@
                   50000
                 ]
               },
-              "probability": 0.05
-            },
-            {
-              "action": "watchPostComments",
-              "onFailure": {
-                "policy": "continue"
-              }
+              "probability": 0.006666666666666667
             }
           ]
         }

@@ -1,20 +1,19 @@
 {
   "package_type": "tobub_skill",
   "manifest_version": 1,
-  "package_id": "user:user_1785702085285_2mnckb@1",
+  "package_id": "user:user_1785898077846_kik4fd@1",
   "package_version": "1",
   "source": "user",
-  "created_at": "2026-08-02T20:21:25.286Z",
+  "created_at": "2026-08-05T02:47:57.847Z",
   "requirements": {
     "platform": "required",
     "rule": "required"
   },
   "skill": {
-    "market_skill_id": "user_1785702085285_2mnckb",
-    "release_id": "user_1785702085285_2mnckb",
-    "name": "RedditCommentScraping",
+    "market_skill_id": "user_1785898077846_kik4fd",
+    "release_id": "user_1785898077846_kik4fd",
+    "name": "RedditPostByRScraping",
     "source_type": "local",
-    "skill_code": "await tobub.domainAdapter.bootstrap()\nawait tobub.domainAdapter.performAction('pageReady')\n\n// https://www.reddit.com/r/wow/comments/1vdommg\nawait tobub.domainAdapter.navigateTo({\n  url: tobub.params.url,\n})\n\nawait tobub.atoms.waitFor({ delay: [1000, 2600] })\n\nconst times = Math.floor(Math.random() * 5) + 100;\nconst allRecords = []\nconst allRecordIds = new Set()\nlet noNewDataCount = 0\n\nconst infoHtml = await tobub.domainAdapter.extractData('fetchPostInfo')\nconst info = infoHtml.records?.[0] ?? {}\n\nfor (let i = 0; i < times; i++) {\n  await tobub.domainAdapter.performAction('watchPostList')\n\n  const result = await tobub.domainAdapter.extractData('comment_list')\n  \n  for (const record of result.records) {\n    if (allRecordIds.has(record.id)) continue\n    allRecordIds.add(record.id)\n    allRecords.push(record)\n\n    await tobub.db.saveContent({\n      platform: 'reddit',\n      contentType: 'article',\n      externalId: record.id,\n      title: info.fields.title ?? '',\n      summary: record.fields.author ?? '',\n      url: record.fields.url ?? '',\n      metadata: record.fields,\n      rawData: {},\n    })\n  }\n\n  noNewDataCount = result.newCount === 0 ? noNewDataCount + 1 : 0\n  if (noNewDataCount >= 3) break\n}\n",
     "version": "1",
     "platform": "reddit",
     "layer": "L1",
@@ -22,10 +21,33 @@
       "version": 1,
       "fields": [
         {
-          "key": "url",
-          "label": "url",
+          "key": "topic",
+          "label": "topic",
           "type": "input",
           "required": true
+        },
+        {
+          "key": "times",
+          "label": "times",
+          "type": "number",
+          "required": true,
+          "default": 5
+        },
+        {
+          "key": "sort",
+          "label": "sort",
+          "type": "select",
+          "required": false,
+          "options": [
+            {
+              "label": "hot",
+              "value": "hot"
+            },
+            {
+              "label": "new",
+              "value": "new"
+            }
+          ]
         }
       ]
     },
@@ -39,7 +61,8 @@
       "update_session_state": false,
       "domain_mode": "optional"
     },
-    "metadata": {}
+    "metadata": {},
+    "skill_code": "await tobub.adapter.bootstrap()\nawait tobub.adapter.action('pageReady')\nawait tobub.adapter.navigateTo({\n  name: 'r',\n  params: { subreddit: tobub.params.topic },\n})\nawait tobub.atoms.waitFor({ delay: [3000, 5500] })\n\nif (tobub.params.sort === 'new') {\n  await tobub.adapter.action('goSort')\n}\n\nconst allRecordIds = new Set()\nlet noNewDataCount = 0\nconst times = tobub.params.times\n\nfor (let i = 0; i < times; i++) {\n  await tobub.adapter.action('watchPostList')\n\n  const result = await tobub.adapter.extractData('post_list', {\n    params: {\n      itemSelector: 'article[data-post-id]',\n    },\n    execution: {\n      maxItems: 200,\n      includeErrors: true,\n    },\n  })\n\n  const records = []\n  for (const record of result.records) {\n    if (allRecordIds.has(record.id)) continue\n    allRecordIds.add(record.id)\n    records.push(record)\n\n    await tobub.db.saveContent({\n      platform: 'reddit',\n      contentType: 'article',\n      externalId: record.id,\n      title: record.fields.title ?? '',\n      summary: record.fields.author ?? '',\n      url: record.fields.url ?? '',\n      metadata: record.fields,\n      rawData: {},\n    })\n  }\n\n  noNewDataCount = result.newCount === 0 ? noNewDataCount + 1 : 0\n  if(noNewDataCount > 3) break;\n}\n"
   },
   "platform": {
     "code": "reddit",
@@ -64,7 +87,7 @@
     "platform": "reddit",
     "version": "local-dev",
     "schema_version": "1",
-    "hash": "40dc953b28f7f4b7f7be6654c8bc26d19d8b09f9eb975241b16c69053d92a610",
+    "hash": "3bc4af8ec78b47a8f1dfcfb41e52cb49ba60be52228df8a498ee6720a8e0ef6f",
     "rules": {
       "platform": "reddit",
       "version": "local-dev",
@@ -142,72 +165,6 @@
               }
             }
           ]
-        },
-        "comment_list": {
-          "itemSelector": "shreddit-comment",
-          "idField": "postId",
-          "dedupe": "field",
-          "maxItems": 1000,
-          "scan": {
-            "mode": "rescan",
-            "scope": "viewport-buffer",
-            "viewportBufferScreens": 2
-          },
-          "fields": [
-            {
-              "name": "postId",
-              "source": {
-                "attr": "thingid"
-              }
-            },
-            {
-              "name": "author",
-              "source": {
-                "attr": "author"
-              }
-            },
-            {
-              "name": "time",
-              "source": {
-                "attr": "created"
-              }
-            },
-            {
-              "name": "content",
-              "selector": "details div[slot=\"comment\"]",
-              "source": "text"
-            },
-            {
-              "name": "likes",
-              "selector": "div[data-testid=\"seeker-action-row\"] faceplate-number[number]",
-              "source": {
-                "attr": "number"
-              }
-            }
-          ]
-        },
-        "fetchPostInfo": {
-          "itemSelector": "shreddit-post[view-context=\"CommentsPage\"]",
-          "fields": [
-            {
-              "name": "postId",
-              "source": {
-                "attr": "id"
-              }
-            },
-            {
-              "name": "author",
-              "source": {
-                "attr": "author"
-              }
-            },
-            {
-              "name": "title",
-              "source": {
-                "attr": "post-title"
-              }
-            }
-          ]
         }
       },
       "selectors": {
@@ -217,7 +174,8 @@
         "postLockedBanner": "div[slot=\"post-locked-banner\"]",
         "viewMoreComments": "faceplate-tracker[noun=\"view_more_comments\"]",
         "detailBackButton": "pdp-back-button",
-        "detailScrollDiv": "div#subgrid-container"
+        "detailScrollDiv": "div#subgrid-container",
+        "postSortButton": "shreddit-sort-dropdown[telemetry-source=\"sort_switch\"]"
       },
       "actions": {
         "pageReady": {
@@ -237,8 +195,8 @@
                 "selector": "${selectors.ready}",
                 "timeout": 10000,
                 "delay": [
-                  10000,
-                  15500
+                  1000,
+                  1550
                 ]
               }
             }
@@ -388,6 +346,24 @@
                 ]
               },
               "probability": 0.006666666666666667
+            }
+          ]
+        },
+        "goSort": {
+          "steps": [
+            {
+              "atom": "click",
+              "options": {
+                "selector": "${selectors.postSortButton}",
+                "timeout": 10000
+              }
+            },
+            {
+              "atom": "click",
+              "options": {
+                "selector": "shreddit-sort-dropdown[telemetry-source='sort_switch'] div[slot='dropdown-items'] data[value='NEW']",
+                "timeout": 10000
+              }
             }
           ]
         }

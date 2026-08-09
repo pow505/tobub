@@ -1,18 +1,18 @@
 {
   "package_type": "tobub_skill",
   "manifest_version": 1,
-  "package_id": "user:user_1785898077846_kik4fd@1",
+  "package_id": "user:user_1784993996111_7lsl84@1",
   "package_version": "1",
   "source": "user",
-  "created_at": "2026-08-05T02:47:57.847Z",
+  "created_at": "2026-07-25T15:39:56.111Z",
   "requirements": {
     "platform": "required",
     "rule": "required"
   },
   "skill": {
-    "market_skill_id": "user_1785898077846_kik4fd",
-    "release_id": "user_1785898077846_kik4fd",
-    "name": "RedditPostScraping",
+    "market_skill_id": "user_1784993996111_7lsl84",
+    "release_id": "user_1784993996111_7lsl84",
+    "name": "RedditAccountWarmUp",
     "source_type": "local",
     "version": "1",
     "platform": "reddit",
@@ -21,33 +21,18 @@
       "version": 1,
       "fields": [
         {
-          "key": "topic",
-          "label": "topic",
-          "type": "input",
-          "required": true
-        },
-        {
           "key": "times",
           "label": "times",
           "type": "number",
           "required": true,
-          "default": 5
+          "default": 10
         },
         {
-          "key": "sort",
-          "label": "sort",
-          "type": "select",
+          "key": "viewCommentByCount",
+          "label": "viewCommentByCount",
+          "type": "number",
           "required": false,
-          "options": [
-            {
-              "label": "hot",
-              "value": "hot"
-            },
-            {
-              "label": "new",
-              "value": "new"
-            }
-          ]
+          "default": 100
         }
       ]
     },
@@ -62,7 +47,7 @@
       "domain_mode": "optional"
     },
     "metadata": {},
-    "skill_code": "await tobub.domainAdapter.bootstrap()\nawait tobub.domainAdapter.performAction('pageReady')\nawait tobub.domainAdapter.navigateTo({\n  name: 'r',\n  params: { subreddit: tobub.params.topic },\n})\nawait tobub.atoms.waitFor({ delay: [3000, 5500] })\n\nif (tobub.params.sort === 'new') {\n  await tobub.domainAdapter.performAction('goSort')\n}\n\nconst allRecordIds = new Set()\nlet noNewDataCount = 0\nconst allTimes = Math.floor(Math.random() * 5) + tobub.params.times\n\nfor (let i = 0; i < allTimes; i++) {\n  await tobub.domainAdapter.performAction('watchPostList')\n\n  const result = await tobub.domainAdapter.extractData('post_list', {\n    params: {\n      itemSelector: 'article[data-post-id]',\n    },\n    execution: {\n      maxItems: 200,\n      includeErrors: true,\n    },\n  })\n\n  const records = []\n  for (const record of result.records) {\n    if (allRecordIds.has(record.id)) continue\n    allRecordIds.add(record.id)\n    records.push(record)\n\n    await tobub.db.saveContent({\n      platform: 'reddit',\n      contentType: 'article',\n      externalId: record.id,\n      title: record.fields.title ?? '',\n      summary: record.fields.author ?? '',\n      url: record.fields.url ?? '',\n      metadata: record.fields,\n      rawData: {},\n    })\n  }\n\n  noNewDataCount = result.newCount === 0 ? noNewDataCount + 1 : 0\n  if(noNewDataCount > 3) break;\n}\n"
+    "skill_code": "await tobub.adapter.bootstrap();\n\nawait tobub.adapter.action('pageReady');\n\nconst times = tobub.utils.randInt(1,5) + tobub.params.times;\n\nfor (let i = 0; i < times; i++) {\n  await tobub.adapter.action('watchPostList');\n}\n\n"
   },
   "platform": {
     "code": "reddit",
@@ -85,12 +70,12 @@
   },
   "rule": {
     "platform": "reddit",
-    "version": "local-dev",
+    "version": "1.0.0",
     "schema_version": "1",
-    "hash": "3bc4af8ec78b47a8f1dfcfb41e52cb49ba60be52228df8a498ee6720a8e0ef6f",
+    "hash": "1a862d3227186244ed808b3e440a7d9fc87315dcd8a82859a50f5dcee9766dc1",
     "rules": {
       "platform": "reddit",
-      "version": "local-dev",
+      "version": "1.0.0",
       "meta": {
         "name": "reddit",
         "baseUrl": "https://www.reddit.com",
@@ -100,73 +85,9 @@
         "home": {
           "locator": "a#reddit-logo",
           "url": "https://www.reddit.com"
-        },
-        "r": {
-          "url": "https://www.reddit.com/r/${params.subreddit}"
         }
       },
-      "extractors": {
-        "post_list": {
-          "itemSelector": "${params.itemSelector}",
-          "idField": "postId",
-          "dedupe": "field",
-          "maxItems": 1000,
-          "scan": {
-            "mode": "rescan",
-            "scope": "viewport-buffer",
-            "viewportBufferScreens": 2
-          },
-          "fields": [
-            {
-              "name": "postId",
-              "source": {
-                "attr": "data-post-id"
-              }
-            },
-            {
-              "name": "author",
-              "selector": "span[slot=\"authorName\"] span[dir=\"auto\"]",
-              "source": "text"
-            },
-            {
-              "name": "url",
-              "selector": "a[slot=\"full-post-link\"]",
-              "source": "href"
-            },
-            {
-              "name": "time",
-              "selector": "time[datetime]",
-              "source": {
-                "attr": "datetime"
-              }
-            },
-            {
-              "name": "title",
-              "selector": "a[slot=\"title\"]",
-              "source": "text"
-            },
-            {
-              "name": "summary",
-              "selector": "shreddit-post-text-body[slot=\"text-body\"]",
-              "source": "text"
-            },
-            {
-              "name": "likes",
-              "selector": "shreddit-vote-animations faceplate-number[number]",
-              "source": {
-                "attr": "number"
-              }
-            },
-            {
-              "name": "comments",
-              "selector": "a[name=\"comments-action-button\"] faceplate-number[number]",
-              "source": {
-                "attr": "number"
-              }
-            }
-          ]
-        }
-      },
+      "extractors": {},
       "selectors": {
         "ready": "a#reddit-logo",
         "postScrollDiv": "div.main-container",
@@ -174,8 +95,7 @@
         "postLockedBanner": "div[slot=\"post-locked-banner\"]",
         "viewMoreComments": "faceplate-tracker[noun=\"view_more_comments\"]",
         "detailBackButton": "pdp-back-button",
-        "detailScrollDiv": "div#subgrid-container",
-        "postSortButton": "shreddit-sort-dropdown[telemetry-source=\"sort_switch\"]"
+        "detailScrollDiv": "div#subgrid-container"
       },
       "actions": {
         "pageReady": {
@@ -195,8 +115,8 @@
                 "selector": "${selectors.ready}",
                 "timeout": 10000,
                 "delay": [
-                  1000,
-                  1550
+                  10000,
+                  15500
                 ]
               }
             }
@@ -223,8 +143,8 @@
               "atom": "waitFor",
               "options": {
                 "delay": [
-                  1000,
-                  1500
+                  3000,
+                  5000
                 ]
               }
             }
@@ -292,7 +212,7 @@
                   "source": "attr",
                   "attr": "number",
                   "type": "number",
-                  "gt": 10
+                  "gt": 500
                 }
               },
               "probability": 0.5
@@ -345,24 +265,12 @@
                   50000
                 ]
               },
-              "probability": 0.006666666666666667
-            }
-          ]
-        },
-        "goSort": {
-          "steps": [
-            {
-              "atom": "click",
-              "options": {
-                "selector": "${selectors.postSortButton}",
-                "timeout": 10000
-              }
+              "probability": 0.05
             },
             {
-              "atom": "click",
-              "options": {
-                "selector": "shreddit-sort-dropdown[telemetry-source='sort_switch'] div[slot='dropdown-items'] data[value='NEW']",
-                "timeout": 10000
+              "action": "watchPostComments",
+              "onFailure": {
+                "policy": "continue"
               }
             }
           ]

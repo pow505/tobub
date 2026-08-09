@@ -14,7 +14,7 @@
     "release_id": "user_1785644546305_gad5yp",
     "name": "TikTokAccountWarmUp",
     "source_type": "local",
-    "skill_code": "await tobub.domainAdapter.bootstrap()\nawait tobub.domainAdapter.performAction('pageReady')\n\nconst times = Math.floor(Math.random() * 5) + 10\n\nfor (let i = 0; i < times; i++) {\n  const roll = Math.random()\n\n  if (roll < 0.1) {\n    await tobub.domainAdapter.navigateTo({ name: 'discover' })\n    await tobub.domainAdapter.performAction('discoverWarmup')\n  } else {\n    await tobub.domainAdapter.navigateTo({ name: 'home' })\n\n    const shortTimes = Math.floor(Math.random() * 5) + tobub.params.times\n    for (let i = 0; i < shortTimes; i++) {\n      await tobub.domainAdapter.performAction('watchReady')\n      await tobub.domainAdapter.performAction('watchShort')\n    }\n  }\n}\n",
+    "skill_code": "await tobub.adapter.bootstrap()\nawait tobub.adapter.action('pageReady')\n\nconst times = tobub.utils.randInt(2,6)\n\nfor (let i = 0; i < times; i++) {\n  const roll = Math.random()\n\n  if (roll < 0.1) {\n    await tobub.adapter.navigateTo({ name: 'discover' })\n    await tobub.adapter.action('discoverWarmup')\n  } else {\n    await tobub.adapter.navigateTo({ name: 'home' })\n    await tobub.atoms.refresh()\n    const shortTimes = tobub.utils.randInt(1,5) + tobub.params.times\n    for (let i = 0; i < shortTimes; i++) {\n      await tobub.adapter.action('watchReady')\n      await tobub.adapter.action('watchShort')\n    }\n  }\n}\n",
     "version": "1",
     "platform": "tiktok",
     "layer": "L1",

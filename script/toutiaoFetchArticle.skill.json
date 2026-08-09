@@ -1,0 +1,226 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:user_1784014217327_vbjr6l@1",
+  "package_version": "1",
+  "source": "user",
+  "created_at": "2026-07-14T07:30:17.327Z",
+  "requirements": {
+    "platform": "required",
+    "rule": "required"
+  },
+  "skill": {
+    "market_skill_id": "user_1784014217327_vbjr6l",
+    "release_id": "user_1784014217327_vbjr6l",
+    "name": "toutiao收集交互",
+    "source_type": "local",
+    "version": "1",
+    "platform": "toutiao",
+    "layer": "L1",
+    "form_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "times",
+          "label": "times",
+          "type": "number",
+          "required": true,
+          "default": 10
+        },
+        {
+          "key": "comments",
+          "label": "comments",
+          "type": "number",
+          "required": true,
+          "default": 5
+        }
+      ]
+    },
+    "default_params": {},
+    "default_browser": {
+      "proxy": {
+        "server": "next"
+      },
+      "user_agent": "random",
+      "locale": "en-US",
+      "headless": false,
+      "browser_type": "cloak"
+    },
+    "default_execution": {
+      "update_session_state": true,
+      "domain_mode": "optional"
+    },
+    "metadata": {},
+    "skill_code": "const params = tobub.params;\nconst adapter = tobub.adapter;\nconst utils = tobub.utils;\n\nconst times = params.times;\nconst minComments = params.comments;\nconst maxNoNewData = 5;\n\nawait adapter.bootstrap();\n// if (!await adapter.isLogin()) throw new Error('Platform login state is invalid');\nawait adapter.navigateTo({ name: 'home' });\n\nlet noNewDataCount = 0;\nlet totalNew = 0;\n\nfor (let i = 0; i < times; i++) {\n  await tobub.reporter.emit({\n    source: 'skill',\n    action: 'feed.scroll',\n    phase: 'progress',\n    severity: 'info',\n    payload: { iteration: i + 1 }\n  });\n\n  if(utils.chance(1/400)){\n    await tobub.atoms.waitFor({ delay: [30000, 60000] });\n  }\n\n  await tobub.atoms.scroll({\n    direction: 'down',\n    distance:  utils.randInt(350, 900),\n    mode: 'mouse',\n    steps: 8,\n    containerSelector: await adapter.getSelector('feedContainer'),\n    stepPauseRange: [15, 30],\n    pauseRange: [500, 1500]\n  });\n\n  await tobub.atoms.waitFor({ delay: [3000, 10000] });\n\n  if(utils.chance(1/15)){\n    await tobub.atoms.waitFor({ delay: [5000, 10000] });\n  }\n\n  const result = await adapter.extractData('list_extractor');\n  const currentNew = [];\n\n  for (const record of result.records ?? []) {\n    const comments = Number.parseInt(String(record.fields?.comments ?? '0').replace(/[^\\d]/g, ''), 10) || 0;\n    if (comments < minComments || !record.id) continue;\n\n    const saved = await tobub.db.saveContent({\n      contentType: 'article',\n      externalId: record.id,\n      title: record.fields?.title ?? '',\n      summary: record.fields?.author ?? '',\n      url: `https://www.toutiao.com/article/${record.id}/`,\n      metadata: { comments },\n      rawData: record.fields ?? {}\n    });\n\n    if (saved.isNew) currentNew.push({ record, saved });\n  }\n\n  totalNew += currentNew.length;\n  if (currentNew.length > 0 && utils.chance(9/10)) {\n    const target = currentNew[utils.randInt(0, currentNew.length - 1)];\n    let page;\n    console.log(target.saved);\n    try {\n      page = await adapter.openPage('article2', { id: target.record.id });\n\n      const detailTimes = utils.randInt(2, 4);\n      for (let index = 0; index < detailTimes; index++) {\n        await adapter.executeAtoms(page, [\n          { atom: 'scroll', options: { direction: 'down', distance: [200, 500], steps: 8 } },\n          { atom: 'waitFor', options: { delay: [3000, 5000] } }\n        ]);\n      }\n\n      const commentArea = await adapter.getSelector('commentArea');\n      \n      await adapter.executeAtoms(page, [{\n        atom: 'evaluate',\n        options: {\n          expression: '(selector) => document.querySelector(selector)?.scrollIntoView()',\n          arg: Array.isArray(commentArea) ? commentArea[0] : commentArea,\n          mode: 'function'\n        }\n      }]);\n\n      const comments = await adapter.extractPageData(page, 'comment_extractor');\n      const commentList = (comments.records ?? [])\n        .map((item, index) => `${index + 1}.${item.fields?.name ?? ''}说:${item.fields?.content ?? ''}`)\n        .join(';') + ';';\n\n      let aiResult = {};\n      // const aiResult = await tobub.ai.sse('generateText', {\n      //   chat_id: 990003,\n      //   contents: [{\n      //     type: 'form',\n      //     text: {\n      //       scene: 'comment',\n      //       title: target.record.fields?.title ?? '',\n      //       commentList\n      //     }\n      //   }],\n      //   params: {\n      //     stream: true,\n      //     ext: { contract_id: '2068740752307085313' }\n      //   },\n      //   response_format: { type: 'text' }\n      // });\n\n      await tobub.reporter.emit({\n        source: 'skill',\n        action: 'comment.generate',\n        phase: 'succeeded',\n        severity: 'info',\n        payload: { commentCount: comments.records?.length ?? 0, answer: aiResult?.data ?? ''}\n      });\n\n      await tobub.db.recordAction({\n        actionTypeCode: 'comment',\n        contentDataId: target.saved.contentDataId,\n        contentId:target.saved.contentId\n      });\n      await tobub.atoms.waitFor({ delay: [3000, 15000] });\n    } catch (error) {\n      await tobub.reporter.emit({\n        source: 'skill',\n        action: 'detail.flow',\n        phase: 'failed',\n        severity: 'error',\n        error: { code: 'detail_flow_failed', message: error instanceof Error ? error.message : String(error) }\n      });\n    } finally {\n      if (page) await adapter.closePage(page);\n    }\n  }\n\n  noNewDataCount = currentNew.length === 0 ? noNewDataCount + 1 : 0;\n  if (noNewDataCount >= maxNoNewData) break;\n}\n\nreturn { times, totalNew, noNewDataCount };"
+  },
+  "platform": {
+    "code": "toutiao",
+    "name": "toutiao",
+    "version": "1",
+    "base_url": "https://www.toutiao.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "toutiao.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "b48cddf3d3303b9e84c20113c3c7ec4678fe0b22f1fd074fac4e1ffeef59bbf9"
+  },
+  "rule": {
+    "platform": "toutiao",
+    "version": "1.0.2",
+    "schema_version": "1",
+    "hash": "e1d3d9a0d6e2ae8e064ff2a2b9d962d64846def152205c4f0116c0d64a0a4461",
+    "rules": {
+      "platform": "toutiao",
+      "version": "1.0.2",
+      "meta": {
+        "name": "今日头条",
+        "baseUrl": "https://www.toutiao.com",
+        "capabilities": [
+          "view_list_item",
+          "view_detail",
+          "scroll",
+          "comment"
+        ],
+        "titlePattern": "今日头条"
+      },
+      "routes": {
+        "home": {
+          "locator": "div.main-content >> .feed-default-nav >> text=推荐",
+          "url": "https://www.toutiao.com",
+          "check": {
+            "selector": "div.main-content >> .feed-default-nav-item.active:has-text(\"推荐\")"
+          }
+        },
+        "hot": {
+          "locator": "div.main-content >> .feed-default-nav >> text=热点",
+          "check": {
+            "selector": "div.main-content >> .feed-default-nav-item.active:has-text(\"热点\")"
+          }
+        },
+        "article": {
+          "entityLocatorTemplate": "a[href*=\"/article/${params.id}/\"]",
+          "waitForNewPage": true,
+          "visibilityProbeMs": 3000
+        },
+        "article2": {
+          "url": "https://www.toutiao.com/article/${params.id}/",
+          "waitUntil": "domcontentloaded"
+        }
+      },
+      "extractors": {
+        "comment_extractor": {
+          "itemSelector": ".comment-list .ttp-comment-item",
+          "idField": null,
+          "maxItems": 100,
+          "fields": [
+            {
+              "name": "name",
+              "selector": ".user-name .name",
+              "source": "text"
+            },
+            {
+              "name": "content",
+              "selector": ".body .content",
+              "source": "text"
+            },
+            {
+              "name": "like",
+              "selector": ".ttp-comment-like",
+              "source": {
+                "attr": "aria-label"
+              },
+              "match": "(\\d+)",
+              "fallback": "0"
+            }
+          ]
+        },
+        "list_extractor": {
+          "itemSelector": ".feed-card-wrapper.feed-card-article-wrapper",
+          "idField": "id",
+          "maxItems": 1000,
+          "fields": [
+            {
+              "name": "id",
+              "selector": "a.title",
+              "source": "href",
+              "match": "/article/(\\d+)",
+              "fallback": ""
+            },
+            {
+              "name": "title",
+              "selector": "a.title",
+              "source": {
+                "attr": "aria-label"
+              },
+              "fallback": ""
+            },
+            {
+              "name": "author",
+              "selector": ".feed-card-footer-cmp-author a",
+              "source": "text",
+              "fallback": ""
+            },
+            {
+              "name": "comments",
+              "selector": ".feed-card-footer-comment-cmp",
+              "source": "text",
+              "fallback": "0"
+            },
+            {
+              "name": "time",
+              "selector": ".feed-card-footer-time-cmp",
+              "source": "text",
+              "fallback": ""
+            }
+          ]
+        }
+      },
+      "actions": {
+        "gogo": {
+          "steps": [
+            {
+              "atom": "dismiss",
+              "options": {
+                "selectors": "div#abc"
+              }
+            }
+          ]
+        },
+        "humanizedScroll": {
+          "steps": [
+            {
+              "atom": "scroll",
+              "options": {
+                "direction": "down",
+                "distance": "${payload.distance}"
+              },
+              "when": {
+                "path": "payload.enabled",
+                "equals": true
+              },
+              "probability": 1,
+              "repeat": {
+                "min": 1,
+                "max": 2
+              }
+            }
+          ]
+        }
+      },
+      "selectors": {
+        "feedContainer": ".ttp-feed-module",
+        "commentArea": "div#comment-area"
+      },
+      "loginCheck": {
+        "selector": "div.user-icon",
+        "mode": "exists"
+      },
+      "anomalyChecks": [],
+      "locationPatterns": []
+    }
+  }
+}
