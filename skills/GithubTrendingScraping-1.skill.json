@@ -1,0 +1,143 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:user_1786450804547_sfyiov@1",
+  "package_version": "1",
+  "source": "user",
+  "created_at": "2026-08-11T12:20:04.548Z",
+  "requirements": {
+    "platform": "required",
+    "rule": "required"
+  },
+  "skill": {
+    "market_skill_id": "user_1786450804547_sfyiov",
+    "release_id": "user_1786450804547_sfyiov",
+    "name": "GithubTrendingScraping",
+    "source_type": "local",
+    "skill_code": "// Code Tab\nawait tobub.adapter.navigateTo('trending', { waitUntil: 'domcontentloaded' });\n//\nconst result = await tobub.adapter.extractData('trending_list');\n\nfor (const record of result.records) {\n  // if (allRecordIds.has(record.id)) continue\n\n  await tobub.db.saveContent({\n    platform: 'github',\n    contentType: 'Repositories',\n    externalId: record.id,\n    title: record.fields.title,\n    summary: record.fields.description,\n    url: record.fields.url\n      ? 'https://www.github.com/' + record.id\n      : '',\n    metadata: record.fields ?? {},\n    rawData: {},\n  })\n}\n\nreturn result;\n// await tobub.atoms.pause();",
+    "version": "1",
+    "platform": "github",
+    "layer": "L1",
+    "form_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "sort",
+          "label": "sort",
+          "type": "input",
+          "required": true,
+          "default": "daily"
+        }
+      ]
+    },
+    "default_params": {},
+    "default_browser": {
+      "headless": false
+    },
+    "default_execution": {
+      "domain_mode": "optional"
+    },
+    "metadata": {}
+  },
+  "platform": {
+    "code": "github",
+    "name": "github",
+    "version": "1",
+    "base_url": "https://www.github.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "github.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "f9a70d69fd254ded0f79d76526d81b36f9f1333530499164ede73ed4e9e1d596"
+  },
+  "rule": {
+    "platform": "github",
+    "version": "local-dev",
+    "schema_version": "1",
+    "hash": "c8957acdb06faf63c9f34ba068f490d2e0b598a7f204a9ad8df81b5a861313f4",
+    "rules": {
+      "platform": "github",
+      "version": "local-dev",
+      "meta": {
+        "name": "github",
+        "baseUrl": "https://www.github.com",
+        "capabilities": []
+      },
+      "routes": {
+        "home": {
+          "locator": "a#github-logo",
+          "url": "https://www.github.com"
+        },
+        "trending": {
+          "url": "https://www.github.com/trending?since=daily"
+        }
+      },
+      "extractors": {
+        "trending_list": {
+          "itemSelector": "article.Box-row",
+          "idField": "id",
+          "fields": [
+            {
+              "name": "id",
+              "selector": "h2 a",
+              "source": "text",
+              "transforms": [
+                {
+                  "type": "trim"
+                },
+                {
+                  "type": "replace",
+                  "pattern": "\\s*/\\s*",
+                  "replacement": "/"
+                }
+              ]
+            },
+            {
+              "name": "title",
+              "selector": "h2 a",
+              "source": "text",
+              "transforms": [
+                {
+                  "type": "trim"
+                }
+              ]
+            },
+            {
+              "name": "description",
+              "selector": "p",
+              "source": "text"
+            },
+            {
+              "name": "language",
+              "selector": "span[itemprop=\"programmingLanguage\"]",
+              "source": "text"
+            },
+            {
+              "name": "stars",
+              "selector": "a[href$=\"/stargazers\"]",
+              "source": "text"
+            },
+            {
+              "name": "forks",
+              "selector": "a[href$=\"/forks\"]",
+              "source": "text"
+            },
+            {
+              "name": "starsToday",
+              "selector": "span.d-inline-block.float-sm-right",
+              "source": "text",
+              "match": "(\\d+)",
+              "fallback": "0"
+            }
+          ]
+        }
+      },
+      "selectors": {},
+      "actions": {}
+    }
+  }
+}
