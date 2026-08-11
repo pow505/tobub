@@ -38,12 +38,12 @@
     },
     "default_params": {},
     "default_browser": {
-      "locale": "en-US",
-      "headless": false,
-      "browser_type": "cloak"
+      "transient": {
+        "locale": "en-US"
+      },
+      "headless": false
     },
     "default_execution": {
-      "update_session_state": false,
       "domain_mode": "optional"
     },
     "metadata": {},
@@ -72,7 +72,7 @@
     "platform": "reddit",
     "version": "1.0.0",
     "schema_version": "1",
-    "hash": "1a862d3227186244ed808b3e440a7d9fc87315dcd8a82859a50f5dcee9766dc1",
+    "hash": "76e3fe2b004e307a06590009520bae305437e0e98998f9492130b9c7b60520f9",
     "rules": {
       "platform": "reddit",
       "version": "1.0.0",
@@ -212,10 +212,10 @@
                   "source": "attr",
                   "attr": "number",
                   "type": "number",
-                  "gt": 500
+                  "gt": 100
                 }
               },
-              "probability": 0.5
+              "probability": 0.9
             },
             {
               "atom": "waitFor",

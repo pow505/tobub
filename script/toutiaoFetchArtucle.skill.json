@@ -41,13 +41,13 @@
       "proxy": {
         "server": "next"
       },
-      "user_agent": "random",
-      "locale": "en-US",
-      "headless": false,
-      "browser_type": "cloak"
+      "transient": {
+        "user_agent": "random",
+        "locale": "en-US"
+      },
+      "headless": false
     },
     "default_execution": {
-      "update_session_state": true,
       "domain_mode": "optional"
     },
     "metadata": {},

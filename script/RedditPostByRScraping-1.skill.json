@@ -53,12 +53,12 @@
     },
     "default_params": {},
     "default_browser": {
-      "locale": "en-US",
-      "headless": false,
-      "browser_type": "cloak"
+      "transient": {
+        "locale": "en-US"
+      },
+      "headless": false
     },
     "default_execution": {
-      "update_session_state": false,
       "domain_mode": "optional"
     },
     "metadata": {},
