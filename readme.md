@@ -14,7 +14,7 @@
 
 ## What is Tobub?
 
-Tobub is a local-first AI workspace built around **digital employees**. Instead of asking AI for a one-off answer, you give Tobub an outcome. A digital employee understands the goal, breaks it into steps, selects the right automation Skills, keeps the working context, and carries the task through to a usable result.
+Tobub is a local-first intelligent automation platform for collecting, analyzing, and monitoring information across multiple platforms—helping you extract data, discover trends, and automate follow-up tasks.
 
 For example:
 
