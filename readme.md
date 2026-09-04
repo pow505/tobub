@@ -4,7 +4,7 @@
 
 <h1 align="center">Tobub</h1>
 
-<p align="center"><strong>AI digital employees that turn goals into finished work.</strong></p>
+<p align="center"><strong>Tobub is a local browser automation runtime with a built-in Agent harness.</strong></p>
 
 <p align="center">
   <a href="https://tobub.com">Website</a> ·
