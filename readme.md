@@ -15,7 +15,8 @@
 
 ## What is Tobub?
 
-Tobub is a local-first intelligent automation platform for collecting, analyzing, and monitoring information across multiple platforms—helping you extract data, discover trends, and automate follow-up tasks.
+Tobub is a local runtime and execution platform for browser automation. It provides browser control, account and session management, Skill orchestration and execution, AI Agent collaboration, task scheduling, recording and Skill authoring, as well as unified HTTP and WebSocket interfaces.
+Tobub includes both an Agent harness and a Skill execution harness, handling execution context, authorization, browser environments, timeouts, cancellation, concurrency control, risk approval, and execution feedback. It goes beyond a conventional harness by also providing persistence, lifecycle management, and the runtime foundation for the product.
 
 For example:
 
