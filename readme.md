@@ -4,17 +4,19 @@
 
 <h1 align="center">Tobub</h1>
 
-<p align="center"><strong>AI digital employees that turn goals into finished work.</strong></p>
+<p align="center"><strong>Tobub is a local browser automation runtime with a built-in Agent harness.</strong></p>
 
 <p align="center">
   <a href="https://tobub.com">Website</a> ·
   <a href="https://github.com/pow505/tobub/releases/latest">Download Tobub</a> ·
   <a href="readme.zh-CN.md">中文</a>
+  <a href="#">1.7.8</a>
 </p>
 
 ## What is Tobub?
 
-Tobub is a local-first AI workspace built around **digital employees**. Instead of asking AI for a one-off answer, you give Tobub an outcome. A digital employee understands the goal, breaks it into steps, selects the right automation Skills, keeps the working context, and carries the task through to a usable result.
+Tobub is a local runtime and execution platform for browser automation. It provides browser control, account and session management, Skill orchestration and execution, AI Agent collaboration, task scheduling, recording and Skill authoring, as well as unified HTTP and WebSocket interfaces.
+Tobub includes both an Agent harness and a Skill execution harness, handling execution context, authorization, browser environments, timeouts, cancellation, concurrency control, risk approval, and execution feedback. It goes beyond a conventional harness by also providing persistence, lifecycle management, and the runtime foundation for the product.
 
 For example:
 
