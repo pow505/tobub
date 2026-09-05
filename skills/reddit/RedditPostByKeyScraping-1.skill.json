@@ -14,10 +14,28 @@
     "release_id": "user_1786167247717_e3luo1",
     "name": "RedditPostByKeyScraping",
     "source_type": "local",
-    "version": "1",
+    "skill_code": "await tobub.adapter.bootstrap()\nawait tobub.adapter.action('pageReady')\n\nawait tobub.atoms.waitFor({ delay: [1000, 2600] })\n\nawait tobub.atoms.click({\n  selector: 'faceplate-search-input[name=\"q\"]',\n  timeout: 2000,\n})\n\nawait tobub.atoms.fill({\n  selector: 'faceplate-search-input[name=\"q\"]',\n  value: tobub.params.key,\n})\n\nawait tobub.atoms.press({ key: 'Enter' })\n\nawait tobub.atoms.waitFor({ delay: [1000, 2600] })\n\nawait tobub.atoms.click({\n  selector: 'search-sort-dropdown-menu#search_modifier_post_sort',\n  timeout: 3000,\n})\n\nawait tobub.atoms.click({\n  selector:\n    'search-sort-dropdown-menu#search_modifier_post_sort div[slot=\"dropdown-items\"] a[href*=\"sort=new\"]',\n  timeout: 3000,\n})\n\nawait tobub.atoms.waitFor({selector:'search-sort-dropdown-menu#search_modifier_post_sort'});\nawait tobub.atoms.waitFor({ delay: [1500, 3600] })\n\nconst times = tobub.utils.randInt(1,3) + tobub.params.times\nconst allRecords = []\nconst allRecordIds = new Set()\nlet noNewDataCount = 0\n\nfor (let i = 0; i < times; i++) {\n  await tobub.adapter.action('watchPostList')\n\n  const result = await tobub.adapter.extract('post_search_list')\n\n  for (const record of result.records) {\n    if (allRecordIds.has(record.id)) continue\n    allRecordIds.add(record.id)\n    allRecords.push(record)\n\n    let obj = record.jsonFields?.obj ?? {}\n    let metadata = {\n      likes: record.fields.likes,\n      comments: record.fields.comments,\n      time: record.fields.time,\n    }\n\n    await tobub.db.saveContent({\n      platform: 'reddit',\n      contentType: 'post',\n      externalId: record.id,\n      title: obj.post?.title ?? '',\n      summary: obj.profile?.name ?? '',\n      url: record.fields.url\n        ? 'https://www.reddit.com' + record.fields.url\n        : '',\n      metadata: metadata ?? {},\n      rawData: {},\n    })\n  }\n\n  noNewDataCount = result.newCount === 0 ? noNewDataCount + 1 : 0\n  if (noNewDataCount >= 3) break\n}\n",
     "platform": "reddit",
-    "layer": "L1",
-    "form_schema": {
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "times": {
+          "title": "times",
+          "type": "number"
+        },
+        "key": {
+          "title": "key",
+          "type": "string"
+        }
+      },
+      "required": [
+        "times",
+        "key"
+      ],
+      "additionalProperties": true
+    },
+    "output_schema": {},
+    "ui_schema": {
       "version": 1,
       "fields": [
         {
@@ -36,18 +54,23 @@
         }
       ]
     },
-    "default_params": {},
-    "default_browser": {
-      "transient": {
-        "locale": "en-US"
+    "requirements": {},
+    "defaults": {
+      "params": {
+        "times": 5,
+        "key": "chatgpt"
       },
-      "headless": false
+      "browser": {
+        "transient": {
+          "locale": "en-US"
+        },
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "optional"
+      }
     },
-    "default_execution": {
-      "domain_mode": "optional"
-    },
-    "metadata": {},
-    "skill_code": "await tobub.adapter.bootstrap()\nawait tobub.adapter.action('pageReady')\n\nawait tobub.atoms.waitFor({ delay: [1000, 2600] })\n\nawait tobub.atoms.click({\n  selector: 'faceplate-search-input[name=\"q\"]',\n  timeout: 2000,\n})\n\nawait tobub.atoms.fill({\n  selector: 'faceplate-search-input[name=\"q\"]',\n  value: tobub.params.key,\n})\n\nawait tobub.atoms.press({ key: 'Enter' })\n\nawait tobub.atoms.waitFor({ delay: [1000, 2600] })\n\nawait tobub.atoms.click({\n  selector: 'search-sort-dropdown-menu#search_modifier_post_sort',\n  timeout: 3000,\n})\n\nawait tobub.atoms.click({\n  selector:\n    'search-sort-dropdown-menu#search_modifier_post_sort div[slot=\"dropdown-items\"] a[href*=\"sort=new\"]',\n  timeout: 3000,\n})\n\nawait tobub.atoms.waitFor({selector:'search-sort-dropdown-menu#search_modifier_post_sort'});\nawait tobub.atoms.waitFor({ delay: [1500, 3600] })\n\nconst times = tobub.utils.randInt(1,3) + tobub.params.times\nconst allRecords = []\nconst allRecordIds = new Set()\nlet noNewDataCount = 0\n\nfor (let i = 0; i < times; i++) {\n  await tobub.adapter.action('watchPostList')\n\n  const result = await tobub.adapter.extractData('post_search_list')\n\n  for (const record of result.records) {\n    if (allRecordIds.has(record.id)) continue\n    allRecordIds.add(record.id)\n    allRecords.push(record)\n\n    let obj = record.jsonFields?.obj ?? {}\n    let metadata = {\n      likes: record.fields.likes,\n      comments: record.fields.comments,\n      time: record.fields.time,\n    }\n\n    await tobub.db.saveContent({\n      platform: 'reddit',\n      contentType: 'post',\n      externalId: record.id,\n      title: obj.post?.title ?? '',\n      summary: obj.profile?.name ?? '',\n      url: record.fields.url\n        ? 'https://www.reddit.com' + record.fields.url\n        : '',\n      metadata: metadata ?? {},\n      rawData: {},\n    })\n  }\n\n  noNewDataCount = result.newCount === 0 ? noNewDataCount + 1 : 0\n  if (noNewDataCount >= 3) break\n}\n"
+    "metadata": {}
   },
   "platform": {
     "code": "reddit",
@@ -72,7 +95,7 @@
     "platform": "reddit",
     "version": "local-dev",
     "schema_version": "1",
-    "hash": "92a2b25f0aa14edfdec4b665ccbd5c567cb8e81321f813f8b06d6d42c83f7878",
+    "hash": "47ae745fea7f971f3207ad89c4e10dd4d3bf07787bd7573a1610369de6e76aa3",
     "rules": {
       "actions": {
         "detailScrollOnce": {
@@ -80,7 +103,6 @@
             {
               "atom": "scroll",
               "options": {
-                "containerSelector": "${selectors.detailScrollDiv}",
                 "distance": [
                   600,
                   1000
@@ -89,7 +111,10 @@
                 "steps": [
                   8,
                   15
-                ]
+                ],
+                "target": {
+                  "selector": "${selectors.detailScrollDiv}"
+                }
               }
             },
             {
@@ -171,7 +196,6 @@
             {
               "atom": "scroll",
               "options": {
-                "containerSelector": "${selectors.postScrollDiv}",
                 "distance": [
                   600,
                   1000
@@ -180,7 +204,10 @@
                 "steps": [
                   8,
                   15
-                ]
+                ],
+                "target": {
+                  "selector": "${selectors.postScrollDiv}"
+                }
               }
             },
             {

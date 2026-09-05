@@ -14,10 +14,28 @@
     "release_id": "user_1785702085285_2mnckb",
     "name": "RedditCommentByPScraping",
     "source_type": "local",
-    "version": "1",
+    "skill_code": "await tobub.adapter.bootstrap()\nawait tobub.adapter.action('pageReady')\n\n// https://www.reddit.com/r/wow/comments/1vdommg\nawait tobub.adapter.navigate({\n  url: tobub.params.url,\n})\n\nawait tobub.atoms.waitFor({ delay: [1000, 2600] })\n\nconst times = tobub.utils.randInt(1,5) + tobub.params.times\nconst allRecords = []\nconst allRecordIds = new Set()\nlet noNewDataCount = 0\n\nconst infoHtml = await tobub.adapter.extract('fetchPostInfo')\nconst info = infoHtml.records?.[0] ?? {}\n\nfor (let i = 0; i < times; i++) {\n  await tobub.adapter.action('watchPostList')\n\n  const result = await tobub.adapter.extract('comment_list')\n  \n  for (const record of result.records) {\n    if (allRecordIds.has(record.id)) continue\n    allRecordIds.add(record.id)\n    allRecords.push(record)\n\n    await tobub.db.saveContent({\n      platform: 'reddit',\n      contentType: 'article',\n      externalId: record.id,\n      title: info.fields.title ?? '',\n      summary: record.fields.author ?? '',\n      url: record.fields.url ?? '',\n      metadata: record.fields,\n      rawData: {},\n    })\n  }\n\n  noNewDataCount = result.newCount === 0 ? noNewDataCount + 1 : 0\n  if (noNewDataCount >= 3) break\n}\n",
     "platform": "reddit",
-    "layer": "L1",
-    "form_schema": {
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "title": "url",
+          "type": "string"
+        },
+        "times": {
+          "title": "times",
+          "type": "number"
+        }
+      },
+      "required": [
+        "url",
+        "times"
+      ],
+      "additionalProperties": true
+    },
+    "output_schema": {},
+    "ui_schema": {
       "version": 1,
       "fields": [
         {
@@ -35,18 +53,22 @@
         }
       ]
     },
-    "default_params": {},
-    "default_browser": {
-      "transient": {
-        "locale": "en-US"
+    "requirements": {},
+    "defaults": {
+      "params": {
+        "times": 5
       },
-      "headless": false
+      "browser": {
+        "transient": {
+          "locale": "en-US"
+        },
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "optional"
+      }
     },
-    "default_execution": {
-      "domain_mode": "optional"
-    },
-    "metadata": {},
-    "skill_code": "await tobub.adapter.bootstrap()\nawait tobub.adapter.action('pageReady')\n\n// https://www.reddit.com/r/wow/comments/1vdommg\nawait tobub.adapter.navigateTo({\n  url: tobub.params.url,\n})\n\nawait tobub.atoms.waitFor({ delay: [1000, 2600] })\n\nconst times = tobub.utils.randInt(1,5) + tobub.params.times\nconst allRecords = []\nconst allRecordIds = new Set()\nlet noNewDataCount = 0\n\nconst infoHtml = await tobub.adapter.extractData('fetchPostInfo')\nconst info = infoHtml.records?.[0] ?? {}\n\nfor (let i = 0; i < times; i++) {\n  await tobub.adapter.action('watchPostList')\n\n  const result = await tobub.adapter.extractData('comment_list')\n  \n  for (const record of result.records) {\n    if (allRecordIds.has(record.id)) continue\n    allRecordIds.add(record.id)\n    allRecords.push(record)\n\n    await tobub.db.saveContent({\n      platform: 'reddit',\n      contentType: 'article',\n      externalId: record.id,\n      title: info.fields.title ?? '',\n      summary: record.fields.author ?? '',\n      url: record.fields.url ?? '',\n      metadata: record.fields,\n      rawData: {},\n    })\n  }\n\n  noNewDataCount = result.newCount === 0 ? noNewDataCount + 1 : 0\n  if (noNewDataCount >= 3) break\n}\n"
+    "metadata": {}
   },
   "platform": {
     "code": "reddit",
@@ -71,7 +93,7 @@
     "platform": "reddit",
     "version": "local-dev",
     "schema_version": "1",
-    "hash": "de1b5469fb206f8f8f02edaba29c1fbe1c825ed8616693d6a20475c08d6bcaf5",
+    "hash": "0c6fb0ab5e085a9a525c699856c3f3b21af7cf9c7fa67f1b80747da7c39c49c3",
     "rules": {
       "platform": "reddit",
       "version": "local-dev",
@@ -257,7 +279,6 @@
               "atom": "scroll",
               "options": {
                 "mode": "mouse",
-                "containerSelector": "${selectors.postScrollDiv}",
                 "distance": [
                   600,
                   1000
@@ -265,7 +286,10 @@
                 "steps": [
                   8,
                   15
-                ]
+                ],
+                "target": {
+                  "selector": "${selectors.postScrollDiv}"
+                }
               }
             },
             {
@@ -285,7 +309,6 @@
               "atom": "scroll",
               "options": {
                 "mode": "mouse",
-                "containerSelector": "${selectors.detailScrollDiv}",
                 "distance": [
                   600,
                   1000
@@ -293,7 +316,10 @@
                 "steps": [
                   8,
                   15
-                ]
+                ],
+                "target": {
+                  "selector": "${selectors.detailScrollDiv}"
+                }
               }
             },
             {

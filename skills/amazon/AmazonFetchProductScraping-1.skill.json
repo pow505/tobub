@@ -1,0 +1,132 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:user_1786714137833_0sody7@1",
+  "package_version": "1",
+  "source": "user",
+  "created_at": "2026-08-14T13:28:57.834Z",
+  "requirements": {
+    "platform": "required",
+    "rule": "required"
+  },
+  "skill": {
+    "market_skill_id": "user_1786714137833_0sody7",
+    "release_id": "user_1786714137833_0sody7",
+    "name": "AmazonFetchProductScraping",
+    "source_type": "local",
+    "skill_code": "// Code Tab\nawait tobub.adapter.bootstrap()\n\nawait tobub.atoms.waitFor({ timeout: 30000 })\n\ntry {\n  await tobub.atoms.click({ selector: 'button.a-button-text' })\n} catch {}\n\nawait tobub.atoms.click({\n  selector: 'form#nav-search-bar-form input#twotabsearchtextbox',\n  timeout: 30000,\n})\n\nawait tobub.atoms.fill({\n  selector: 'form#nav-search-bar-form input#twotabsearchtextbox',\n  value: 'nike',\n  timeout: 30000,\n})\n\nawait tobub.atoms.press({ key: 'Enter' })\n\nawait tobub.atoms.waitFor({ delay: [3000, 5600] })\n\nfor (let i = 0; i < 999; i++) {\n  await tobub.adapter.action('searchScroll')\n\n  try {\n    await tobub.atoms.waitFor({\n      selector: 'div[role=\"navigation\"]',\n      selectorState: 'visible',\n      timeout: 5000,\n    })\n\n    await tobub.atoms.click({\n      selector: 'a.s-pagination-next',\n      timeout:10000\n    })\n\n    break\n  } catch {\n    // 目标元素未出现，继续滚动\n  }\n}\n\nawait tobub.debug.pause()\n",
+    "platform": "amazon",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "product": {
+          "title": "product",
+          "type": "string"
+        }
+      },
+      "required": [
+        "product"
+      ],
+      "additionalProperties": true
+    },
+    "output_schema": {},
+    "ui_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "product",
+          "label": "product",
+          "type": "input",
+          "required": true,
+          "default": "nike"
+        }
+      ]
+    },
+    "requirements": {},
+    "defaults": {
+      "params": {
+        "product": "nike"
+      },
+      "browser": {
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "optional"
+      }
+    },
+    "metadata": {}
+  },
+  "platform": {
+    "code": "amazon",
+    "name": "amazon",
+    "version": "1",
+    "base_url": "https://www.amazon.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "https",
+        "domain_type": "primary"
+      },
+      {
+        "domain": "amazon.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "5f4c03ad4dbec36804d423c1f3d88da8a0252642e9291b3c7fb24996ec6ea4db"
+  },
+  "rule": {
+    "platform": "amazon",
+    "version": "1.0.0",
+    "schema_version": "1",
+    "hash": "e8eff8d92a07c3e0e28a07a703e2afda59e430d8b7378ea3c8d7ecb8c74eb9cf",
+    "rules": {
+      "platform": "amazon",
+      "version": "1.0.0",
+      "meta": {
+        "name": "amazon",
+        "baseUrl": "https://www.amazon.com",
+        "capabilities": []
+      },
+      "routes": {
+        "home": {
+          "url": "https://www.amazon.com"
+        }
+      },
+      "selectors": {},
+      "extractors": {},
+      "actions": {
+        "searchScroll": {
+          "steps": [
+            {
+              "atom": "scroll",
+              "options": {
+                "mode": "mouse",
+                "distance": [
+                  600,
+                  1000
+                ],
+                "steps": [
+                  8,
+                  15
+                ],
+                "target": {
+                  "selector": "div#search"
+                }
+              }
+            },
+            {
+              "atom": "waitFor",
+              "options": {
+                "delay": [
+                  1000,
+                  1500
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

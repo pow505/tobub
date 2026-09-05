@@ -14,10 +14,27 @@
     "release_id": "user_1784993996111_7lsl84",
     "name": "RedditAccountWarmUp",
     "source_type": "local",
-    "version": "1",
+    "skill_code": "await tobub.adapter.bootstrap();\n\nawait tobub.adapter.action('pageReady');\n\nconst times = tobub.utils.randInt(1,5) + tobub.params.times;\n\nfor (let i = 0; i < times; i++) {\n  await tobub.adapter.action('watchPostList');\n}\n\n",
     "platform": "reddit",
-    "layer": "L1",
-    "form_schema": {
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "times": {
+          "title": "times",
+          "type": "number"
+        },
+        "viewCommentByCount": {
+          "title": "viewCommentByCount",
+          "type": "number"
+        }
+      },
+      "required": [
+        "times"
+      ],
+      "additionalProperties": true
+    },
+    "output_schema": {},
+    "ui_schema": {
       "version": 1,
       "fields": [
         {
@@ -36,18 +53,23 @@
         }
       ]
     },
-    "default_params": {},
-    "default_browser": {
-      "transient": {
-        "locale": "en-US"
+    "requirements": {},
+    "defaults": {
+      "params": {
+        "times": 10,
+        "viewCommentByCount": 100
       },
-      "headless": false
+      "browser": {
+        "transient": {
+          "locale": "en-US"
+        },
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "optional"
+      }
     },
-    "default_execution": {
-      "domain_mode": "optional"
-    },
-    "metadata": {},
-    "skill_code": "await tobub.adapter.bootstrap();\n\nawait tobub.adapter.action('pageReady');\n\nconst times = tobub.utils.randInt(1,5) + tobub.params.times;\n\nfor (let i = 0; i < times; i++) {\n  await tobub.adapter.action('watchPostList');\n}\n\n"
+    "metadata": {}
   },
   "platform": {
     "code": "reddit",
@@ -72,7 +94,7 @@
     "platform": "reddit",
     "version": "1.0.0",
     "schema_version": "1",
-    "hash": "76e3fe2b004e307a06590009520bae305437e0e98998f9492130b9c7b60520f9",
+    "hash": "e9126d487a5709b4a85cd5f81094caf49768d0e8bf433b87bbfd436b2aaf7377",
     "rules": {
       "platform": "reddit",
       "version": "1.0.0",
@@ -128,7 +150,6 @@
               "atom": "scroll",
               "options": {
                 "mode": "mouse",
-                "containerSelector": "${selectors.postScrollDiv}",
                 "distance": [
                   600,
                   1000
@@ -136,7 +157,10 @@
                 "steps": [
                   8,
                   15
-                ]
+                ],
+                "target": {
+                  "selector": "${selectors.postScrollDiv}"
+                }
               }
             },
             {
@@ -156,7 +180,6 @@
               "atom": "scroll",
               "options": {
                 "mode": "mouse",
-                "containerSelector": "${selectors.detailScrollDiv}",
                 "distance": [
                   600,
                   1000
@@ -164,7 +187,10 @@
                 "steps": [
                   8,
                   15
-                ]
+                ],
+                "target": {
+                  "selector": "${selectors.detailScrollDiv}"
+                }
               }
             },
             {

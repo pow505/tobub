@@ -14,10 +14,20 @@
     "release_id": "user_1785644546305_gad5yp",
     "name": "TikTokAccountWarmUp",
     "source_type": "local",
-    "version": "1",
+    "skill_code": "await tobub.adapter.bootstrap()\nawait tobub.adapter.action('pageReady')\n\nconst times = tobub.utils.randInt(2,6)\n\nfor (let i = 0; i < times; i++) {\n  const roll = Math.random()\n\n  if (roll < 0.1) {\n    await tobub.adapter.navigate({ name: 'discover' })\n    await tobub.adapter.action('discoverWarmup')\n  } else {\n    await tobub.adapter.navigate({ name: 'home' })\n    await tobub.atoms.refresh()\n    const shortTimes = tobub.utils.randInt(1,5) + tobub.params.times\n    for (let i = 0; i < shortTimes; i++) {\n      await tobub.adapter.action('watchReady')\n      await tobub.adapter.action('watchShort')\n    }\n  }\n}\n",
     "platform": "tiktok",
-    "layer": "L1",
-    "form_schema": {
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "times": {
+          "title": "times",
+          "type": "number"
+        }
+      },
+      "additionalProperties": true
+    },
+    "output_schema": {},
+    "ui_schema": {
       "version": 1,
       "fields": [
         {
@@ -29,18 +39,22 @@
         }
       ]
     },
-    "default_params": {},
-    "default_browser": {
-      "transient": {
-        "locale": "en-US"
+    "requirements": {},
+    "defaults": {
+      "params": {
+        "times": 20
       },
-      "headless": false
+      "browser": {
+        "transient": {
+          "locale": "en-US"
+        },
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "optional"
+      }
     },
-    "default_execution": {
-      "domain_mode": "optional"
-    },
-    "metadata": {},
-    "skill_code": "await tobub.adapter.bootstrap()\nawait tobub.adapter.action('pageReady')\n\nconst times = tobub.utils.randInt(2,6)\n\nfor (let i = 0; i < times; i++) {\n  const roll = Math.random()\n\n  if (roll < 0.1) {\n    await tobub.adapter.navigateTo({ name: 'discover' })\n    await tobub.adapter.action('discoverWarmup')\n  } else {\n    await tobub.adapter.navigateTo({ name: 'home' })\n    await tobub.atoms.refresh()\n    const shortTimes = tobub.utils.randInt(1,5) + tobub.params.times\n    for (let i = 0; i < shortTimes; i++) {\n      await tobub.adapter.action('watchReady')\n      await tobub.adapter.action('watchShort')\n    }\n  }\n}\n"
+    "metadata": {}
   },
   "platform": {
     "code": "tiktok",
@@ -61,7 +75,7 @@
     "platform": "tiktok",
     "version": "1.0.0",
     "schema_version": "1",
-    "hash": "464ab1a2f6d54115d106ca870c7e776ea4afc369a548f1953b43bec7f3967301",
+    "hash": "4eec069254ae2e1b19e7b56b574443a8422004d77bfa1139c19b85f40ed3fdf5",
     "rules": {
       "platform": "tiktok",
       "version": "1.0.0",
@@ -150,7 +164,6 @@
               "atom": "scroll",
               "options": {
                 "mode": "mouse",
-                "containerSelector": "${selectors.showVideo}",
                 "distance": [
                   600,
                   1000
@@ -158,7 +171,10 @@
                 "steps": [
                   1,
                   3
-                ]
+                ],
+                "target": {
+                  "selector": "${selectors.showVideo}"
+                }
               }
             },
             {
@@ -201,7 +217,6 @@
               "atom": "scroll",
               "options": {
                 "mode": "mouse",
-                "containerSelector": "${selectors.discoverContainer}",
                 "distance": [
                   700,
                   1200
@@ -213,7 +228,10 @@
                 "stepPauseRange": [
                   10,
                   25
-                ]
+                ],
+                "target": {
+                  "selector": "${selectors.discoverContainer}"
+                }
               }
             },
             {
