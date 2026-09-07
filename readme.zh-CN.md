@@ -10,11 +10,13 @@
   <a href="https://tobub.com">官网</a> ·
   <a href="https://github.com/pow505/tobub/releases/latest">下载 Tobub</a> ·
   <a href="readme.md">English</a>
+  <a href="#">1.7.9</a>
 </p>
 
 ## Tobub 是什么？
 
-Tobub 是一款本地优先的智能自动化平台，用于多平台信息采集、AI 分析和实时监控，帮助用户自动提取数据、发现趋势并执行后续任务。
+Tobub 是一个面向浏览器自动化的本地 Runtime 和执行平台。它提供浏览器控制、账号与登录态管理、Skill 编排与执行、AI Agent 协作、任务调度、录制与 Skill 制作，以及统一的 HTTP/WebSocket 接口。
+Tobub 内部包含 Agent harness 和 Skill execution harness，负责执行上下文、权限校验、浏览器环境、超时、取消、并发控制、风险审批和执行反馈。相比单纯的 harness，Tobub 还承担了持久化、生命周期管理和产品运行时的职责。
 
 例如：
 

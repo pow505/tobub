@@ -10,7 +10,7 @@
   <a href="https://tobub.com">Website</a> ·
   <a href="https://github.com/pow505/tobub/releases/latest">Download Tobub</a> ·
   <a href="readme.zh-CN.md">中文</a>
-  <a href="#">1.7.8</a>
+  <a href="#">1.7.9</a>
 </p>
 
 ## What is Tobub?
