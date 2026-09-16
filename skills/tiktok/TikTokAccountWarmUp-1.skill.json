@@ -1,10 +1,9 @@
 {
-  "package_type": "tobub_skill",
+  "created_at": "2026-08-02T04:22:26.305Z",
   "manifest_version": 1,
   "package_id": "user:user_1785644546305_gad5yp@1",
+  "package_type": "tobub_skill",
   "package_version": "1",
-  "source": "user",
-  "created_at": "2026-08-02T04:22:26.305Z",
   "requirements": {
     "platform": "required",
     "rule": "required"
@@ -14,13 +13,13 @@
     "release_id": "user_1785644546305_gad5yp",
     "name": "TikTokAccountWarmUp",
     "source_type": "local",
-    "skill_code": "await tobub.adapter.bootstrap()\nawait tobub.adapter.action('pageReady')\n\nconst times = tobub.utils.randInt(2,6)\n\nfor (let i = 0; i < times; i++) {\n  const roll = Math.random()\n\n  if (roll < 0.1) {\n    await tobub.adapter.navigate({ name: 'discover' })\n    await tobub.adapter.action('discoverWarmup')\n  } else {\n    await tobub.adapter.navigate({ name: 'home' })\n    await tobub.atoms.refresh()\n    const shortTimes = tobub.utils.randInt(1,5) + tobub.params.times\n    for (let i = 0; i < shortTimes; i++) {\n      await tobub.adapter.action('watchReady')\n      await tobub.adapter.action('watchShort')\n    }\n  }\n}\n",
+    "skill_code": "const durationMinutes = tobub.params.minutes ?? 5;\nconst deadline = Date.now() + durationMinutes * 60 * 1000;\n\nawait tobub.adapter.bootstrap()\nawait tobub.adapter.action('pageReady')\n\nwhile (Date.now() < deadline) {\n  const roll = Math.random()\n\n  if (roll < 0.1) {\n    await tobub.adapter.navigate({ name: 'discover' })\n    await tobub.adapter.action('discoverWarmup')\n  } else {\n    await tobub.adapter.navigate({ name: 'home' })\n    await tobub.atoms.refresh()\n    const shortTimes = tobub.utils.randInt(1,10) \n    for (let i = 0; i < shortTimes; i++) {\n      await tobub.adapter.action('watchReady')\n      await tobub.adapter.action('watchShort')\n    }\n  }\n}\n",
     "platform": "tiktok",
     "input_schema": {
       "type": "object",
       "properties": {
-        "times": {
-          "title": "times",
+        "minutes": {
+          "title": "minutes",
           "type": "number"
         }
       },
@@ -31,23 +30,21 @@
       "version": 1,
       "fields": [
         {
-          "key": "times",
-          "label": "times",
-          "type": "number",
+          "default": 5,
+          "key": "minutes",
+          "label": "minutes",
           "required": false,
-          "default": 20
+          "type": "number"
         }
       ]
     },
     "requirements": {},
     "defaults": {
       "params": {
-        "times": 20
+        "minutes": 5,
+        "times": 5
       },
       "browser": {
-        "transient": {
-          "locale": "en-US"
-        },
         "headless": false
       },
       "execution": {
@@ -56,6 +53,7 @@
     },
     "metadata": {}
   },
+  "source": "user",
   "platform": {
     "code": "tiktok",
     "name": "tiktok",
@@ -75,44 +73,67 @@
     "platform": "tiktok",
     "version": "1.0.0",
     "schema_version": "1",
-    "hash": "4eec069254ae2e1b19e7b56b574443a8422004d77bfa1139c19b85f40ed3fdf5",
+    "hash": "40d120c6ebe535013e9d6998eb40fb702b236032e08be41284f2c0b65dcd11eb",
     "rules": {
-      "platform": "tiktok",
-      "version": "1.0.0",
-      "meta": {
-        "name": "TikTok",
-        "baseUrl": "https://www.tiktok.com",
-        "capabilities": []
-      },
-      "routes": {
-        "home": {
-          "locator": "a[data-e2e=\"nav-foryou\"]",
-          "url": "https://www.tiktok.com"
-        },
-        "discover": {
-          "locator": "a[data-e2e=\"nav-explore\"]"
-        }
-      },
-      "extractors": {},
-      "selectors": {
-        "showMenu": "div[class*='DivMainNavContainer']",
-        "discoverContainer": "div#main-content-explore_page",
-        "showVideo": "div#column-list-container",
-        "closeAll": [
-          "div[data-e2e=\"modal-close-inner-button\"]",
-          "div[class*='DivCloseButtonWrapper']"
-        ]
-      },
       "actions": {
+        "discoverScroll": {
+          "steps": [
+            {
+              "atom": "dismiss",
+              "options": {
+                "target": "${selectors.closeAll}"
+              }
+            },
+            {
+              "atom": "scroll",
+              "options": {
+                "distance": [
+                  700,
+                  1200
+                ],
+                "mode": "mouse",
+                "stepPauseRange": [
+                  10,
+                  25
+                ],
+                "steps": [
+                  8,
+                  15
+                ],
+                "target": "${selectors.discoverContainer}"
+              }
+            },
+            {
+              "atom": "waitFor",
+              "options": {
+                "delay": [
+                  3000,
+                  10000
+                ]
+              }
+            }
+          ]
+        },
+        "discoverWarmup": {
+          "steps": [
+            {
+              "action": "discoverScroll",
+              "repeat": {
+                "max": 12,
+                "min": 5
+              }
+            }
+          ]
+        },
         "pageReady": {
           "steps": [
             {
               "atom": "waitFor",
               "options": {
                 "title": "TikTok",
-                "titleMatch": "contains",
-                "timeout": 5000
-              }
+                "titleMatch": "contains"
+              },
+              "timeout": 5000
             },
             {
               "atom": "waitFor",
@@ -126,29 +147,13 @@
             {
               "atom": "waitFor",
               "options": {
-                "selector": "${selectors.showMenu}",
-                "timeout": 10000,
                 "delay": [
                   10000,
                   15500
-                ]
-              }
-            }
-          ]
-        },
-        "watchReady": {
-          "steps": [
-            {
-              "atom": "waitFor",
-              "options": {
-                "selector": "${selectors.showVideo}",
-                "selectorState": "visible",
-                "timeout": 10000,
-                "delay": [
-                  2000,
-                  3500
-                ]
-              }
+                ],
+                "selector": "${selectors.showMenu}"
+              },
+              "timeout": 10000
             }
           ]
         },
@@ -157,24 +162,22 @@
             {
               "atom": "dismiss",
               "options": {
-                "selectors": "${selectors.closeAll}"
+                "target": "${selectors.closeAll}"
               }
             },
             {
               "atom": "scroll",
               "options": {
-                "mode": "mouse",
                 "distance": [
                   600,
                   1000
                 ],
+                "mode": "mouse",
                 "steps": [
                   1,
                   3
                 ],
-                "target": {
-                  "selector": "${selectors.showVideo}"
-                }
+                "target": "${selectors.showVideo}"
               }
             },
             {
@@ -185,6 +188,22 @@
                   5000
                 ]
               }
+            }
+          ]
+        },
+        "watchReady": {
+          "steps": [
+            {
+              "atom": "waitFor",
+              "options": {
+                "delay": [
+                  2000,
+                  3500
+                ],
+                "selector": "${selectors.showVideo}",
+                "selectorState": "visible"
+              },
+              "timeout": 10000
             }
           ]
         },
@@ -204,59 +223,35 @@
               "probability": 0.05
             }
           ]
-        },
-        "discoverScroll": {
-          "steps": [
-            {
-              "atom": "dismiss",
-              "options": {
-                "selectors": "${selectors.closeAll}"
-              }
-            },
-            {
-              "atom": "scroll",
-              "options": {
-                "mode": "mouse",
-                "distance": [
-                  700,
-                  1200
-                ],
-                "steps": [
-                  8,
-                  15
-                ],
-                "stepPauseRange": [
-                  10,
-                  25
-                ],
-                "target": {
-                  "selector": "${selectors.discoverContainer}"
-                }
-              }
-            },
-            {
-              "atom": "waitFor",
-              "options": {
-                "delay": [
-                  3000,
-                  10000
-                ]
-              }
-            }
-          ]
-        },
-        "discoverWarmup": {
-          "steps": [
-            {
-              "action": "discoverScroll",
-              "repeat": {
-                "min": 5,
-                "max": 12
-              }
-            }
-          ]
         }
-      }
+      },
+      "extractors": {},
+      "meta": {
+        "baseUrl": "https://www.tiktok.com",
+        "capabilities": [],
+        "name": "TikTok"
+      },
+      "platform": "tiktok",
+      "routes": {
+        "discover": {
+          "locator": "a[data-e2e=\"nav-explore\"]"
+        },
+        "home": {
+          "locator": "a[data-e2e=\"nav-foryou\"]",
+          "url": "https://www.tiktok.com"
+        }
+      },
+      "selectors": {
+        "closeAll": [
+          "div[data-e2e=\"modal-close-inner-button\"]",
+          "div[class*='DivCloseButtonWrapper']",
+          "div[role=\"button\"][tabindex=\"0\"]:text-is(\"Skip\")"
+        ],
+        "discoverContainer": "div#main-content-explore_page",
+        "showMenu": "div[class*='DivMainNavContainer']",
+        "showVideo": "div#column-list-container"
+      },
+      "version": "1.0.0"
     }
   }
 }

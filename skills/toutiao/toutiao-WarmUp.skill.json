@@ -14,7 +14,7 @@
     "release_id": "user_1784014217327_vbjr6l",
     "name": "toutiao收集交互",
     "source_type": "local",
-    "skill_code": "const params = tobub.params;\nconst adapter = tobub.adapter;\nconst utils = tobub.utils;\n\nconst times = params.times;\nconst minComments = params.comments;\nconst maxNoNewData = 5;\n\nawait adapter.bootstrap();\n// if (!await adapter.isLogin()) throw new Error('Platform login state is invalid');\nawait adapter.navigate({ name: 'home' });\n\nlet noNewDataCount = 0;\nlet totalNew = 0;\n\nfor (let i = 0; i < times; i++) {\n  await tobub.reporter.emit({\n    source: 'skill',\n    action: 'feed.scroll',\n    phase: 'progress',\n    severity: 'info',\n    payload: { iteration: i + 1 }\n  });\n\n  if(utils.chance(1/400)){\n    await tobub.atoms.waitFor({ delay: [30000, 60000] });\n  }\n\n  await tobub.atoms.scroll({\n    direction: 'down',\n    distance:  utils.randInt(350, 900),\n    mode: 'mouse',\n    steps: 8,\n    target: { selector: await adapter.getSelector('feedContainer') },\n    stepPauseRange: [15, 30],\n    pauseRange: [500, 1500]\n  });\n\n  await tobub.atoms.waitFor({ delay: [3000, 10000] });\n\n  if(utils.chance(1/15)){\n    await tobub.atoms.waitFor({ delay: [5000, 10000] });\n  }\n\n  const result = await adapter.extract('list_extractor');\n  const currentNew = [];\n\n  for (const record of result.records ?? []) {\n    const comments = Number.parseInt(String(record.fields?.comments ?? '0').replace(/[^\\d]/g, ''), 10) || 0;\n    if (comments < minComments || !record.id) continue;\n\n    const saved = await tobub.db.saveContent({\n      contentType: 'article',\n      externalId: record.id,\n      title: record.fields?.title ?? '',\n      summary: record.fields?.author ?? '',\n      url: `https://www.toutiao.com/article/${record.id}/`,\n      metadata: { comments },\n      rawData: record.fields ?? {}\n    });\n\n    if (saved.isNew) currentNew.push({ record, saved });\n  }\n\n  totalNew += currentNew.length;\n  if (currentNew.length > 0 && utils.chance(9/10)) {\n    const target = currentNew[utils.randIntIn(0, currentNew.length - 1)];\n    let page;\n    console.log(target.saved);\n    try {\n      page = await tobub.browser.open({});\n      await tobub.adapter.navigate({ name: 'article2', params: { id: String(target.record.id) } }, undefined, { page });\n\n      const detailTimes = utils.randInt(2, 4);\n      for (let index = 0; index < detailTimes; index++) {\n        await tobub.browser.executeAtoms(page, [\n          { atom: 'scroll', options: { direction: 'down', distance: [200, 500], steps: 8 } },\n          { atom: 'waitFor', options: { delay: [3000, 5000] } }\n        ]);\n      }\n\n      const commentArea = await adapter.getSelector('commentArea');\n      \n      await tobub.browser.executeAtoms(page, [{\n        atom: 'evaluate',\n        options: {\n          expression: '(selector) => document.querySelector(selector)?.scrollIntoView()',\n          arg: Array.isArray(commentArea) ? commentArea[0] : commentArea,\n          mode: 'function'\n        }\n      }]);\n\n      const comments = await tobub.adapter.extract('comment_extractor', {}, { page });\n      const commentList = (comments.records ?? [])\n        .map((item, index) => `${index + 1}.${item.fields?.name ?? ''}说:${item.fields?.content ?? ''}`)\n        .join(';') + ';';\n\n      let aiResult = {};\n      // const aiResult = await tobub.ai.sse('generateText', {\n      //   chat_id: 990003,\n      //   contents: [{\n      //     type: 'form',\n      //     text: {\n      //       scene: 'comment',\n      //       title: target.record.fields?.title ?? '',\n      //       commentList\n      //     }\n      //   }],\n      //   params: {\n      //     stream: true,\n      //     ext: { contract_id: '2068740752307085313' }\n      //   },\n      //   response_format: { type: 'text' }\n      // });\n\n      await tobub.reporter.emit({\n        source: 'skill',\n        action: 'comment.generate',\n        phase: 'succeeded',\n        severity: 'info',\n        payload: { commentCount: comments.records?.length ?? 0, answer: aiResult?.data ?? ''}\n      });\n\n      await tobub.db.recordAction({\n        actionTypeCode: 'comment',\n        contentItemId: target.saved.contentItemId,\n        observationId:target.saved.observationId\n      });\n      await tobub.atoms.waitFor({ delay: [3000, 15000] });\n    } catch (error) {\n      await tobub.reporter.emit({\n        source: 'skill',\n        action: 'detail.flow',\n        phase: 'failed',\n        severity: 'error',\n        error: { code: 'detail_flow_failed', message: error instanceof Error ? error.message : String(error) }\n      });\n    } finally {\n      if (page) await tobub.browser.close(page);\n    }\n  }\n\n  noNewDataCount = currentNew.length === 0 ? noNewDataCount + 1 : 0;\n  if (noNewDataCount >= maxNoNewData) break;\n}\n\nreturn { times, totalNew, noNewDataCount };",
+    "skill_code": "const params = tobub.params;\nconst adapter = tobub.adapter;\nconst utils = tobub.utils;\n\nconst times = params.times;\nconst minComments = params.comments;\nconst maxNoNewData = 5;\n\nawait adapter.bootstrap();\n// if (!await adapter.isLogin()) throw new Error('Platform login state is invalid');\nawait adapter.navigate({ name: 'home' });\n\nlet noNewDataCount = 0;\nlet totalNew = 0;\n\nfor (let i = 0; i < times; i++) {\n  await tobub.reporter.emit({\n    source: 'skill',\n    action: 'feed.scroll',\n    phase: 'progress',\n    severity: 'info',\n    payload: { iteration: i + 1 }\n  });\n\n  if(utils.chance(1/400)){\n    await tobub.atoms.waitFor({ delay: [30000, 60000] });\n  }\n\n  await tobub.atoms.scroll({\n    direction: 'down',\n    distance:  utils.randInt(350, 900),\n    mode: 'mouse',\n    steps: 8,\n    target: await adapter.getSelector('feedContainer'),\n    stepPauseRange: [15, 30],\n    pauseRange: [500, 1500]\n  });\n\n  await tobub.atoms.waitFor({ delay: [3000, 10000] });\n\n  if(utils.chance(1/15)){\n    await tobub.atoms.waitFor({ delay: [5000, 10000] });\n  }\n\n  const result = await adapter.extract('list_extractor');\n  const currentNew = [];\n\n  for (const record of result.records ?? []) {\n    const comments = Number.parseInt(String(record.fields?.comments ?? '0').replace(/[^\\d]/g, ''), 10) || 0;\n    if (comments < minComments || !record.id) continue;\n\n    const saved = await tobub.db.saveContent({\n      contentType: 'article',\n      externalId: record.id,\n      title: record.fields?.title ?? '',\n      summary: record.fields?.author ?? '',\n      url: `https://www.toutiao.com/article/${record.id}/`,\n      metadata: { comments },\n      rawData: record.fields ?? {}\n    });\n\n    if (saved.isNew) currentNew.push({ record, saved });\n  }\n\n  totalNew += currentNew.length;\n  if (currentNew.length > 0 && utils.chance(9/10)) {\n    const target = currentNew[utils.randInt(0, currentNew.length - 1)];\n    let page;\n    try {\n      page = await tobub.browser.open({\n        url: 'https://www.toutiao.com/article/' + encodeURIComponent(String(target.record.id)) + '/',\n        waitUntil: 'domcontentloaded'\n      });\n\n      const detailTimes = utils.randInt(2, 4);\n      for (let index = 0; index < detailTimes; index++) {\n        await tobub.browser.executeAtoms(page, [\n          { atom: 'scroll', options: { direction: 'down', distance: [200, 500], steps: 8 } },\n          { atom: 'waitFor', options: { delay: [3000, 5000] } }\n        ]);\n      }\n\n      const commentArea = await adapter.getSelector('commentArea');\n      await tobub.browser.executeAtoms(page, [{\n        atom: 'evaluate',\n        options: {\n          expression: '(selector) => document.querySelector(selector)?.scrollIntoView()',\n          arg: Array.isArray(commentArea) ? commentArea[0] : commentArea,\n          mode: 'function'\n        },\n      }]);\n\n      const extraction = await tobub.browser.executeAtoms(page, [{\n        atom: 'evaluate',\n        options: {\n          mode: 'function',\n          expression: \"() => Array.from(document.querySelectorAll('.comment-list .ttp-comment-item')).slice(0, 100).map((item) => ({ name: item.querySelector('.user-name .name')?.textContent?.trim() ?? '', content: item.querySelector('.body .content')?.textContent?.trim() ?? '', like: (item.querySelector('.ttp-comment-like')?.getAttribute('aria-label')?.match(/(\\\\d+)/)?.[1]) ?? '0' }))\",\n        },\n      }]);\n      const commentRecords = extraction[0]?.value ?? [];\n      const comments = { records: commentRecords.map((fields) => ({ fields })) };\n      const commentList = commentRecords\n        .map((item, index) => (index + 1) + '.' + item.name + '说:' + item.content)\n        .join(';') + ';';\n      const aiResult = {};\n\n      await tobub.reporter.emit({\n        source: 'skill',\n        action: 'comment.generate',\n        phase: 'succeeded',\n        severity: 'info',\n        payload: { commentCount: comments.records.length, answer: aiResult.data ?? '', commentList }\n      });\n\n      await tobub.db.recordAction({\n        actionTypeCode: 'comment',\n        contentDataId: target.saved.contentDataId,\n        contentId: target.saved.contentId\n      });\n      await tobub.atoms.waitFor({ delay: [3000, 15000] });\n    } catch (error) {\n      await tobub.reporter.emit({\n        source: 'skill',\n        action: 'detail.flow',\n        phase: 'failed',\n        severity: 'error',\n        error: { code: 'detail_flow_failed', message: error instanceof Error ? error.message : String(error) }\n      });\n    } finally {\n      if (page) await tobub.browser.close(page);\n    }\n  }\n\n  noNewDataCount = currentNew.length === 0 ? noNewDataCount + 1 : 0;\n  if (noNewDataCount >= maxNoNewData) break;\n}\n\nreturn { times, totalNew, noNewDataCount };",
     "platform": "toutiao",
     "input_schema": {
       "type": "object",
@@ -28,10 +28,6 @@
           "type": "number"
         }
       },
-      "required": [
-        "times",
-        "comments"
-      ],
       "additionalProperties": true
     },
     "output_schema": {},
@@ -42,32 +38,25 @@
           "key": "times",
           "label": "times",
           "type": "number",
-          "required": true,
-          "default": 10
+          "default": 3,
+          "required": false
         },
         {
           "key": "comments",
           "label": "comments",
           "type": "number",
-          "required": true,
-          "default": 5
+          "default": 10,
+          "required": false
         }
       ]
     },
     "requirements": {},
     "defaults": {
       "params": {
-        "times": 10,
-        "comments": 5
+        "times": 3,
+        "comments": 10
       },
       "browser": {
-        "proxy": {
-          "server": "next"
-        },
-        "transient": {
-          "user_agent": "random",
-          "locale": "en-US"
-        },
         "headless": false
       },
       "execution": {
@@ -95,7 +84,7 @@
     "platform": "toutiao",
     "version": "1.0.2",
     "schema_version": "1",
-    "hash": "f23389d9a31c57ce2934200de0efe92682798238229d5264227d56771c6dedc1",
+    "hash": "76472eda2a40a9f18c8b76f7596aac79a2795b55bc0f4790042c4a4de11d6bd2",
     "rules": {
       "platform": "toutiao",
       "version": "1.0.2",
@@ -208,9 +197,7 @@
             {
               "atom": "dismiss",
               "options": {
-                "selectors": [
-                  "div#abc"
-                ]
+                "target": "div#abc"
               }
             }
           ]

@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-08-01T19:15:50.077Z",
+  "created_at": "2026-08-02T02:37:48.756Z",
   "manifest_version": 1,
-  "package_id": "user:user_1785611750077_anmpjb@1",
+  "package_id": "user:user_1785638268756_ueav3j@1",
   "package_type": "tobub_skill",
   "package_version": "1",
   "requirements": {
@@ -9,17 +9,17 @@
     "rule": "required"
   },
   "skill": {
-    "market_skill_id": "user_1785611750077_anmpjb",
-    "release_id": "user_1785611750077_anmpjb",
-    "name": "YoutubeAccountWarmUp",
+    "market_skill_id": "user_1785638268756_ueav3j",
+    "release_id": "user_1785638268756_ueav3j",
+    "name": "YoutubeCommentScraping",
     "source_type": "local",
-    "skill_code": "const durationMinutes = tobub.params.minutes ?? 5;\nconst deadline = Date.now() + durationMinutes * 60 * 1000;\n\nawait tobub.adapter.bootstrap();\n\nawait tobub.adapter.action('pageReady');\n\nfor (let i = 0; i < 999; i++) {\n  const roll = Math.random();\n\n  if (roll < 0.2) {\n    await tobub.adapter.navigate({ name: 'home' });\n\n    const rawSelector = await tobub.adapter.getSelector('homeNotEmpty');\n    const selector = Array.isArray(rawSelector) ? rawSelector[0] : rawSelector;\n\n    try {\n      await tobub.atoms.waitFor({ selector, selectorState: 'attached' });\n      await tobub.adapter.action('homeWarmup');\n    } catch {    }\n  } else {\n    await tobub.adapter.navigate({ name: 'shorts' });\n\n    const shortTimes = tobub.params.times;\n    for (let i = 0; i < 999; i++) {\n      await tobub.adapter.action('waitShortsReady');\n      await tobub.adapter.action('watchShort');\n      if(tobub.utils.chance(0.05)) break;\n      if(Date.now() > deadline) break;\n    }\n  }\n  if(Date.now() > deadline) break;\n}",
+    "skill_code": "await tobub.adapter.navigate({ name: 'video' });\nawait tobub.adapter.action('pageReady');\n\nlet totalCount = 0;\nconst times = tobub.utils.randInt(1,3) + tobub.params.times;\nlet noNewDataLimit = 6;\n\nfor (let i = 0; i < times; i++) {\n  const result = await tobub.adapter.extract('comments');\n  totalCount += result.newCount;\n\n  for (const record of result.records) {\n    console.log(\n      `[comment] ${record.fields.name?.trim()}(${record.fields.time?.trim()})-${record.fields.likes?.trim()}: ${record.fields.comment}`,\n    );\n  }\n\n  if (result.scannedCount === 0) {\n    if (noNewDataLimit > 0) {\n      noNewDataLimit--;\n    } else {\n      break;\n    }\n  } else {\n    noNewDataLimit = 6;\n  }\n\n  await tobub.adapter.action('scrollComments');\n}",
     "platform": "youtube",
     "input_schema": {
       "type": "object",
       "properties": {
-        "minutes": {
-          "title": "minutes",
+        "times": {
+          "title": "times",
           "type": "number"
         }
       },
@@ -31,8 +31,8 @@
       "fields": [
         {
           "default": 5,
-          "key": "minutes",
-          "label": "minutes",
+          "key": "times",
+          "label": "times",
           "required": false,
           "type": "number"
         }
@@ -41,7 +41,6 @@
     "requirements": {},
     "defaults": {
       "params": {
-        "minutes": 5,
         "times": 5
       },
       "browser": {
@@ -73,7 +72,7 @@
     "platform": "youtube",
     "version": "1.0.0",
     "schema_version": "1",
-    "hash": "0f7f97ffdc603469c164cc02e5f1abe17f368fedb656681ca6dd63f3ade62b6b",
+    "hash": "8ecd91624d1d878bddc542741998b9769c729673ee05bdbd899f4e639151cb42",
     "rules": {
       "actions": {
         "commentsInteraction": {
@@ -163,6 +162,34 @@
                   2000,
                   3500
                 ]
+              }
+            }
+          ]
+        },
+        "scrollComments": {
+          "steps": [
+            {
+              "atom": "scroll",
+              "options": {
+                "distance": [
+                  390,
+                  1200
+                ],
+                "mode": "viewport",
+                "stepPauseRange": [
+                  10,
+                  25
+                ],
+                "steps": [
+                  3,
+                  15
+                ]
+              }
+            },
+            {
+              "atom": "waitFor",
+              "options": {
+                "delay": 5000
               }
             }
           ]
@@ -266,7 +293,39 @@
           ]
         }
       },
-      "extractors": {},
+      "extractors": {
+        "comments": {
+          "fields": [
+            {
+              "name": "name",
+              "selector": "div#header-author a#author-text",
+              "source": "text"
+            },
+            {
+              "name": "comment",
+              "selector": "div#content",
+              "source": "text"
+            },
+            {
+              "name": "time",
+              "selector": "div#header-author #published-time-text",
+              "source": "text"
+            },
+            {
+              "fallback": "0",
+              "name": "likes",
+              "selector": "#vote-count-middle",
+              "source": "text"
+            }
+          ],
+          "idField": null,
+          "itemSelector": "${selectors.commentItem}",
+          "maxItems": 100,
+          "scan": {
+            "mode": "append"
+          }
+        }
+      },
       "meta": {
         "baseUrl": "https://www.youtube.com",
         "capabilities": [],
@@ -288,10 +347,13 @@
           "locator": "div#sections div#items a[title=\"Shorts\"], div#items span.title:text-is(\"Shorts\")"
         },
         "video": {
-          "locator": "a[href=\"/channel/UC-9-kyTW8ZkZNDHQJ6FgpwQ\"]"
+          "locator": "a[href=\"/channel/UC-9-kyTW8ZkZNDHQJ6FgpwQ\"]",
+          "url": "https://www.youtube.com/watch?v=k8tdg6v0FQo",
+          "waitUntil": "domcontentloaded"
         }
       },
       "selectors": {
+        "commentItem": "div#contents > ytd-comment-thread-renderer",
         "commentsButton": "reel-action-bar-view-model button:has(svg path[d^=\"M1 6a4 4 0 014-4h14a4 4 0 014 4v10\"])",
         "homeContainer": "div#contents",
         "homeNotEmpty": "div#chips-content",

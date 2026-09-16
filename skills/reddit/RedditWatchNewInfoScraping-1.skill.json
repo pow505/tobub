@@ -1,10 +1,9 @@
 {
-  "package_type": "tobub_skill",
+  "created_at": "2026-08-14T07:50:23.989Z",
   "manifest_version": 1,
   "package_id": "user:user_1786693823988_teeo99@1",
+  "package_type": "tobub_skill",
   "package_version": "1",
-  "source": "user",
-  "created_at": "2026-08-14T07:50:23.989Z",
   "requirements": {
     "platform": "required",
     "rule": "required"
@@ -14,7 +13,7 @@
     "release_id": "user_1786693823988_teeo99",
     "name": "RedditWatchNewInfoScraping",
     "source_type": "local",
-    "skill_code": "// Code Tab\nawait tobub.adapter.bootstrap()\nawait tobub.adapter.action('pageReady')\n\nawait tobub.atoms.waitFor({ delay: [1000, 2600] })\n\nawait tobub.atoms.click({\n  selector: 'faceplate-search-input[name=\"q\"]',\n  timeout: 2000,\n})\n\nawait tobub.atoms.fill({\n  selector: 'faceplate-search-input[name=\"q\"]',\n  value: tobub.params.key,\n})\n\nawait tobub.atoms.press({ key: 'Enter' })\n\nawait tobub.atoms.waitFor({ delay: [1000, 2600] })\n\nawait tobub.atoms.click({\n  selector: 'search-sort-dropdown-menu#search_modifier_post_sort',\n  timeout: 3000,\n})\n\nawait tobub.atoms.click({\n  selector:\n    'search-sort-dropdown-menu#search_modifier_post_sort div[slot=\"dropdown-items\"] a[href*=\"sort=new\"]',\n  timeout: 3000,\n})\n\nawait tobub.atoms.waitFor({\n  selector: 'search-sort-dropdown-menu#search_modifier_post_sort',\n})\nawait tobub.atoms.waitFor({ delay: [1500, 3600] })\n\nconst allRecords = []\nconst allRecordIds = new Set()\n\nawait tobub.monitor.watch(\n  async ({ iteration, stop }) => {\n    const result = await tobub.adapter.extract('post_search_list', {\n      reset: true,\n    })\n\n    for (const record of result.records) {\n      if (allRecordIds.has(record.id)) continue\n\n      allRecordIds.add(record.id)\n\n      const obj = record.jsonFields?.obj ?? {}\n\n      await tobub.db.saveContent({\n        platform: 'reddit',\n        contentType: 'post',\n        externalId: record.id,\n        title: obj.post?.title ?? '',\n        summary: obj.profile?.name ?? '',\n        url: record.fields.url\n          ? 'https://www.reddit.com' + record.fields.url\n          : '',\n        metadata: {\n          likes: record.fields.likes,\n          comments: record.fields.comments,\n          time: record.fields.time,\n        },\n        rawData: {},\n      })\n    }\n\n    await tobub.atoms.refresh()\n    await tobub.atoms.waitFor({ delay: [1500, 3600] })\n  },\n  {\n    intervalMs: tobub.params.interval ,\n    maxRuns: tobub.params.times,\n  },\n)\n",
+    "skill_code": "await tobub.adapter.bootstrap()\n\nconst result = await tobub.atoms.condition({ type: 'visible',throwOnTimeout: false, selector: \"text=You've been blocked by network security\" },{timeout:2000});\nif (result.satisfied) await tobub.atoms.refresh({ waitUntil: 'domcontentloaded' });\n//count\nconst durationMinutes = tobub.params.minutes ?? 5;\nconst deadline = Date.now() + durationMinutes * 60 * 1000;\n\nawait tobub.atoms.waitFor([1000, 1500])\n\nawait tobub.atoms.fill({\n  selector: 'faceplate-search-input[name=\"q\"]',\n  value: tobub.params.key, inputMode: 'direct'\n})\n\nawait tobub.atoms.waitFor([1000, 1500])\nawait tobub.atoms.press({ key: 'Enter' })\nawait tobub.atoms.waitFor([1000, 1500])\n\nawait tobub.atoms.click({\n  selector: 'search-sort-dropdown-menu#search_modifier_post_sort'\n})\n\nawait tobub.atoms.click({\n  selector:\n    'search-sort-dropdown-menu#search_modifier_post_sort div[slot=\"dropdown-items\"] a[href*=\"sort=new\"]',\n})\n\nawait tobub.atoms.waitFor({\n  selector: 'search-sort-dropdown-menu#search_modifier_post_sort',\n})\nawait tobub.atoms.waitFor( [1000, 2200])\n\nconst allRecords = []\nconst allRecordIds = new Set()\n\nawait tobub.monitor.watch(\n  async ({ iteration, stop }) => {\n    const result = await tobub.adapter.extract('post_search_list', {\n      reset: true,\n    })\n\n    for (const record of result.records) {\n      if (allRecordIds.has(record.id)) continue\n\n      allRecordIds.add(record.id)\n\n      const obj = record.jsonFields?.obj ?? {}\n\n      await tobub.db.saveContent({\n        platform: 'reddit',\n        contentType: 'post',\n        externalId: record.id,\n        title: obj.post?.title ?? '',\n        summary: obj.profile?.name ?? '',\n        url: record.fields.url\n          ? 'https://www.reddit.com' + record.fields.url\n          : '',\n        metadata: {\n          likes: record.fields.likes,\n          comments: record.fields.comments,\n          time: record.fields.time,\n        },\n        rawData: {},\n      })\n    }\n\n    await tobub.atoms.refresh()\n    await tobub.atoms.waitFor({ delay: [1500, 3600] })\n  },\n  {\n    intervalMs: tobub.params.interval ,\n    maxRuns: tobub.params.times,\n  },\n)",
     "platform": "reddit",
     "input_schema": {
       "type": "object",
@@ -23,20 +22,15 @@
           "title": "key",
           "type": "string"
         },
-        "times": {
-          "title": "times",
-          "type": "number"
-        },
         "interval": {
           "title": "interval",
           "type": "number"
+        },
+        "times": {
+          "title": "times",
+          "type": "number"
         }
       },
-      "required": [
-        "key",
-        "times",
-        "interval"
-      ],
       "additionalProperties": true
     },
     "output_schema": {},
@@ -44,34 +38,35 @@
       "version": 1,
       "fields": [
         {
+          "default": "wow",
           "key": "key",
           "label": "key",
-          "type": "input",
-          "required": true,
-          "default": "chatgpt"
+          "required": false,
+          "type": "input"
         },
         {
-          "key": "times",
-          "label": "times",
-          "type": "number",
-          "required": true,
-          "default": 10
-        },
-        {
+          "default": 10000,
           "key": "interval",
           "label": "interval",
-          "type": "number",
-          "required": true,
-          "default": 60000
+          "required": false,
+          "type": "number"
+        },
+        {
+          "default": 5,
+          "key": "times",
+          "label": "times",
+          "required": false,
+          "type": "number"
         }
       ]
     },
     "requirements": {},
     "defaults": {
       "params": {
-        "key": "chatgpt",
-        "times": 10,
-        "interval": 60000
+        "interval": 10000,
+        "key": "wow",
+        "minutes": 5,
+        "times": 5
       },
       "browser": {
         "headless": false
@@ -82,6 +77,7 @@
     },
     "metadata": {}
   },
+  "source": "user",
   "platform": {
     "code": "reddit",
     "name": "reddit",
@@ -103,9 +99,9 @@
   },
   "rule": {
     "platform": "reddit",
-    "version": "local-dev",
+    "version": "1.0.0",
     "schema_version": "1",
-    "hash": "47ae745fea7f971f3207ad89c4e10dd4d3bf07787bd7573a1610369de6e76aa3",
+    "hash": "140123f0ffbca69ad9d97d1c764cf5506e52047016b405f6866459d3b40c79e6",
     "rules": {
       "actions": {
         "detailScrollOnce": {
@@ -122,9 +118,7 @@
                   8,
                   15
                 ],
-                "target": {
-                  "selector": "${selectors.detailScrollDiv}"
-                }
+                "target": "${selectors.detailScrollDiv}"
               }
             },
             {
@@ -164,16 +158,16 @@
             {
               "atom": "click",
               "options": {
-                "selector": "${selectors.postSortButton}",
-                "timeout": 10000
-              }
+                "selector": "${selectors.postSortButton}"
+              },
+              "timeout": 10000
             },
             {
               "atom": "click",
               "options": {
-                "selector": "shreddit-sort-dropdown[telemetry-source='sort_switch'] div[slot='dropdown-items'] data[value='NEW']",
-                "timeout": 10000
-              }
+                "selector": "shreddit-sort-dropdown[telemetry-source='sort_switch'] div[slot='dropdown-items'] data[value='NEW']"
+              },
+              "timeout": 10000
             }
           ]
         },
@@ -184,7 +178,7 @@
               "options": {
                 "delay": [
                   2000,
-                  3500
+                  15500
                 ]
               }
             },
@@ -192,12 +186,12 @@
               "atom": "waitFor",
               "options": {
                 "delay": [
-                  2000,
-                  5500
+                  10000,
+                  15500
                 ],
-                "selector": "${selectors.ready}",
-                "timeout": 10000
-              }
+                "selector": "${selectors.ready}"
+              },
+              "timeout": 10000
             }
           ]
         },
@@ -215,9 +209,7 @@
                   8,
                   15
                 ],
-                "target": {
-                  "selector": "${selectors.postScrollDiv}"
-                }
+                "target": "${selectors.postScrollDiv}"
               }
             },
             {
@@ -225,7 +217,7 @@
               "options": {
                 "delay": [
                   1000,
-                  1500
+                  5000
                 ]
               }
             }
@@ -237,7 +229,6 @@
               "atom": "click",
               "options": {
                 "selector": "${selectors.postCommentButton}",
-                "timeout": 3500,
                 "visibleOnly": true,
                 "where": {
                   "attr": "number",
@@ -247,15 +238,16 @@
                   "type": "number"
                 }
               },
-              "probability": 0.5
+              "probability": 0.5,
+              "timeout": 3500
             },
             {
               "atom": "waitFor",
               "options": {
                 "selector": "${selectors.detailBackButton}",
-                "selectorState": "visible",
-                "timeout": 10000
-              }
+                "selectorState": "visible"
+              },
+              "timeout": 10000
             },
             {
               "action": "detailScrollOnce",
@@ -274,9 +266,9 @@
             {
               "atom": "click",
               "options": {
-                "selector": "${selectors.detailBackButton}",
-                "timeout": 10000
+                "selector": "${selectors.detailBackButton}"
               },
+              "timeout": 10000,
               "when": {
                 "selector": "${selectors.detailBackButton}",
                 "state": "visible"
@@ -303,6 +295,72 @@
         }
       },
       "extractors": {
+        "comment_list": {
+          "dedupe": "field",
+          "fields": [
+            {
+              "name": "postId",
+              "source": {
+                "attr": "thingid"
+              }
+            },
+            {
+              "name": "author",
+              "source": {
+                "attr": "author"
+              }
+            },
+            {
+              "name": "time",
+              "source": {
+                "attr": "created"
+              }
+            },
+            {
+              "name": "content",
+              "selector": "details div[slot=\"comment\"]",
+              "source": "text"
+            },
+            {
+              "name": "likes",
+              "selector": "div[data-testid=\"seeker-action-row\"] faceplate-number[number]",
+              "source": {
+                "attr": "number"
+              }
+            }
+          ],
+          "idField": "postId",
+          "itemSelector": "shreddit-comment",
+          "maxItems": 1000,
+          "scan": {
+            "mode": "rescan",
+            "scope": "viewport-buffer",
+            "viewportBufferScreens": 2
+          }
+        },
+        "fetchPostInfo": {
+          "fields": [
+            {
+              "name": "postId",
+              "source": {
+                "attr": "id"
+              }
+            },
+            {
+              "name": "author",
+              "source": {
+                "attr": "author"
+              }
+            },
+            {
+              "name": "title",
+              "source": {
+                "attr": "post-title"
+              }
+            }
+          ],
+          "itemSelector": "shreddit-post[view-context=\"CommentsPage\"]"
+        },
         "post_list": {
           "dedupe": "field",
           "fields": [
@@ -404,9 +462,9 @@
         }
       },
       "meta": {
-        "name": "reddit",
         "baseUrl": "https://www.reddit.com",
-        "capabilities": []
+        "capabilities": [],
+        "name": "reddit"
       },
       "platform": "reddit",
       "routes": {
@@ -428,7 +486,7 @@
         "ready": "a#reddit-logo",
         "viewMoreComments": "faceplate-tracker[noun=\"view_more_comments\"]"
       },
-      "version": "local-dev"
+      "version": "1.0.0"
     }
   }
 }
