@@ -12,6 +12,7 @@
     "market_skill_id": "user_1786450804547_sfyiov",
     "release_id": "user_1786450804547_sfyiov",
     "name": "GithubTrendingScraping",
+    "skill_version": "1",
     "source_type": "local",
     "skill_code": "await tobub.adapter.navigate('trending', {  sort: tobub.params.sort});\nconst result = await tobub.adapter.extract('trending_list');\n\nfor (const record of result.records) {\n\n  await tobub.db.saveContent({\n    platform: 'github',\n    contentType: 'Repositories',\n    externalId: record.id,\n    title: record.fields.title,\n    summary: record.fields.description,\n    url: record.fields.url\n      ? 'https://www.github.com/' + record.id\n      : '',\n    metadata: record.fields ?? {},\n    rawData: {},\n  })\n}\n\nreturn result;",
     "platform": "github",
@@ -91,7 +92,7 @@
     "platform": "github",
     "version": "local-dev",
     "schema_version": "1",
-    "hash": "98539af8ea1de2e3648beee6b36692f37be194cdc8cfff8be1e2d5e497a1d6ff",
+    "hash": "d48cf863e80cfc6dc235c8b7b5eb545d7b285e24ae7237ab5c91a8cf613ae240",
     "rules": {
       "actions": {},
       "extractors": {
@@ -106,7 +107,9 @@
                   "type": "trim"
                 },
                 {
-                  "pattern": "\\s*/\\s*",
+                  "pattern": {
+                    "pattern": "\\s*/\\s*"
+                  },
                   "replacement": "/",
                   "type": "replace"
                 }
@@ -144,10 +147,17 @@
             },
             {
               "fallback": "0",
-              "match": "(\\d+)",
               "name": "starsToday",
               "selector": "span.d-inline-block.float-sm-right",
-              "source": "text"
+              "source": "text",
+              "transforms": [
+                {
+                  "type": "match",
+                  "pattern": {
+                    "pattern": "(\\d+)"
+                  }
+                }
+              ]
             }
           ],
           "idField": "id",

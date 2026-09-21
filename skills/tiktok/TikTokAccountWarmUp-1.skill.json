@@ -12,6 +12,7 @@
     "market_skill_id": "user_1785644546305_gad5yp",
     "release_id": "user_1785644546305_gad5yp",
     "name": "TikTokAccountWarmUp",
+    "skill_version": "1",
     "source_type": "local",
     "skill_code": "const durationMinutes = tobub.params.minutes ?? 5;\nconst deadline = Date.now() + durationMinutes * 60 * 1000;\n\nawait tobub.adapter.bootstrap()\nawait tobub.adapter.action('pageReady')\n\nwhile (Date.now() < deadline) {\n  const roll = Math.random()\n\n  if (roll < 0.1) {\n    await tobub.adapter.navigate({ name: 'discover' })\n    await tobub.adapter.action('discoverWarmup')\n  } else {\n    await tobub.adapter.navigate({ name: 'home' })\n    await tobub.atoms.refresh()\n    const shortTimes = tobub.utils.randInt(1,10) \n    for (let i = 0; i < shortTimes; i++) {\n      await tobub.adapter.action('watchReady')\n      await tobub.adapter.action('watchShort')\n    }\n  }\n}\n",
     "platform": "tiktok",
