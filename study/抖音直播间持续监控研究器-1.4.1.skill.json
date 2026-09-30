@@ -1,0 +1,234 @@
+{
+  "created_at": "2026-09-21T00:00:00.000Z",
+  "manifest_version": 1,
+  "package_id": "user:tobub-live-room-monitor@1.4.1",
+  "package_type": "tobub_skill",
+  "package_version": "1.4.1",
+  "requirements": {
+    "platform": "none",
+    "rule": "none"
+  },
+  "source": "user",
+  "skill": {
+    "market_skill_id": "tobub-live-room-monitor",
+    "release_id": "tobub-live-room-monitor-1.4.1",
+    "name": "抖音直播间持续监控研究器",
+    "skill_version": "1.4.1",
+    "source_type": "local",
+    "skill_code": "// Small, bounded DEFLATE decoder used only by this Skill package.\n// The Skill Worker intentionally does not expose Node's zlib APIs.\n\nconst MAX_INFLATED_FRAME_BYTES = 8_000_000;\n\nfunction inflateGzip(input) {\n  if (!(input instanceof Uint8Array) || input.length < 18) throw new Error('gzip frame is truncated');\n  if (input[0] !== 0x1f || input[1] !== 0x8b || input[2] !== 8) throw new Error('unsupported gzip frame');\n  const flags = input[3];\n  if ((flags & 0xe0) !== 0) throw new Error('gzip flags are invalid');\n\n  let offset = 10;\n  if ((flags & 4) !== 0) {\n    if (offset + 2 > input.length - 8) throw new Error('gzip extra field is truncated');\n    const extraLength = input[offset] | (input[offset + 1] << 8);\n    offset += 2 + extraLength;\n  }\n  if ((flags & 8) !== 0) offset = skipZeroTerminated(input, offset, input.length - 8);\n  if ((flags & 16) !== 0) offset = skipZeroTerminated(input, offset, input.length - 8);\n  if ((flags & 2) !== 0) {\n    if (offset + 2 > input.length - 8) throw new Error('gzip header checksum is truncated');\n    offset += 2;\n  }\n  if (offset > input.length - 8) throw new Error('gzip header exceeds frame');\n\n  const output = inflateRawDeflate(input.subarray(offset, input.length - 8), MAX_INFLATED_FRAME_BYTES);\n  const expectedCrc = readLittleEndian32(input, input.length - 8);\n  const expectedSize = readLittleEndian32(input, input.length - 4);\n  if (crc32(output) !== expectedCrc || (output.length >>> 0) !== expectedSize) throw new Error('gzip checksum mismatch');\n  return output;\n}\n\nfunction skipZeroTerminated(input, offset, end) {\n  while (offset < end && input[offset] !== 0) offset++;\n  if (offset >= end) throw new Error('gzip text header is unterminated');\n  return offset + 1;\n}\n\nfunction readLittleEndian32(input, offset) {\n  return (input[offset] | (input[offset + 1] << 8) | (input[offset + 2] << 16) | (input[offset + 3] << 24)) >>> 0;\n}\n\nfunction crc32(input) {\n  let crc = 0xffffffff;\n  for (const byte of input) {\n    crc ^= byte;\n    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);\n  }\n  return (crc ^ 0xffffffff) >>> 0;\n}\n\nfunction inflateRawDeflate(input, maxOutputBytes) {\n  const reader = new DeflateBitReader(input);\n  const output = [];\n  let finalBlock = false;\n  let trees;\n  while (!finalBlock) {\n    finalBlock = reader.readBits(1) === 1;\n    const type = reader.readBits(2);\n    if (type === 0) {\n      reader.alignByte();\n      const length = reader.readBits(16);\n      const complement = reader.readBits(16);\n      if ((length ^ 0xffff) !== complement) throw new Error('stored DEFLATE block length is invalid');\n      for (let index = 0; index < length; index++) output.push(reader.readAlignedByte());\n    } else if (type === 1 || type === 2) {\n      trees = type === 1 ? fixedDeflateTrees() : readDynamicDeflateTrees(reader);\n      readCompressedBlock(reader, trees, output, maxOutputBytes);\n    } else {\n      throw new Error('reserved DEFLATE block type');\n    }\n    if (output.length > maxOutputBytes) throw new Error('inflated frame exceeds the configured limit');\n  }\n  return Uint8Array.from(output);\n}\n\nclass DeflateBitReader {\n  constructor(input) {\n    this.input = input;\n    this.offset = 0;\n    this.bits = 0;\n    this.buffer = 0;\n  }\n\n  readBits(count) {\n    while (this.bits < count) {\n      if (this.offset >= this.input.length) throw new Error('DEFLATE bit stream is truncated');\n      this.buffer |= this.input[this.offset++] << this.bits;\n      this.bits += 8;\n    }\n    const mask = (1 << count) - 1;\n    const value = this.buffer & mask;\n    this.buffer >>>= count;\n    this.bits -= count;\n    return value;\n  }\n\n  alignByte() {\n    this.buffer = 0;\n    this.bits = 0;\n  }\n\n  readAlignedByte() {\n    if (this.bits !== 0 || this.offset >= this.input.length) throw new Error('aligned DEFLATE byte is unavailable');\n    return this.input[this.offset++];\n  }\n}\n\nfunction fixedDeflateTrees() {\n  if (!fixedDeflateTrees.cache) {\n    const literalLengths = [];\n    for (let symbol = 0; symbol <= 287; symbol++) literalLengths.push(symbol <= 143 ? 8 : symbol <= 255 ? 9 : symbol <= 279 ? 7 : 8);\n    fixedDeflateTrees.cache = { literal: buildHuffmanTree(literalLengths), distance: buildHuffmanTree(new Array(32).fill(5)) };\n  }\n  return fixedDeflateTrees.cache;\n}\n\nfunction readDynamicDeflateTrees(reader) {\n  const literalCount = reader.readBits(5) + 257;\n  const distanceCount = reader.readBits(5) + 1;\n  const codeLengthCount = reader.readBits(4) + 4;\n  const order = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15];\n  const codeLengthLengths = new Array(19).fill(0);\n  for (let index = 0; index < codeLengthCount; index++) codeLengthLengths[order[index]] = reader.readBits(3);\n  const codeLengthTree = buildHuffmanTree(codeLengthLengths);\n  const lengths = readCodeLengths(reader, codeLengthTree, literalCount + distanceCount);\n  return {\n    literal: buildHuffmanTree(lengths.slice(0, literalCount)),\n    distance: buildHuffmanTree(lengths.slice(literalCount)),\n  };\n}\n\nfunction readCodeLengths(reader, tree, count) {\n  const lengths = [];\n  while (lengths.length < count) {\n    const symbol = decodeHuffmanSymbol(reader, tree);\n    if (symbol <= 15) {\n      lengths.push(symbol);\n      continue;\n    }\n    if (symbol === 16) {\n      if (lengths.length === 0) throw new Error('DEFLATE repeat has no previous length');\n      const repeat = reader.readBits(2) + 3;\n      const value = lengths[lengths.length - 1];\n      for (let index = 0; index < repeat; index++) lengths.push(value);\n    } else if (symbol === 17 || symbol === 18) {\n      const repeat = reader.readBits(symbol === 17 ? 3 : 7) + (symbol === 17 ? 3 : 11);\n      for (let index = 0; index < repeat; index++) lengths.push(0);\n    } else {\n      throw new Error('invalid DEFLATE code length symbol');\n    }\n    if (lengths.length > count) throw new Error('DEFLATE code lengths exceed the declared size');\n  }\n  return lengths;\n}\n\nfunction readCompressedBlock(reader, trees, output, maxOutputBytes) {\n  const lengthBase = [3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258];\n  const lengthExtra = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0];\n  const distanceBase = [1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577];\n  const distanceExtra = [0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13];\n\n  while (true) {\n    const symbol = decodeHuffmanSymbol(reader, trees.literal);\n    if (symbol < 256) {\n      output.push(symbol);\n      continue;\n    }\n    if (symbol === 256) return;\n    if (symbol < 257 || symbol > 285) throw new Error('invalid DEFLATE length symbol');\n    const lengthIndex = symbol - 257;\n    const length = lengthBase[lengthIndex] + reader.readBits(lengthExtra[lengthIndex]);\n    const distanceSymbol = decodeHuffmanSymbol(reader, trees.distance);\n    if (distanceSymbol > 29) throw new Error('invalid DEFLATE distance symbol');\n    const distance = distanceBase[distanceSymbol] + reader.readBits(distanceExtra[distanceSymbol]);\n    if (distance > output.length) throw new Error('DEFLATE distance exceeds output');\n    if (output.length + length > maxOutputBytes) throw new Error('inflated frame exceeds the configured limit');\n    for (let index = 0; index < length; index++) output.push(output[output.length - distance]);\n  }\n}\n\nfunction buildHuffmanTree(lengths) {\n  const counts = new Array(16).fill(0);\n  for (const length of lengths) {\n    if (!Number.isInteger(length) || length < 0 || length > 15) throw new Error('invalid DEFLATE Huffman length');\n    if (length > 0) counts[length]++;\n  }\n  const nextCode = new Array(16).fill(0);\n  let code = 0;\n  for (let length = 1; length <= 15; length++) {\n    code = (code + counts[length - 1]) << 1;\n    nextCode[length] = code;\n  }\n  const table = Object.create(null);\n  for (let symbol = 0; symbol < lengths.length; symbol++) {\n    const length = lengths[symbol];\n    if (length === 0) continue;\n    const reversed = reverseBits(nextCode[length]++, length);\n    table[length + ':' + reversed] = symbol;\n  }\n  return table;\n}\n\nfunction decodeHuffmanSymbol(reader, tree) {\n  let code = 0;\n  for (let length = 1; length <= 15; length++) {\n    code |= reader.readBits(1) << (length - 1);\n    const symbol = tree[length + ':' + code];\n    if (symbol !== undefined) return symbol;\n  }\n  throw new Error('invalid DEFLATE Huffman code');\n}\n\nfunction reverseBits(value, count) {\n  let result = 0;\n  for (let index = 0; index < count; index++) {\n    result = (result << 1) | (value & 1);\n    value >>>= 1;\n  }\n  return result;\n}\n\n// Douyin Webcast protocol decoder. This file is bundled into the Skill and is\n// deliberately outside the SDK core so Douyin protocol changes only ship with\n// this platform-specific Skill package.\n\nconst DOUYIN_MAX_PROTOBUF_DEPTH = 12;\nconst DOUYIN_MAX_PROTOBUF_FIELDS = 100_000;\nconst DOUYIN_GZIP_HEADER = [0x1f, 0x8b];\nconst DOUYIN_TEXT_DECODER = new TextDecoder();\n\nfunction decodeDouyinChatFrameBase64(payload, includeSecUid) {\n  if (typeof payload !== 'string' || payload.length === 0) return [];\n  return decodeDouyinChatFrame(decodeBase64(payload), includeSecUid === true);\n}\n\nfunction decodeDouyinChatFrame(payload, includeSecUid) {\n  if (!(payload instanceof Uint8Array) || payload.length === 0) return [];\n  const response = decodeDouyinWebcastResponse(payload);\n  const events = [];\n  for (const messageField of response.filter((field) => field.number === 1)) {\n    if (!(messageField.value instanceof Uint8Array)) continue;\n    const message = decodeDouyinMessage(messageField.value);\n    if (firstDouyinString(message, 1) !== 'WebcastChatMessage') continue;\n    const rawPayload = firstDouyinBytes(message, 2);\n    if (!rawPayload) continue;\n    const chatMessage = decodeDouyinMessage(inflateDouyinPayload(rawPayload));\n    const userPayload = firstDouyinBytes(chatMessage, 2);\n    if (!userPayload) continue;\n    const user = decodeDouyinUser(userPayload, includeSecUid);\n    events.push({\n      protocol: 'douyin-webcast',\n      kind: 'chat',\n      method: 'WebcastChatMessage',\n      messageId: firstDouyinVarintAsString(message, 3),\n      message: firstDouyinString(chatMessage, 3) || '',\n      user,\n    });\n  }\n  return events;\n}\n\nfunction decodeDouyinWebcastResponse(payload) {\n  const envelope = decodeDouyinMessage(payload);\n  if (envelope.some((field) => field.number === 1 && field.value instanceof Uint8Array)) return envelope;\n  const compressedResponse = firstDouyinBytes(envelope, 8);\n  if (!compressedResponse) return envelope;\n  return decodeDouyinMessage(inflateDouyinPayload(compressedResponse));\n}\n\nfunction inflateDouyinPayload(payload) {\n  return payload.length >= 2 && payload[0] === DOUYIN_GZIP_HEADER[0] && payload[1] === DOUYIN_GZIP_HEADER[1]\n    ? inflateGzip(payload)\n    : payload;\n}\n\nfunction decodeDouyinUser(payload, includeSecUid) {\n  const fields = decodeDouyinMessage(payload);\n  const strings = collectDouyinNestedStrings(fields);\n  const gradeIcon = firstDouyinMatchingString(strings, /(?:^|\\/)new_user_grade_level_v1_\\d+\\.png/i);\n  const fansClubBadge = firstDouyinMatchingString(strings, /(?:^|\\/)fansclub(?:_[a-z]+)?(?:_badge)?[^/]*\\.(?:png|webp)/i);\n  return {\n    id: firstDouyinVarintAsString(fields, 1),\n    nickname: firstDouyinString(fields, 3) || '',\n    secUid: includeSecUid ? firstDouyinString(fields, 46) || null : null,\n    gradeLevel: readDouyinGradeLevel(gradeIcon) ?? readDouyinPayGradeLevel(fields),\n    gradeIcon: gradeIcon || null,\n    isFansClubMember: fansClubBadge !== undefined,\n    fansClubBadge: fansClubBadge || null,\n  };\n}\n\nfunction readDouyinGradeLevel(value) {\n  if (!value) return null;\n  const match = value.match(/new_user_grade_level_v1_(\\d+)/i);\n  return match ? Number(match[1]) : null;\n}\n\nfunction readDouyinPayGradeLevel(fields) {\n  const payGrade = firstDouyinBytes(fields, 23);\n  if (!payGrade) return null;\n  const level = firstDouyinVarint(decodeDouyinMessage(payGrade), 6);\n  return level === undefined || level > BigInt(Number.MAX_SAFE_INTEGER) ? null : Number(level);\n}\n\nfunction collectDouyinNestedStrings(fields, depth) {\n  const currentDepth = depth || 0;\n  if (currentDepth > DOUYIN_MAX_PROTOBUF_DEPTH) return [];\n  const result = [];\n  for (const field of fields) {\n    if (!(field.value instanceof Uint8Array)) continue;\n    const text = decodeDouyinUtf8(field.value);\n    if (text.length > 0 && isDouyinUsefulText(text)) result.push(text);\n    try { result.push(...collectDouyinNestedStrings(decodeDouyinMessage(field.value), currentDepth + 1)); } catch { /* scalar strings are not nested messages */ }\n  }\n  return result;\n}\n\nfunction isDouyinUsefulText(value) {\n  return !/[\\u0000-\\u001f\\u007f]/.test(value) && /[\\p{L}\\p{N}]/u.test(value);\n}\n\nfunction firstDouyinMatchingString(values, pattern) {\n  const value = values.find((candidate) => pattern.test(candidate));\n  if (!value) return undefined;\n  const urlStart = value.search(/https?:\\/\\//i);\n  return urlStart >= 0 ? value.slice(urlStart) : value;\n}\n\nfunction firstDouyinBytes(fields, number) {\n  const field = fields.find((candidate) => candidate.number === number && candidate.value instanceof Uint8Array);\n  return field ? field.value : undefined;\n}\n\nfunction firstDouyinString(fields, number) {\n  const value = firstDouyinBytes(fields, number);\n  return value ? decodeDouyinUtf8(value) : undefined;\n}\n\nfunction firstDouyinVarint(fields, number) {\n  const field = fields.find((candidate) => candidate.number === number && typeof candidate.value === 'bigint');\n  return field ? field.value : undefined;\n}\n\nfunction firstDouyinVarintAsString(fields, number) {\n  const value = firstDouyinVarint(fields, number);\n  return value === undefined ? null : value.toString(10);\n}\n\nfunction decodeDouyinUtf8(value) {\n  return DOUYIN_TEXT_DECODER.decode(value).replace(/\\u0000/g, '').trim();\n}\n\nfunction decodeDouyinMessage(payload) {\n  if (payload.length === 0) return [];\n  const fields = [];\n  let offset = 0;\n  while (offset < payload.length) {\n    if (fields.length >= DOUYIN_MAX_PROTOBUF_FIELDS) throw new Error('Douyin protobuf field limit exceeded');\n    const tag = readDouyinVarint(payload, offset);\n    offset = tag.offset;\n    const number = Number(tag.value >> 3n);\n    const wireType = Number(tag.value & 7n);\n    if (!Number.isInteger(number) || number <= 0) throw new Error('Douyin protobuf field number is invalid');\n    if (wireType === 0) {\n      const value = readDouyinVarint(payload, offset);\n      offset = value.offset;\n      fields.push({ number, wireType, value: value.value });\n    } else if (wireType === 1) {\n      if (offset + 8 > payload.length) throw new Error('Douyin protobuf fixed64 field is truncated');\n      fields.push({ number, wireType, value: payload.slice(offset, offset + 8) });\n      offset += 8;\n    } else if (wireType === 2) {\n      const length = readDouyinVarint(payload, offset);\n      offset = length.offset;\n      if (length.value > BigInt(payload.length - offset)) throw new Error('Douyin protobuf bytes field is truncated');\n      const end = offset + Number(length.value);\n      fields.push({ number, wireType, value: payload.slice(offset, end) });\n      offset = end;\n    } else if (wireType === 5) {\n      if (offset + 4 > payload.length) throw new Error('Douyin protobuf fixed32 field is truncated');\n      fields.push({ number, wireType, value: payload.slice(offset, offset + 4) });\n      offset += 4;\n    } else {\n      throw new Error('Douyin protobuf wire type is unsupported');\n    }\n  }\n  return fields;\n}\n\nfunction readDouyinVarint(payload, start) {\n  let value = 0n;\n  let shift = 0n;\n  let offset = start;\n  for (let index = 0; index < 10; index++) {\n    if (offset >= payload.length) throw new Error('Douyin protobuf varint is truncated');\n    const byte = payload[offset++];\n    value |= BigInt(byte & 0x7f) << shift;\n    if ((byte & 0x80) === 0) return { value, offset };\n    shift += 7n;\n  }\n  throw new Error('Douyin protobuf varint is too long');\n}\n\nfunction decodeBase64(value) {\n  const input = value.replace(/[\\t\\n\\r ]/g, '');\n  if (input.length === 0 || input.length % 4 !== 0) throw new Error('base64 payload is invalid');\n  const output = [];\n  for (let index = 0; index < input.length; index += 4) {\n    const isLastGroup = index === input.length - 4;\n    const thirdCharacter = input[index + 2];\n    const fourthCharacter = input[index + 3];\n    if (!isLastGroup && (thirdCharacter === '=' || fourthCharacter === '=')) throw new Error('base64 padding is misplaced');\n    if (thirdCharacter === '=' && fourthCharacter !== '=') throw new Error('base64 padding is invalid');\n    const first = base64Value(input[index]);\n    const second = base64Value(input[index + 1]);\n    const third = thirdCharacter === '=' ? 0 : base64Value(thirdCharacter);\n    const fourth = fourthCharacter === '=' ? 0 : base64Value(fourthCharacter);\n    if (first < 0 || second < 0 || third < 0 || fourth < 0) throw new Error('base64 payload contains an invalid character');\n    if (thirdCharacter === '=' && (second & 15) !== 0) throw new Error('base64 trailing bits are invalid');\n    if (fourthCharacter === '=' && (third & 3) !== 0) throw new Error('base64 trailing bits are invalid');\n    output.push((first << 2) | (second >> 4));\n    if (thirdCharacter !== '=') output.push(((second & 15) << 4) | (third >> 2));\n    if (fourthCharacter !== '=') output.push(((third & 3) << 6) | fourth);\n  }\n  return Uint8Array.from(output);\n}\n\nfunction base64Value(value) {\n  if (typeof value !== 'string' || value.length !== 1) return -1;\n  const code = value.charCodeAt(0);\n  if (code >= 65 && code <= 90) return code - 65;\n  if (code >= 97 && code <= 122) return code - 97 + 26;\n  if (code >= 48 && code <= 57) return code - 48 + 52;\n  if (value === '+') return 62;\n  if (value === '/') return 63;\n  return -1;\n}\n\nconst { url: rawUrl, durationMs, maxEvents, minMessageLength, deduplicate, captureSecUid = false } = tobub.params;\n\nlet targetUrl;\ntry {\n  targetUrl = new URL(rawUrl);\n} catch {\n  throw new Error('params.url must be a valid URL');\n}\nif (targetUrl.protocol !== 'http:' && targetUrl.protocol !== 'https:') throw new Error('params.url must use http or https');\nif (!Number.isInteger(durationMs) || durationMs <= 0) throw new Error('params.durationMs must be a positive integer');\nif (!Number.isInteger(maxEvents) || maxEvents <= 0) throw new Error('params.maxEvents must be a positive integer');\nif (!Number.isInteger(minMessageLength) || minMessageLength < 0) throw new Error('params.minMessageLength must be a non-negative integer');\n\nconst url = targetUrl.toString();\nconst roomPath = targetUrl.pathname.split('/').filter(Boolean);\nconst roomId = roomPath[roomPath.length - 1] || 'unknown';\nconst startedAt = new Date().toISOString();\nconst executionRunId = typeof tobub.execution?.runId === 'string' && tobub.execution.runId.trim() ? tobub.execution.runId.trim() : startedAt;\nconst shouldCaptureSecUid = captureSecUid === true;\n\nconst page = await tobub.browser.open({ url });\nlet stream;\nlet collection;\nlet collectionClosed = false;\nlet metadataSaved;\nlet eventCount = 0;\nlet duplicateCount = 0;\nlet secUidResolvedCount = 0;\nlet decoderErrorCount = 0;\nconst seenEventKeys = new Set();\nconst pendingRecords = [];\n\nconst buildEventKey = (event) => {\n  const data = event.data && typeof event.data === 'object' ? event.data : {};\n  if (typeof data.messageId === 'string' && data.messageId) return `message:${data.messageId}`;\n  const user = data.user && typeof data.user === 'object' ? data.user : {};\n  const userId = typeof user.id === 'string' && user.id ? user.id : typeof user.nickname === 'string' ? user.nickname : 'unknown';\n  const message = typeof data.message === 'string' ? data.message : '';\n  return `${userId}\\u0000${message}`;\n};\n\nconst appendPendingRecords = async () => {\n  if (pendingRecords.length > 0) await collection.append(pendingRecords.splice(0));\n};\n\nconst processBatch = async (batch) => {\n  for (const event of batch.events) {\n    if (eventCount >= maxEvents) break;\n    const data = event.data && typeof event.data === 'object' ? event.data : {};\n    if (data.encoding !== 'base64' || typeof data.payload !== 'string') continue;\n\n    let decodedEvents;\n    try {\n      decodedEvents = decodeDouyinChatFrameBase64(data.payload, shouldCaptureSecUid);\n    } catch {\n      decoderErrorCount++;\n      continue;\n    }\n\n    for (const decodedEvent of decodedEvents) {\n      if (eventCount >= maxEvents) break;\n      const name = typeof decodedEvent.user?.nickname === 'string' && decodedEvent.user.nickname.trim() ? decodedEvent.user.nickname.trim() : '未知用户';\n      const message = typeof decodedEvent.message === 'string' ? decodedEvent.message.trim() : '';\n      if (message.length < minMessageLength) continue;\n      const eventKey = buildEventKey({ data: decodedEvent });\n      if (deduplicate && seenEventKeys.has(eventKey)) { duplicateCount++; continue; }\n      if (deduplicate) seenEventKeys.add(eventKey);\n      const secUid = shouldCaptureSecUid && typeof decodedEvent.user.secUid === 'string' && decodedEvent.user.secUid ? decodedEvent.user.secUid : null;\n      if (secUid) secUidResolvedCount++;\n      pendingRecords.push({\n        type: 'live_comment',\n        payload: {\n          roomId,\n          user: {\n            name,\n            avatar: null,\n            id: typeof decodedEvent.user.id === 'string' ? decodedEvent.user.id : null,\n            gradeLevel: typeof decodedEvent.user.gradeLevel === 'number' ? decodedEvent.user.gradeLevel : null,\n            gradeIcon: typeof decodedEvent.user.gradeIcon === 'string' ? decodedEvent.user.gradeIcon : null,\n            isFansClubMember: decodedEvent.user.isFansClubMember === true,\n            fansClubBadge: typeof decodedEvent.user.fansClubBadge === 'string' ? decodedEvent.user.fansClubBadge : null,\n            secUid\n          },\n          message,\n          capturedAt: event.observedAt,\n          sequence: event.sequence,\n          source: event.source,\n          messageId: typeof decodedEvent.messageId === 'string' ? decodedEvent.messageId : null\n        },\n        meta: { roomId, source: event.source, capturedAt: event.observedAt }\n      });\n      eventCount++;\n      if (pendingRecords.length >= 100) await appendPendingRecords();\n    }\n  }\n};\n\ntry {\n  collection = await tobub.data.open({\n    name: 'douyin-live-room-events',\n    policy: { maxRecords: maxEvents, batchSize: 100, flushIntervalMs: 5_000 },\n    metadata: {\n      schemaVersion: 4,\n      recordType: 'live_comment',\n      roomId,\n      url,\n      startedAt,\n      executionRunId,\n      storageMode: 'metadata_file',\n      durationMs,\n      minMessageLength,\n      deduplicate,\n      captureSecUid: shouldCaptureSecUid,\n      source: 'douyin-webcast-skill-decoder'\n    }\n  });\n  metadataSaved = await tobub.db.saveContent({\n    platform: 'douyin',\n    contentType: 'live_room_monitor',\n    externalId: roomId + ':' + collection.id + ':metadata',\n    title: '直播间监控：' + roomId,\n    summary: '直播间异构明细集合',\n    url,\n    rawData: { roomId, url, startedAt, executionRunId, durationMs, maxEvents, minMessageLength, deduplicate, captureSecUid: shouldCaptureSecUid, recordSchemaVersion: 4, source: 'douyin-webcast-skill-decoder' },\n    metadata: {\n      tobub_data: { collection_id: collection.id, role: 'detail', mode: 'event', format: 'jsonl', schema_version: 4 },\n      roomId,\n      startedAt,\n      durationMs,\n      minMessageLength,\n      deduplicate,\n      source: 'douyin-webcast-skill-decoder'\n    },\n    tags: ['douyin', 'live', 'monitor', 'websocket', 'sec_uid', 'fans_club'],\n    observationSource: 'live_room_monitor',\n    observationMeta: { roomId, collectionId: collection.id, role: 'detail', mode: 'event', format: 'jsonl', schemaVersion: 4, source: 'douyin-webcast-skill-decoder' }\n  });\n\n  stream = await tobub.observe.start({\n    page,\n    source: { type: 'websocket', urlPattern: '/webcast/im/push/', direction: 'received' },\n    buffer: { maxItems: Math.max(100, maxEvents), overflow: 'drop-oldest' }\n  });\n\n  const deadline = Date.now() + durationMs;\n  const monitor = tobub.monitor.start(async ({ signal, stop }) => {\n    if (signal?.aborted || Date.now() >= deadline || eventCount >= maxEvents) { stop(); return; }\n    const batch = await tobub.observe.next(stream, { timeout: 0, maxItems: Math.min(100, maxEvents - eventCount) });\n    await processBatch(batch);\n    if (batch.status.state !== 'active') {\n      if (batch.status.state === 'failed') throw new Error(batch.status.error || 'Douyin WebSocket observation failed');\n      stop();\n      return;\n    }\n    if (Date.now() >= deadline || eventCount >= maxEvents) stop();\n  }, { intervalMs: 2_000, immediate: true, schedule: 'fixed-delay' });\n  await monitor.wait();\n\n  await appendPendingRecords();\n  const activeStream = stream;\n  stream = undefined;\n  const observationStatus = await tobub.observe.stop(activeStream);\n  const dataResult = await collection.close();\n  collectionClosed = true;\n  return {\n    url,\n    roomId,\n    startedAt,\n    endedAt: new Date().toISOString(),\n    eventCount,\n    storage: {\n      metadataContentItemId: metadataSaved ? metadataSaved.contentItemId : null,\n      metadataObservationId: metadataSaved ? metadataSaved.observationId : null,\n      dataCollectionId: dataResult.id,\n      detailFile: dataResult.outputs[0] ? dataResult.outputs[0].relativePath : null\n    },\n    stats: {\n      duplicates: duplicateCount,\n      secUidResolved: secUidResolvedCount,\n      decoderErrors: decoderErrorCount,\n      delivered: observationStatus.delivered,\n      filtered: observationStatus.filtered,\n      dropped: observationStatus.dropped\n    }\n  };\n} finally {\n  if (stream) { const activeStream = stream; stream = undefined; await tobub.observe.stop(activeStream).catch(() => undefined); }\n  if (collection && pendingRecords.length > 0) await appendPendingRecords().catch(() => undefined);\n  if (collection && !collectionClosed) await collection.close().catch(() => undefined);\n  await tobub.browser.close(page).catch(() => undefined);\n}",
+    "platform": null,
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "title": "直播间 URL",
+          "type": "string"
+        },
+        "durationMs": {
+          "title": "监听时间（毫秒）",
+          "type": "number"
+        },
+        "maxEvents": {
+          "title": "最多保存事件数",
+          "type": "number"
+        },
+        "minMessageLength": {
+          "title": "消息最小字数",
+          "type": "number"
+        },
+        "deduplicate": {
+          "title": "是否去重",
+          "type": "boolean"
+        },
+        "captureSecUid": {
+          "title": "是否截取 sec_uid",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "url",
+        "durationMs",
+        "maxEvents",
+        "minMessageLength",
+        "deduplicate"
+      ],
+      "additionalProperties": false
+    },
+    "output_schema": {
+      "type": "object",
+      "required": [
+        "url",
+        "roomId",
+        "startedAt",
+        "endedAt",
+        "eventCount",
+        "storage",
+        "stats"
+      ],
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "roomId": {
+          "type": "string"
+        },
+        "startedAt": {
+          "type": "string"
+        },
+        "endedAt": {
+          "type": "string"
+        },
+        "eventCount": {
+          "type": "integer"
+        },
+        "storage": {
+          "type": "object",
+          "required": [
+            "metadataContentItemId",
+            "metadataObservationId",
+            "dataCollectionId",
+            "detailFile"
+          ],
+          "properties": {
+            "metadataContentItemId": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "metadataObservationId": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "dataCollectionId": {
+              "type": "string"
+            },
+            "detailFile": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "stats": {
+          "type": "object",
+          "required": [
+            "duplicates",
+            "secUidResolved",
+            "decoderErrors",
+            "delivered",
+            "filtered",
+            "dropped"
+          ],
+          "properties": {
+            "duplicates": {
+              "type": "integer"
+            },
+            "secUidResolved": {
+              "type": "integer"
+            },
+            "decoderErrors": {
+              "type": "integer"
+            },
+            "delivered": {
+              "type": "integer"
+            },
+            "filtered": {
+              "type": "integer"
+            },
+            "dropped": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "ui_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "default": "https://live.douyin.com/764415684837?from_search=true",
+          "key": "url",
+          "label": "直播间 URL",
+          "required": true,
+          "target": "params.url",
+          "type": "input"
+        },
+        {
+          "default": 60000,
+          "key": "durationMs",
+          "label": "监听时间（毫秒）",
+          "required": true,
+          "target": "params.durationMs",
+          "type": "number"
+        },
+        {
+          "default": 200,
+          "key": "maxEvents",
+          "label": "最多保存事件数",
+          "required": true,
+          "target": "params.maxEvents",
+          "type": "number"
+        },
+        {
+          "default": 1,
+          "key": "minMessageLength",
+          "label": "消息最小字数",
+          "required": true,
+          "target": "params.minMessageLength",
+          "type": "number"
+        },
+        {
+          "default": true,
+          "key": "deduplicate",
+          "label": "是否去重",
+          "required": true,
+          "target": "params.deduplicate",
+          "type": "switch"
+        },
+        {
+          "default": false,
+          "key": "captureSecUid",
+          "label": "是否截取 sec_uid",
+          "required": false,
+          "target": "params.captureSecUid",
+          "type": "switch"
+        }
+      ]
+    },
+    "requirements": {},
+    "defaults": {
+      "params": {
+        "url": "https://live.douyin.com/764415684837?from_search=true",
+        "durationMs": 60000,
+        "maxEvents": 200,
+        "minMessageLength": 1,
+        "deduplicate": true,
+        "captureSecUid": false
+      },
+      "browser": {
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "optional"
+      }
+    },
+    "metadata": {
+      "description": "通过抖音直播 WebSocket 监听弹幕，协议解码器随 Skill 分发；提取用户、消息、时间、用户等级、粉丝团标识；可选提取 sec_uid，不打开用户资料页。",
+      "tags": [
+        "douyin",
+        "live",
+        "monitor",
+        "observe",
+        "data",
+        "jsonl",
+        "user-level",
+        "fans-club",
+        "sec_uid"
+      ]
+    }
+  }
+}

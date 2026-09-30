@@ -24,6 +24,10 @@ Tobub 内部包含 Agent harness 和 Skill execution harness，负责执行上�
 
 Tobub 可以自动收集来源、筛选有效信息、比较变化、生成简报、核对依据、推荐行动，并将完整工作过程保存下来，方便复查和继续推进。
 
+## 产品演示
+
+[打开演示视频](./public/tobub.mp4)
+
 ## Tobub 的核心价值
 
 | | 说明 |

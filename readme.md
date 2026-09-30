@@ -24,6 +24,10 @@ For example:
 
 Tobub can collect sources, filter useful information, compare changes, write a briefing, check the evidence, recommend actions, and save the complete work record for review.
 
+## Product demo
+
+[Open the demo](./public/tobub.mp4)
+
 ## Why Tobub is different
 
 | | What it means |

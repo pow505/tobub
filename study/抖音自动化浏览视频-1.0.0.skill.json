@@ -1,0 +1,377 @@
+{
+  "created_at": "2026-09-06T00:00:00+08:00",
+  "manifest_version": 1,
+  "package_id": "user:douyin-browse-videos@1.0.0",
+  "package_type": "tobub_skill",
+  "package_version": "1.0.0",
+  "requirements": {
+    "platform": "required",
+    "rule": "required"
+  },
+  "skill": {
+    "market_skill_id": "douyin-browse-videos",
+    "release_id": "local-tests-20260906",
+    "name": "抖音自动化浏览视频",
+    "skill_version": "1.0.0",
+    "source_type": "local",
+    "skill_code": "const durationMinutes = tobub.params.minutes ?? 5;\nconst deadline = Date.now() + durationMinutes * 60 * 1000;\nconst records = [];\nawait tobub.adapter.bootstrap();\nawait tobub.atoms.waitFor({ text: \"登录后免费畅享高清视频\" },{timeout:30000});\nawait tobub.adapter.dismissPopups();\nawait tobub.adapter.navigate({ name: \"recommend\" });\nwhile (Date.now() < deadline) {\n  try{\n    const reloadFlag = tobub.utils.chance(1 / 20);\n    if (reloadFlag) await tobub.atoms.refresh({ waitUntil: \"domcontentloaded\" });\n    await tobub.adapter.dismissPopups();\n    if (reloadFlag) await tobub.adapter.navigate({ name: \"recommend\" });\n    const sleepTime = tobub.utils.randInt(30000, 90000);\n    if (tobub.utils.chance(1 / 15)) await tobub.atoms.waitFor({ delay: sleepTime });\n    await tobub.atoms.swipeVideo({ mode: \"wheel\", target: { selector: \".parent-route-container.route-scroll-container\" } });\n    const dataList = await tobub.adapter.extract(\"content_info\");\n    if (dataList.newCount > 0 && dataList.records[0]) {\n      const record = dataList.records[0];\n      records.push(record);\n      const fields = record.fields ?? {};\n      const externalId = String(record.id || fields.vid || \"\");\n      if (externalId) {\n        await tobub.db.saveContent({\n          platform: \"douyin\",\n          contentType: \"video\",\n          externalId,\n          title: fields.intro ?? \"抖音视频 \" + externalId,\n          summary: fields.author ?? \"\",\n          url: \"https://www.douyin.com/video/\" + externalId,\n          metadata: {\n            author: fields.author ?? \"\",\n            time: fields.time ?? \"\",\n            like: fields.like ?? \"\",\n            comment: fields.comment ?? \"\",\n            collect: fields.collect ?? \"\",\n            share: fields.share ?? \"\",\n            uid: fields.uid ?? \"\"\n          },\n          rawData: fields\n        });\n      }\n    }\n  } catch (error) {}\n  await tobub.atoms.waitFor([5000,10000]);\n  if (tobub.utils.chance(1 / 5)) await tobub.atoms.waitFor([5000,10000]);\n}\nreturn { records };",
+    "platform": "douyin",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "minutes": {
+          "title": "浏览时间(分)",
+          "type": "number"
+        }
+      },
+      "required": [
+        "minutes"
+      ],
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "records": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "records"
+      ],
+      "type": "object"
+    },
+    "ui_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "default": 5,
+          "key": "minutes",
+          "label": "浏览时间(分)",
+          "required": true,
+          "target": "params.maxScrollTimes",
+          "type": "number"
+        }
+      ]
+    },
+    "requirements": {
+      "account": "optional",
+      "profile": "optional",
+      "domain_rule": "required"
+    },
+    "defaults": {
+      "params": {
+        "maxScrollTimes": 500,
+        "minutes": 5
+      },
+      "browser": {
+        "headless": false,
+        "run_mode": "transient"
+      },
+      "execution": {
+        "domain_mode": "required"
+      }
+    },
+    "metadata": {
+      "category": "user",
+      "converted_from": "tests/抖音",
+      "description": "在抖音推荐流中按拟人化节奏浏览视频并提取当前视频信息。",
+      "market_skill_id": "douyin-browse-videos",
+      "source": "community",
+      "tags": [
+        "抖音",
+        "浏览",
+        "视频",
+        "采集"
+      ]
+    }
+  },
+  "source": "user",
+  "platform": {
+    "code": "douyin",
+    "name": "抖音",
+    "version": "1",
+    "base_url": "https://www.douyin.com",
+    "capabilities": [
+      "view_list_item",
+      "view_detail",
+      "scroll",
+      "comment"
+    ],
+    "domains": [
+      {
+        "domain": "douyin.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "10bc6a8523c1295188ca74ba330eea1d315b36458306f286764a064976d0646c"
+  },
+  "rule": {
+    "platform": "douyin",
+    "version": "1.0.0",
+    "schema_version": "1",
+    "hash": "d7c17a1c5496aa08a23367d8e3c04814949a72ad79d885c740b00a9adee4be30",
+    "rules": {
+      "actions": {
+        "dismissPopups": {
+          "steps": [
+            {
+              "atom": "dismiss",
+              "options": {
+                "target": "div:text('登录后免费畅享高清视频') + div"
+              }
+            },
+            {
+              "atom": "dismiss",
+              "options": {
+                "target": "#douyin-web-recommend-guide-mask"
+              }
+            }
+          ]
+        }
+      },
+      "anomalyChecks": [],
+      "extractors": {
+        "content_comment_list": {
+          "fields": [
+            {
+              "match": "/user/([\\w-]+)",
+              "name": "userUuid",
+              "selector": ".comment-item-avatar a[href*=\"/user/\"]",
+              "source": {
+                "attr": "href"
+              }
+            },
+            {
+              "name": "userAvatar",
+              "selector": ".comment-item-avatar a[href*=\"/user/\"] img",
+              "source": "src"
+            },
+            {
+              "match": "^(.+?)头像",
+              "name": "userNickname",
+              "selector": ".comment-item-avatar a[href*=\"/user/\"] img",
+              "source": {
+                "attr": "alt"
+              }
+            },
+            {
+              "name": "comment",
+              "selector": ".comment-item-info-wrap + div span",
+              "source": "text"
+            },
+            {
+              "match": "^([^·]+)",
+              "name": "time",
+              "selector": ".comment-item-info-wrap + div + div span",
+              "source": "text"
+            },
+            {
+              "match": "·(.+)$",
+              "name": "location",
+              "selector": ".comment-item-info-wrap + div + div span",
+              "source": "text"
+            },
+            {
+              "fallback": "0",
+              "match": "(\\d+)",
+              "name": "replyCount",
+              "selector": ".replyContainer button",
+              "source": "text"
+            }
+          ],
+          "idField": "userUuid",
+          "itemSelector": "div[data-e2e=\"comment-item\"]",
+          "readiness": ".comment-item-avatar a"
+        },
+        "content_info": {
+          "fields": [
+            {
+              "name": "author",
+              "selector": "span.account-name-text",
+              "source": "text"
+            },
+            {
+              "name": "time",
+              "selector": "div.video-create-time",
+              "source": "text"
+            },
+            {
+              "name": "intro",
+              "selector": "div[data-e2e=\"video-desc\"]",
+              "source": "text"
+            },
+            {
+              "name": "like",
+              "selector": "div[data-e2e=\"video-player-digg\"]",
+              "source": "text"
+            },
+            {
+              "name": "comment",
+              "selector": "div[data-e2e=\"feed-comment-icon\"]",
+              "source": "text"
+            },
+            {
+              "name": "collect",
+              "selector": "div[data-e2e=\"video-player-collect\"]",
+              "source": "text"
+            },
+            {
+              "name": "share",
+              "selector": "div[data-e2e=\"video-player-share\"]",
+              "source": "text"
+            },
+            {
+              "name": "vid",
+              "selector": "div[data-e2e-vid]",
+              "source": {
+                "attr": "data-e2e-vid"
+              }
+            },
+            {
+              "match": "/user/([\\w-]+)",
+              "name": "uid",
+              "selector": "a[data-e2e=\"video-avatar\"]",
+              "source": {
+                "attr": "href"
+              }
+            }
+          ],
+          "idField": "vid",
+          "itemSelector": "div.parent-route-container.route-scroll-container"
+        },
+        "post_list": {
+          "fields": [
+            {
+              "fallback": "",
+              "match": "/video/(\\d+)",
+              "name": "id",
+              "selector": "a[href^=\"/video/\"]",
+              "source": "href"
+            },
+            {
+              "fallback": "",
+              "match": "(/video/\\d+)",
+              "name": "url",
+              "prefix": "https://www.abc.com",
+              "selector": "a[href^=\"/video/\"]",
+              "source": "href"
+            },
+            {
+              "fallback": "",
+              "name": "image",
+              "selector": "a[href^=\"/video/\"] img",
+              "source": "src"
+            },
+            {
+              "fallback": "",
+              "match": "Tag:\\s*(.+)",
+              "name": "status",
+              "selector": "[aria-label^=\"Tag:\"]",
+              "source": {
+                "attr": "aria-label"
+              }
+            },
+            {
+              "fallback": "0",
+              "name": "comments",
+              "selector": ".author-card-user-video-like span:last-child",
+              "source": "text"
+            },
+            {
+              "fallback": "",
+              "name": "intro",
+              "selector": "a[href^=\"/video/\"] img",
+              "source": {
+                "attr": "alt"
+              }
+            }
+          ],
+          "idField": "id",
+          "itemSelector": "ul[data-e2e=\"scroll-list\"] li"
+        },
+        "search_videos": {
+          "fields": [
+            {
+              "match": "waterfall_item_(\\d+)",
+              "name": "vid",
+              "source": {
+                "attr": "id"
+              }
+            },
+            {
+              "name": "thumb",
+              "selector": "div.search-result-card div.videoImage img",
+              "source": "src"
+            },
+            {
+              "match": "\\d{1,2}:\\d{2}",
+              "name": "duration",
+              "selector": "div.search-result-card div.videoImage div",
+              "source": "text"
+            },
+            {
+              "name": "like",
+              "selector": "div.search-result-card div.videoImage svg + span",
+              "source": "text"
+            },
+            {
+              "name": "intro",
+              "selector": "div.search-result-card div.videoImage + div > div > div:not(:has(> span))",
+              "source": "text"
+            },
+            {
+              "name": "author",
+              "selector": "div.search-result-card div.videoImage + div span:text-is(\"@\") + span",
+              "source": "text"
+            },
+            {
+              "name": "time",
+              "selector": "div.search-result-card div.videoImage + div span:has-text(\" · \")",
+              "source": "text"
+            }
+          ],
+          "idField": "vid",
+          "itemSelector": "div#waterFallScrollContainer > div"
+        }
+      },
+      "locationPatterns": [],
+      "meta": {
+        "baseUrl": "https://www.douyin.com",
+        "capabilities": [
+          "view_list_item",
+          "view_detail",
+          "scroll",
+          "comment"
+        ],
+        "name": "抖音",
+        "titlePattern": "抖音"
+      },
+      "platform": "douyin",
+      "routes": {
+        "home": {
+          "check": {
+            "url": "https://www.douyin.com/jingxuan"
+          },
+          "url": "https://www.douyin.com"
+        },
+        "jingxuan": {
+          "locator": "div[data-e2e=\"douyin-navigation\"] >> text=精选",
+          "url": "https://www.douyin.com/jingxuan"
+        },
+        "recommend": {
+          "check": {
+            "url": "https://www.douyin.com/?recommend=1"
+          },
+          "locator": "div[data-e2e=\"douyin-navigation\"] >> text=推荐"
+        }
+      },
+      "selectors": {},
+      "version": "1.0.0"
+    }
+  }
+}
