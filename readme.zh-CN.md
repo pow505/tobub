@@ -26,7 +26,7 @@ Tobub 可以自动收集来源、筛选有效信息、比较变化、生成简�
 
 ## 产品演示
 
-[打开演示视频](./public/tobub.mp4)
+![Tobub 产品演示](./public/tobub.gif)
 
 ## Tobub 的核心价值
 
