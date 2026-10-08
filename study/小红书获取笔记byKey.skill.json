@@ -1,0 +1,168 @@
+{
+  "created_at": "2026-10-08T01:21:50.733Z",
+  "manifest_version": 1,
+  "package_id": "user:local_46e03ec0-8828-4795-8a9c-fa3b14a7b82b@1",
+  "package_type": "tobub_skill",
+  "package_version": "1",
+  "requirements": {
+    "platform": "required",
+    "rule": "required"
+  },
+  "skill": {
+    "market_skill_id": "local_46e03ec0-8828-4795-8a9c-fa3b14a7b82b",
+    "release_id": "local_46e03ec0-8828-4795-8a9c-fa3b14a7b82b",
+    "name": "XHSGetNoteBySearch",
+    "skill_version": "1",
+    "source_type": "local",
+    "skill_code": "const searchKey = String(tobub.params.key);\nconst count = Number(tobub.params.count);\n\nawait tobub.atoms.navigate({ url: 'https://www.xiaohongshu.com', waitUntil: 'domcontentloaded' })\n\nawait tobub.atoms.waitFor([500, 2000]);\n\nawait tobub.atoms.fill({ selector: 'textarea#search-input-in-feeds', value: searchKey });\n\nawait tobub.atoms.press({ key: 'Enter' });\n\nawait tobub.atoms.waitFor([1500, 3000]);\n\nawait tobub.atoms.click({\n  selector: '.xhs-ai-chat-header button svg.reds-icon'\n});\n\nawait tobub.atoms.waitFor([1500, 2000]);\n\nawait tobub.atoms.hover({ selector: 'div.filter span:has-text(\"筛选\")' ,lingerTime: [500, 900]});\n\nawait tobub.atoms.waitFor([1500, 2000]);\n\nawait tobub.atoms.click({\n  selector: 'div.filter-panel span:has-text(\"最新\")',\n});\n\nconst records = [];\nlet scans = 0;\nlet noNewDataCount = 0\n\nfor (let i = 0; i < 999 ; i++) {\n  scans++;\n  await tobub.atoms.waitFor([1000, 2600]);\n  await tobub.atoms.scroll({ mode: \"viewport\", distance: tobub.utils.randInt(390, 1200), steps: tobub.utils.randInt(3, 15), stepPauseRange: [10, 25] });\n  const list = await tobub.adapter.extract(\"search\", { scan: { mode: \"append\" } });\n  for (const record of list.records) {\n    if (records.length >= count) break;\n    records.push(record);\n    const fields = record.fields ?? {};\n    const externalId = String(record.id || fields.id || \"\");\n    if (!externalId) continue;\n    await tobub.db.saveContent({\n      platform: \"Redbook\",\n      contentType: \"article\",\n      externalId,\n      title: fields.title ?? externalId,\n      summary: fields.author ?? \"\",\n      url: \"https://www.xiaohongshu.com\" + fields.link,\n      metadata: {\n        thumb: fields.thumb ?? \"\",\n        title: fields.title ?? \"\",\n        like: fields.like ?? \"\",\n        author: fields.author ?? \"\",\n        time: fields.time ?? \"\"\n      },\n      rawData: fields\n    });\n  }\n  if (records.length >= count) break;\n  noNewDataCount = result.newCount === 0 ? noNewDataCount + 1 : 0\n  if (noNewDataCount >= 3) break\n}\n\nawait tobub.debug.pause();",
+    "platform": "Redbook",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "title": "key",
+          "type": "string"
+        },
+        "count": {
+          "title": "count",
+          "type": "number"
+        }
+      },
+      "required": [
+        "key"
+      ],
+      "additionalProperties": true
+    },
+    "output_schema": {},
+    "ui_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "default": "魔兽世界",
+          "key": "key",
+          "label": "key",
+          "required": true,
+          "type": "input"
+        },
+        {
+          "default": 10,
+          "key": "count",
+          "label": "count",
+          "required": false,
+          "type": "number"
+        }
+      ]
+    },
+    "requirements": {
+      "account": "required"
+    },
+    "defaults": {
+      "params": {
+        "count": 10,
+        "key": "魔兽世界"
+      },
+      "browser": {
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "optional"
+      }
+    },
+    "metadata": {}
+  },
+  "source": "user",
+  "platform": {
+    "code": "Redbook",
+    "name": "Redbook",
+    "version": "1",
+    "base_url": "www.xiaohongshu.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "xiaohongshu.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "1a0a3545359bd70e79b0a77de8a37198d9634760f5796a48d9a94340b545f11c"
+  },
+  "rule": {
+    "platform": "Redbook",
+    "version": "1.0.0",
+    "schema_version": "1",
+    "hash": "ddf9a76d36a08af51103d8a8b67992fe244e6e912f005de246ce9c2781150821",
+    "rules": {
+      "actions": {},
+      "extractors": {
+        "search": {
+          "fields": [
+            {
+              "name": "id",
+              "source": {
+                "attr": "data-note-id"
+              }
+            },
+            {
+              "name": "thumb",
+              "selector": "div img",
+              "source": "src"
+            },
+            {
+              "name": "title",
+              "selector": "div.footer a.title",
+              "source": "text"
+            },
+            {
+              "name": "link",
+              "selector": "div.footer a.title",
+              "source": "href"
+            },
+            {
+              "name": "author",
+              "selector": "div.name-time-wrapper div.name",
+              "source": "text"
+            },
+            {
+              "name": "time",
+              "selector": "div.name-time-wrapper div.time",
+              "source": "text"
+            },
+            {
+              "name": "like",
+              "selector": "span.like-wrapper span.count",
+              "source": "text"
+            }
+          ],
+          "filter": {
+            "all": [
+              {
+                "not": {
+                  "path": "title",
+                  "op": "empty"
+                }
+              },
+              {
+                "not": {
+                  "path": "id",
+                  "op": "empty"
+                }
+              }
+            ]
+          },
+          "idField": "id",
+          "dedupe": "field",
+          "itemSelector": "div.feeds-container > section.note-item"
+        }
+      },
+      "meta": {
+        "name": "Redbook",
+        "baseUrl": "www.xiaohongshu.com",
+        "capabilities": []
+      },
+      "platform": "Redbook",
+      "routes": {},
+      "selectors": {},
+      "version": "1.0.0"
+    }
+  }
+}
