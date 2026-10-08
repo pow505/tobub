@@ -52,7 +52,7 @@
         "minMessageLength",
         "deduplicate"
       ],
-      "additionalProperties": false
+      "additionalProperties": true
     },
     "output_schema": {
       "type": "object",

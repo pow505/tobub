@@ -14,7 +14,7 @@
     "name": "抖音获取用户信息",
     "skill_version": "1.0.0",
     "source_type": "local",
-    "skill_code": "const uid = String(tobub.params.uid);\nawait tobub.adapter.navigate({ url: \"https://www.douyin.com/user/\" + uid, waitUntil: \"domcontentloaded\" });\nawait tobub.atoms.waitFor({ title: \"的抖音\", titleMatch: \"contains\" });\nawait tobub.atoms.waitFor({ text: \"登录后免费畅享高清视频\" });\nawait tobub.adapter.dismissPopups();\nconst location = await tobub.adapter.getCurrentLocation();\nconst user = await tobub.atoms.extractItem({\n  selector: \"#user_detail_element\",\n  fields: [\n    { name: \"avatarUrl\", selector: 'span[data-e2e=\"live-avatar\"] img', source: \"src\" },\n    { name: \"nickname\", selector: 'div[data-e2e=\"user-info\"] h1', source: \"text\" },\n    { name: \"followText\", selector: '[data-e2e=\"user-info-follow\"]', source: \"text\" },\n    { name: \"fansText\", selector: '[data-e2e=\"user-info-fans\"]', source: \"text\" },\n    { name: \"likeText\", selector: '[data-e2e=\"user-info-like\"]', source: \"text\" },\n    { name: \"douyinId\", selector: 'span:has-text(\"抖音号：\")', source: \"text\", match: { pattern: \"抖音号：(.+)\" } },\n    { name: \"ipLocation\", selector: 'span:has-text(\"IP属地：\")', source: \"text\", match: { pattern: \"IP属地：(.+)\" } },\n    { name: \"remark\", selector: 'div[data-e2e=\"user-info\"] > div:last-child', source: \"text\" },\n    { name: \"works\", selector: 'div#user-tabbar span[data-e2e=\"user-tab-count\"]', source: \"textContent\" }\n  ]\n});\nconst userUrl = location.url || \"https://www.douyin.com/user/\" + uid;\nawait tobub.db.saveContent({\n  platform: \"douyin\",\n  contentType: \"user\",\n  externalId: uid,\n  title: user.nickname ?? uid,\n  summary: user.remark ?? \"\",\n  url: userUrl,\n  metadata: { ...user, uid },\n  rawData: user\n});\nreturn { user: { ...user, uid, url: userUrl } };",
+    "skill_code": "const uid = String(tobub.params.uid);\nawait tobub.adapter.navigate({ url: \"https://www.douyin.com/user/\" + uid, waitUntil: \"domcontentloaded\" });\nawait tobub.atoms.waitFor({ title: \"的抖音\", titleMatch: \"contains\" });\nawait tobub.atoms.waitFor({ text: \"登录后免费畅享高清视频\" });\nawait tobub.adapter.dismissPopups();\nconst location = await tobub.adapter.getCurrentLocation();\nconst user = await tobub.atoms.extractItem({\n  selector: \"#user_detail_element\",\n  fields: [\n    { name: \"avatarUrl\", selector: 'span[data-e2e=\"live-avatar\"] img', source: \"src\" },\n    { name: \"nickname\", selector: 'div[data-e2e=\"user-info\"] h1', source: \"text\" },\n    { name: \"followText\", selector: '[data-e2e=\"user-info-follow\"]', source: \"text\" },\n    { name: \"fansText\", selector: '[data-e2e=\"user-info-fans\"]', source: \"text\" },\n    { name: \"likeText\", selector: '[data-e2e=\"user-info-like\"]', source: \"text\" },\n    { name: \"douyinId\", selector: 'span:has-text(\"抖音号：\")', source: \"text\", transforms: [{ type: \"match\", pattern: { pattern: \"抖音号：(.+)\" } }] },\n    { name: \"ipLocation\", selector: 'span:has-text(\"IP属地：\")', source: \"text\", transforms: [{ type: \"match\", pattern: { pattern: \"IP属地：(.+)\" } }] },\n    { name: \"remark\", selector: 'div[data-e2e=\"user-info\"] > div:last-child', source: \"text\" },\n    { name: \"works\", selector: 'div#user-tabbar span[data-e2e=\"user-tab-count\"]', source: \"textContent\" }\n  ]\n});\nconst userUrl = location.url || \"https://www.douyin.com/user/\" + uid;\nawait tobub.db.saveContent({\n  platform: \"douyin\",\n  contentType: \"user\",\n  externalId: uid,\n  title: user.nickname ?? uid,\n  summary: user.remark ?? \"\",\n  url: userUrl,\n  metadata: { ...user, uid },\n  rawData: user\n});\nreturn { user: { ...user, uid, url: userUrl } };",
     "platform": "douyin",
     "input_schema": {
       "type": "object",
@@ -63,8 +63,8 @@
         "uid": "MS4wLjABAAAApoNyhxg6eFRcRp_U6bx-rEYEY4JzM8SqL-UyEQqe_p4"
       },
       "browser": {
-        "headless": false,
-        "run_mode": "transient"
+        "run_mode": "transient",
+        "headless": false
       },
       "execution": {
         "domain_mode": "required"
@@ -74,14 +74,14 @@
       "category": "user",
       "converted_from": "tests/抖音",
       "description": "打开抖音用户主页并提取头像、昵称、关注、粉丝、获赞等信息。",
-      "market_skill_id": "douyin-get-user-info",
       "source": "community",
       "tags": [
         "抖音",
         "用户",
         "信息",
         "采集"
-      ]
+      ],
+      "market_skill_id": "douyin-get-user-info"
     }
   },
   "source": "user",
@@ -109,7 +109,7 @@
     "platform": "douyin",
     "version": "1.0.0",
     "schema_version": "1",
-    "hash": "d7c17a1c5496aa08a23367d8e3c04814949a72ad79d885c740b00a9adee4be30",
+    "hash": "dbc9ec56d97e3b8e89b26bc980c1d963a252c7b6ccfd5732e8683646c6d53e5e",
     "rules": {
       "actions": {
         "dismissPopups": {
@@ -134,12 +134,19 @@
         "content_comment_list": {
           "fields": [
             {
-              "match": "/user/([\\w-]+)",
               "name": "userUuid",
               "selector": ".comment-item-avatar a[href*=\"/user/\"]",
               "source": {
                 "attr": "href"
-              }
+              },
+              "transforms": [
+                {
+                  "type": "match",
+                  "pattern": {
+                    "pattern": "/user/([\\w-]+)"
+                  }
+                }
+              ]
             },
             {
               "name": "userAvatar",
@@ -147,12 +154,19 @@
               "source": "src"
             },
             {
-              "match": "^(.+?)头像",
               "name": "userNickname",
               "selector": ".comment-item-avatar a[href*=\"/user/\"] img",
               "source": {
                 "attr": "alt"
-              }
+              },
+              "transforms": [
+                {
+                  "type": "match",
+                  "pattern": {
+                    "pattern": "^(.+?)头像"
+                  }
+                }
+              ]
             },
             {
               "name": "comment",
@@ -160,23 +174,44 @@
               "source": "text"
             },
             {
-              "match": "^([^·]+)",
               "name": "time",
               "selector": ".comment-item-info-wrap + div + div span",
-              "source": "text"
+              "source": "text",
+              "transforms": [
+                {
+                  "type": "match",
+                  "pattern": {
+                    "pattern": "^([^·]+)"
+                  }
+                }
+              ]
             },
             {
-              "match": "·(.+)$",
               "name": "location",
               "selector": ".comment-item-info-wrap + div + div span",
-              "source": "text"
+              "source": "text",
+              "transforms": [
+                {
+                  "type": "match",
+                  "pattern": {
+                    "pattern": "·(.+)$"
+                  }
+                }
+              ]
             },
             {
               "fallback": "0",
-              "match": "(\\d+)",
               "name": "replyCount",
               "selector": ".replyContainer button",
-              "source": "text"
+              "source": "text",
+              "transforms": [
+                {
+                  "type": "match",
+                  "pattern": {
+                    "pattern": "(\\d+)"
+                  }
+                }
+              ]
             }
           ],
           "idField": "userUuid",
@@ -228,12 +263,19 @@
               }
             },
             {
-              "match": "/user/([\\w-]+)",
               "name": "uid",
               "selector": "a[data-e2e=\"video-avatar\"]",
               "source": {
                 "attr": "href"
-              }
+              },
+              "transforms": [
+                {
+                  "type": "match",
+                  "pattern": {
+                    "pattern": "/user/([\\w-]+)"
+                  }
+                }
+              ]
             }
           ],
           "idField": "vid",
@@ -243,18 +285,35 @@
           "fields": [
             {
               "fallback": "",
-              "match": "/video/(\\d+)",
               "name": "id",
               "selector": "a[href^=\"/video/\"]",
-              "source": "href"
+              "source": "href",
+              "transforms": [
+                {
+                  "type": "match",
+                  "pattern": {
+                    "pattern": "/video/(\\d+)"
+                  }
+                }
+              ]
             },
             {
               "fallback": "",
-              "match": "(/video/\\d+)",
               "name": "url",
-              "prefix": "https://www.abc.com",
               "selector": "a[href^=\"/video/\"]",
-              "source": "href"
+              "source": "href",
+              "transforms": [
+                {
+                  "type": "match",
+                  "pattern": {
+                    "pattern": "(/video/\\d+)"
+                  }
+                },
+                {
+                  "type": "prefix",
+                  "value": "https://www.abc.com"
+                }
+              ]
             },
             {
               "fallback": "",
@@ -264,12 +323,19 @@
             },
             {
               "fallback": "",
-              "match": "Tag:\\s*(.+)",
               "name": "status",
               "selector": "[aria-label^=\"Tag:\"]",
               "source": {
                 "attr": "aria-label"
-              }
+              },
+              "transforms": [
+                {
+                  "type": "match",
+                  "pattern": {
+                    "pattern": "Tag:\\s*(.+)"
+                  }
+                }
+              ]
             },
             {
               "fallback": "0",
@@ -292,11 +358,18 @@
         "search_videos": {
           "fields": [
             {
-              "match": "waterfall_item_(\\d+)",
               "name": "vid",
               "source": {
                 "attr": "id"
-              }
+              },
+              "transforms": [
+                {
+                  "type": "match",
+                  "pattern": {
+                    "pattern": "waterfall_item_(\\d+)"
+                  }
+                }
+              ]
             },
             {
               "name": "thumb",
@@ -304,10 +377,17 @@
               "source": "src"
             },
             {
-              "match": "\\d{1,2}:\\d{2}",
               "name": "duration",
               "selector": "div.search-result-card div.videoImage div",
-              "source": "text"
+              "source": "text",
+              "transforms": [
+                {
+                  "type": "match",
+                  "pattern": {
+                    "pattern": "\\d{1,2}:\\d{2}"
+                  }
+                }
+              ]
             },
             {
               "name": "like",
@@ -336,6 +416,7 @@
       },
       "locationPatterns": [],
       "meta": {
+        "name": "抖音",
         "baseUrl": "https://www.douyin.com",
         "capabilities": [
           "view_list_item",
@@ -343,7 +424,6 @@
           "scroll",
           "comment"
         ],
-        "name": "抖音",
         "titlePattern": "抖音"
       },
       "platform": "douyin",
