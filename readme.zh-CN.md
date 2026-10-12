@@ -140,5 +140,5 @@ Skills 会与第三方平台交互，必须遵守平台条款、API 限制、隐
 - [下载 Tobub](https://github.com/pow505/tobub/releases/latest)
 - [Tobub 官网](https://tobub.com)
 - [English README](readme.md)
-
+- MIT
 桌面应用与本开放 Skill 仓库分开发布。

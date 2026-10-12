@@ -142,5 +142,6 @@ Skills interact with third-party platforms. Their terms, APIs, rate limits, priv
 - [Download Tobub](https://github.com/pow505/tobub/releases/latest)
 - [Tobub website](https://tobub.com)
 - [中文 README](readme.zh-CN.md)
+- MIT
 
 The desktop application is distributed separately from this open Skill repository.
