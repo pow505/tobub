@@ -1,0 +1,134 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:local_1f5a5ef8-d312-4915-9374-2e821450e49c@1",
+  "package_version": "1",
+  "source": "user",
+  "created_at": "2026-10-13T02:08:36.659Z",
+  "requirements": {
+    "platform": "required",
+    "rule": "required"
+  },
+  "skill": {
+    "market_skill_id": "local_1f5a5ef8-d312-4915-9374-2e821450e49c",
+    "release_id": "local_1f5a5ef8-d312-4915-9374-2e821450e49c",
+    "name": "知乎获取热门榜单资讯",
+    "skill_version": "1",
+    "source_type": "local",
+    "skill_code": "let records = [];\n\nawait tobub.atoms.navigate({ url: \"https://www.zhihu.com/hot\" , waitUntil: 'domcontentloaded' })\n\nawait tobub.atoms.waitFor([500, 1500]);\n\nconst list = await tobub.adapter.extract(\"search\", { scan: { mode: \"append\" } });\n\nfor (const record of list.records) {\n  records.push(record);\n  const fields = record.fields ?? {};\n  const externalId = String(record.id || fields.id || \"\");\n  if (!externalId) continue;\n  await tobub.db.saveContent({\n    platform: \"zhihu\",\n    contentType: \"article\",\n    externalId,\n    title: fields.title ?? externalId,\n    summary: fields.intro ?? \"\",\n    url: fields.link,\n    metadata: {\n      thumb: fields.thumb ?? \"\",\n      title: fields.title ?? \"\",\n      hot: fields.hot ?? \"\",\n      intro: fields.intro ?? \"\"\n    },\n    rawData: fields\n  });\n}\n\nreturn records;\n\n",
+    "platform": "zhihu",
+    "input_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": true
+    },
+    "output_schema": {},
+    "ui_schema": {
+      "version": 1,
+      "fields": []
+    },
+    "requirements": {
+      "account": "required"
+    },
+    "defaults": {
+      "params": {},
+      "browser": {
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "optional"
+      }
+    },
+    "metadata": {}
+  },
+  "platform": {
+    "code": "zhihu",
+    "name": "zhihu",
+    "version": "1",
+    "base_url": "http://www.zhihu.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "zhihu.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "bc50344ae43b4d8347c4c2c2bbda8aab083a716cd23fefabb09dc9cca92499b2"
+  },
+  "rule": {
+    "platform": "zhihu",
+    "version": "1.0.0",
+    "schema_version": "1",
+    "hash": "6d273f7dbbb155c6feb71eac1ee9e22f462ccf42fa2d193f7bb011467f845f77",
+    "rules": {
+      "actions": {},
+      "extractors": {
+        "search": {
+          "dedupe": "field",
+          "fields": [
+            {
+              "name": "id",
+              "selector": "div.HotItem-content a[href*='/question/']",
+              "source": "href",
+              "transforms": [
+                {
+                  "groupIndex": 1,
+                  "pattern": {
+                    "pattern": "/question/([^/?#]+)"
+                  },
+                  "type": "match"
+                }
+              ]
+            },
+            {
+              "name": "thumb",
+              "selector": "a.HotItem-img img",
+              "source": "src"
+            },
+            {
+              "name": "title",
+              "selector": "h2.HotItem-title",
+              "source": "text"
+            },
+            {
+              "name": "link",
+              "selector": "a.HotItem-img",
+              "source": "href"
+            },
+            {
+              "name": "intro",
+              "selector": "p.HotItem-excerpt",
+              "source": "text"
+            },
+            {
+              "name": "hot",
+              "selector": "div.HotItem-metrics",
+              "source": "text",
+              "transforms": [
+                {
+                  "groupIndex": 1,
+                  "pattern": {
+                    "pattern": "([0-9.,]+\\s*万?热度)"
+                  },
+                  "type": "match"
+                }
+              ]
+            }
+          ],
+          "idField": "id",
+          "itemSelector": "section.HotItem"
+        }
+      },
+      "meta": {
+        "baseUrl": "http://www.zhihu.com",
+        "capabilities": [],
+        "name": "zhihu"
+      },
+      "platform": "zhihu",
+      "routes": {},
+      "selectors": {},
+      "version": "1.0.0"
+    }
+  }
+}
