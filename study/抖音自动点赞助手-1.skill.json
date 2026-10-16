@@ -1,0 +1,437 @@
+{
+  "created_at": "2026-10-16T02:40:06.162Z",
+  "manifest_version": 1,
+  "package_id": "user:local_75045bc4-8816-4aeb-9e19-e0aee108cddc@1",
+  "package_type": "tobub_skill",
+  "package_version": "1",
+  "requirements": {
+    "platform": "required",
+    "rule": "required"
+  },
+  "skill": {
+    "market_skill_id": "local_75045bc4-8816-4aeb-9e19-e0aee108cddc",
+    "release_id": "local_75045bc4-8816-4aeb-9e19-e0aee108cddc",
+    "name": "抖音自动点赞助手",
+    "skill_version": "1",
+    "source_type": "local",
+    "skill_code": "//注意：不要比例太高，避免被风控\nconst vid = String(tobub.params.vid);\nconst probability = Number(tobub.params.probability) / 100;\n\nif (!Number.isFinite(probability) || probability < 0 || probability > 1) {\n  throw new Error(\"probability 必须是 0 到 100 之间的数字\");\n}\n\nconst commentLikeSelector =\n  'div[data-scroll=\"comment\"] p:has(> svg + span)';\n\nconst records = [];\nlet checkedCount = 0;\nlet likedCount = 0;\n\n// 每次运行使用独立的记录键，避免复用上次运行的抽样结果。\nconst runKey = `${vid}-${Date.now()}-${Math.random()}`;\n\nasync function getVisibleUnlikedIndices() {\n  const result = await tobub.atoms.evaluate({\n    expression: `({ selector, runKey }) => {\n      const store =\n        window.__tobubLikeSeenByRun ??=\n        new Map();\n\n      let seen = store.get(runKey);\n      if (!seen) {\n        seen = new WeakSet();\n        store.set(runKey, seen);\n      }\n\n      const items = [...document.querySelectorAll(selector)];\n      const width = window.innerWidth;\n      const height = window.innerHeight;\n      const indices = [];\n\n      items.forEach((el, index) => {\n        const rect = el.getBoundingClientRect();\n        const path = el.querySelector(\"svg path\");\n\n        const visible =\n          el.getClientRects().length > 0 &&\n          getComputedStyle(el).visibility !== \"hidden\" &&\n          rect.bottom > 0 &&\n          rect.top < height &&\n          rect.right > 0 &&\n          rect.left < width;\n\n        const unliked = path?.getAttribute(\"fill\") === \"#fff\";\n\n        // 同一 DOM 元素只参与一次概率抽样。\n        if (!visible || !unliked || seen.has(el)) return;\n\n        seen.add(el);\n        indices.push(index);\n      });\n\n      return indices;\n    }`,\n    arg: {\n      selector: commentLikeSelector,\n      runKey\n    }\n  });\n\n  return Array.isArray(result.value) ? result.value : [];\n}\n\nasync function likeVisibleComments() {\n  const indices = await getVisibleUnlikedIndices();\n\n  // 倒序处理，降低点击改变 DOM 后索引偏移的影响。\n  for (let i = indices.length - 1; i >= 0; i--) {\n    const nth = indices[i];\n    const shouldLike = tobub.utils.chance(probability);\n\n    const record = {\n      sequence: ++checkedCount,\n      domIndex: nth,\n      decision: shouldLike ? \"like\" : \"skip\",\n      clicked: false\n    };\n    records.push(record);\n\n    if (!shouldLike) continue;\n\n    try {\n      await tobub.atoms.click({\n        selector: commentLikeSelector,\n        nth,\n        visibleOnly: true,\n        where: {\n          selector: \"svg path\",\n          source: \"attr\",\n          attr: \"fill\",\n          equals: \"#fff\"\n        }\n      });\n\n      record.clicked = true;\n      likedCount++;\n      await tobub.atoms.waitFor([100, 250]);\n    } catch (error) {\n      if (String(error).includes(\"No matching clickable element found\")) {\n        // 页面更新导致目标失效时，跳过这项并继续处理其他项。\n        continue;\n      }\n      throw error;\n    }\n  }\n}\n\nawait tobub.adapter.navigate({\n  url: \"https://www.douyin.com/video/\" + vid,\n  waitUntil: \"domcontentloaded\"\n});\n\nawait tobub.atoms.waitFor(\n  {\n    selector: 'div[data-scroll=\"comment\"]',\n    selectorState: \"attached\"\n  },\n  { timeout: 15000 }\n);\n\nawait tobub.adapter.dismissPopups();\nawait tobub.atoms.waitFor([3000, 6000]);\n\nfor (let i = 0; i < 999; i++) {\n  if (tobub.utils.chance(0.5)) {\n    await tobub.atoms.scroll({\n      mode: \"viewport\",\n      distance: tobub.utils.randInt(390, 1200),\n      steps: tobub.utils.randInt(3, 15),\n      stepPauseRange: [10, 25]\n    });\n  } else {\n    await tobub.atoms.scroll({\n      mode: \"viewport\",\n      distance: 500,\n      steps: 1,\n      stepPauseRange: [10, 25]\n    });\n  }\n\n  await tobub.atoms.waitFor([800, 2000]);\n\n  // 每条未点赞评论分别抽样，不再对整屏做一次概率判断。\n  await likeVisibleComments();\n\n  const endCheck = await tobub.atoms.condition(\n    {\n      conditions: [\n        { type: \"visible\", selector: 'text=\"暂时没有更多评论\"' },\n        {\n          type: \"inViewport\",\n          selector: 'text=\"暂时没有更多评论\"',\n          intersection: \"partial\"\n        }\n      ],\n      mode: \"all\",\n      throwOnTimeout: false\n    },\n    { timeout: 2000 }\n  );\n  if (endCheck.satisfied) break;\n}\n\nreturn {\n  videoId: vid,\n  checkedCount,\n  likedCount,\n  records\n};",
+    "platform": "douyin",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "vid": {
+          "title": "视频id",
+          "type": "string"
+        },
+        "probability": {
+          "title": "比例",
+          "type": "number"
+        }
+      },
+      "required": [
+        "vid"
+      ],
+      "additionalProperties": true
+    },
+    "output_schema": {},
+    "ui_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "default": "7592786269656174778",
+          "key": "vid",
+          "label": "视频id",
+          "required": true,
+          "type": "input"
+        },
+        {
+          "default": 5,
+          "key": "probability",
+          "label": "比例",
+          "required": false,
+          "type": "number"
+        }
+      ]
+    },
+    "requirements": {},
+    "defaults": {
+      "params": {
+        "Vid": 7653983160925048000,
+        "probability": 10,
+        "vid": 7653983160925048000
+      },
+      "browser": {
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "optional"
+      }
+    },
+    "metadata": {}
+  },
+  "source": "user",
+  "platform": {
+    "code": "douyin",
+    "name": "抖音",
+    "version": "1",
+    "base_url": "https://www.douyin.com",
+    "capabilities": [
+      "view_list_item",
+      "view_detail",
+      "scroll",
+      "comment"
+    ],
+    "domains": [
+      {
+        "domain": "douyin.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "10bc6a8523c1295188ca74ba330eea1d315b36458306f286764a064976d0646c"
+  },
+  "rule": {
+    "platform": "douyin",
+    "version": "1.0.0",
+    "schema_version": "1",
+    "hash": "dbc9ec56d97e3b8e89b26bc980c1d963a252c7b6ccfd5732e8683646c6d53e5e",
+    "rules": {
+      "actions": {
+        "dismissPopups": {
+          "steps": [
+            {
+              "atom": "dismiss",
+              "options": {
+                "target": "div:text('登录后免费畅享高清视频') + div"
+              }
+            },
+            {
+              "atom": "dismiss",
+              "options": {
+                "target": "#douyin-web-recommend-guide-mask"
+              }
+            }
+          ]
+        }
+      },
+      "anomalyChecks": [],
+      "extractors": {
+        "content_comment_list": {
+          "fields": [
+            {
+              "name": "userUuid",
+              "selector": ".comment-item-avatar a[href*=\"/user/\"]",
+              "source": {
+                "attr": "href"
+              },
+              "transforms": [
+                {
+                  "pattern": {
+                    "pattern": "/user/([\\w-]+)"
+                  },
+                  "type": "match"
+                }
+              ]
+            },
+            {
+              "name": "userAvatar",
+              "selector": ".comment-item-avatar a[href*=\"/user/\"] img",
+              "source": "src"
+            },
+            {
+              "name": "userNickname",
+              "selector": ".comment-item-avatar a[href*=\"/user/\"] img",
+              "source": {
+                "attr": "alt"
+              },
+              "transforms": [
+                {
+                  "pattern": {
+                    "pattern": "^(.+?)头像"
+                  },
+                  "type": "match"
+                }
+              ]
+            },
+            {
+              "name": "comment",
+              "selector": ".comment-item-info-wrap + div span",
+              "source": "text"
+            },
+            {
+              "name": "time",
+              "selector": ".comment-item-info-wrap + div + div span",
+              "source": "text",
+              "transforms": [
+                {
+                  "pattern": {
+                    "pattern": "^([^·]+)"
+                  },
+                  "type": "match"
+                }
+              ]
+            },
+            {
+              "name": "location",
+              "selector": ".comment-item-info-wrap + div + div span",
+              "source": "text",
+              "transforms": [
+                {
+                  "pattern": {
+                    "pattern": "·(.+)$"
+                  },
+                  "type": "match"
+                }
+              ]
+            },
+            {
+              "fallback": "0",
+              "name": "replyCount",
+              "selector": ".replyContainer button",
+              "source": "text",
+              "transforms": [
+                {
+                  "pattern": {
+                    "pattern": "(\\d+)"
+                  },
+                  "type": "match"
+                }
+              ]
+            }
+          ],
+          "idField": "userUuid",
+          "itemSelector": "div[data-e2e=\"comment-item\"]",
+          "readiness": ".comment-item-avatar a"
+        },
+        "content_info": {
+          "fields": [
+            {
+              "name": "author",
+              "selector": "span.account-name-text",
+              "source": "text"
+            },
+            {
+              "name": "time",
+              "selector": "div.video-create-time",
+              "source": "text"
+            },
+            {
+              "name": "intro",
+              "selector": "div[data-e2e=\"video-desc\"]",
+              "source": "text"
+            },
+            {
+              "name": "like",
+              "selector": "div[data-e2e=\"video-player-digg\"]",
+              "source": "text"
+            },
+            {
+              "name": "comment",
+              "selector": "div[data-e2e=\"feed-comment-icon\"]",
+              "source": "text"
+            },
+            {
+              "name": "collect",
+              "selector": "div[data-e2e=\"video-player-collect\"]",
+              "source": "text"
+            },
+            {
+              "name": "share",
+              "selector": "div[data-e2e=\"video-player-share\"]",
+              "source": "text"
+            },
+            {
+              "name": "vid",
+              "selector": "div[data-e2e-vid]",
+              "source": {
+                "attr": "data-e2e-vid"
+              }
+            },
+            {
+              "name": "uid",
+              "selector": "a[data-e2e=\"video-avatar\"]",
+              "source": {
+                "attr": "href"
+              },
+              "transforms": [
+                {
+                  "pattern": {
+                    "pattern": "/user/([\\w-]+)"
+                  },
+                  "type": "match"
+                }
+              ]
+            }
+          ],
+          "idField": "vid",
+          "itemSelector": "div.parent-route-container.route-scroll-container"
+        },
+        "post_list": {
+          "fields": [
+            {
+              "fallback": "",
+              "name": "id",
+              "selector": "a[href^=\"/video/\"]",
+              "source": "href",
+              "transforms": [
+                {
+                  "pattern": {
+                    "pattern": "/video/(\\d+)"
+                  },
+                  "type": "match"
+                }
+              ]
+            },
+            {
+              "fallback": "",
+              "name": "url",
+              "selector": "a[href^=\"/video/\"]",
+              "source": "href",
+              "transforms": [
+                {
+                  "pattern": {
+                    "pattern": "(/video/\\d+)"
+                  },
+                  "type": "match"
+                },
+                {
+                  "type": "prefix",
+                  "value": "https://www.abc.com"
+                }
+              ]
+            },
+            {
+              "fallback": "",
+              "name": "image",
+              "selector": "a[href^=\"/video/\"] img",
+              "source": "src"
+            },
+            {
+              "fallback": "",
+              "name": "status",
+              "selector": "[aria-label^=\"Tag:\"]",
+              "source": {
+                "attr": "aria-label"
+              },
+              "transforms": [
+                {
+                  "pattern": {
+                    "pattern": "Tag:\\s*(.+)"
+                  },
+                  "type": "match"
+                }
+              ]
+            },
+            {
+              "fallback": "0",
+              "name": "comments",
+              "selector": ".author-card-user-video-like span:last-child",
+              "source": "text"
+            },
+            {
+              "fallback": "",
+              "name": "intro",
+              "selector": "a[href^=\"/video/\"] img",
+              "source": {
+                "attr": "alt"
+              }
+            }
+          ],
+          "idField": "id",
+          "itemSelector": "ul[data-e2e=\"scroll-list\"] li"
+        },
+        "search_videos": {
+          "fields": [
+            {
+              "name": "vid",
+              "source": {
+                "attr": "id"
+              },
+              "transforms": [
+                {
+                  "pattern": {
+                    "pattern": "waterfall_item_(\\d+)"
+                  },
+                  "type": "match"
+                }
+              ]
+            },
+            {
+              "name": "thumb",
+              "selector": "div.search-result-card div.videoImage img",
+              "source": "src"
+            },
+            {
+              "name": "duration",
+              "selector": "div.search-result-card div.videoImage div",
+              "source": "text",
+              "transforms": [
+                {
+                  "pattern": {
+                    "pattern": "\\d{1,2}:\\d{2}"
+                  },
+                  "type": "match"
+                }
+              ]
+            },
+            {
+              "name": "like",
+              "selector": "div.search-result-card div.videoImage svg + span",
+              "source": "text"
+            },
+            {
+              "name": "intro",
+              "selector": "div.search-result-card div.videoImage + div > div > div:not(:has(> span))",
+              "source": "text"
+            },
+            {
+              "name": "author",
+              "selector": "div.search-result-card div.videoImage + div span:text-is(\"@\") + span",
+              "source": "text"
+            },
+            {
+              "name": "time",
+              "selector": "div.search-result-card div.videoImage + div span:has-text(\" · \")",
+              "source": "text"
+            }
+          ],
+          "idField": "vid",
+          "itemSelector": "div#waterFallScrollContainer > div"
+        }
+      },
+      "locationPatterns": [],
+      "meta": {
+        "baseUrl": "https://www.douyin.com",
+        "capabilities": [
+          "view_list_item",
+          "view_detail",
+          "scroll",
+          "comment"
+        ],
+        "name": "抖音",
+        "titlePattern": "抖音"
+      },
+      "platform": "douyin",
+      "routes": {
+        "home": {
+          "check": {
+            "url": "https://www.douyin.com/jingxuan"
+          },
+          "url": "https://www.douyin.com"
+        },
+        "jingxuan": {
+          "locator": "div[data-e2e=\"douyin-navigation\"] >> text=精选",
+          "url": "https://www.douyin.com/jingxuan"
+        },
+        "recommend": {
+          "check": {
+            "url": "https://www.douyin.com/?recommend=1"
+          },
+          "locator": "div[data-e2e=\"douyin-navigation\"] >> text=推荐"
+        }
+      },
+      "selectors": {},
+      "version": "1.0.0"
+    }
+  }
+}
