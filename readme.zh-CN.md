@@ -95,6 +95,12 @@ Tobub 当前展示的 Agent 包括：
 5. Tobub 展示进度、来源、依据和中间结果。
 6. Agent 交付结果，并保存可继续使用的 Session。
 
+## 在 Claude Code / Codex 中使用 Tobub
+
+仓库的 [skill/](./skill/) 提供一份完整的 Agent Skill：调用、组合、生成和修改本地 Tobub Skills，并可利用录制证据、平台规则和本地数据能力。资料来自当前 SDK 契约与 [demos/](./demos/)，按需检索，保留示例的来源和验证状态。
+
+请按 [安装说明](./skill/INSTALL.md) 安装并注册附带的本地 MCP 连接。运行需要同一台电脑上的 Tobub 和 Node.js 22.18+；无需 Tobub Cloud 账号。Agent Skill、本地 API 连接和原生 Tobub Skill JSON 的职责在资料包中分别说明。
+
 ## Skill 开源，执行产品闭源
 
 本仓库开放的是 Tobub 的 **Skill 能力层**。Skill 是由兼容 Tobub 的软件读取和执行的 JSON 定义，是可执行的产品工件，不是独立应用。

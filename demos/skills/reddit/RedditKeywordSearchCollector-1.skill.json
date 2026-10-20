@@ -1,0 +1,188 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:reddit-keyword-search-collector@1",
+  "package_version": "1",
+  "source": "user",
+  "created_at": "2026-10-19T13:34:38.596Z",
+  "requirements": {
+    "platform": "none",
+    "rule": "none"
+  },
+  "skill": {
+    "market_skill_id": "reddit-keyword-search-collector",
+    "release_id": "reddit-keyword-search-collector",
+    "name": "Reddit Keyword Search Collector",
+    "skill_version": "1",
+    "source_type": "local",
+    "skill_code": "const query = String(tobub.params.query ?? '').trim();\nconst maxItems = tobub.params.max_items ?? 20;\nif (!query || query.length > 200) throw new Error('query must contain 1 to 200 characters.');\nif (!Number.isInteger(maxItems) || maxItems < 1 || maxItems > 50) throw new Error('max_items must be an integer from 1 to 50.');\nconst sourceUrl = 'https://www.reddit.com/search/?q=' + encodeURIComponent(query) + '&type=posts&sort=new';\nconst itemSelector = '[data-testid=\"search-post-unit\"]';\nconst titleSelector = 'a[data-testid=\"post-title-text\"]';\nawait tobub.atoms.navigate({ url: sourceUrl, waitUntil: 'domcontentloaded' });\nconst ready = await tobub.atoms.condition({ type: 'count', selector: itemSelector, comparison: 'gte', value: 1, throwOnTimeout: false }, { timeout: 12000 });\nconst pageTitle = (await tobub.atoms.evaluate({ expression: 'document.title' })).value;\nif (!ready.satisfied) return { status: 'empty', target: query, source_url: sourceUrl, page_title: pageTitle, matched: 0, collected: 0, failed: 0, records: [], collection: null };\nconst extracted = await tobub.atoms.extractList({ itemSelector, idField: 'id', dedupe: 'field', maxItems, errorPolicy: 'skip', includeErrors: true, fields: [\n  { name: 'id', selector: titleSelector, source: 'href', transforms: [{ type: 'match', pattern: { pattern: '/comments/([^/]+)' }, groupIndex: 1 }], required: true },\n  { name: 'title', selector: titleSelector, source: 'text', required: true },\n  { name: 'community', selector: 'faceplate-hovercard[data-id=\"community-hover-card\"] a', source: 'text', fallback: null },\n  { name: 'created_at', selector: 'faceplate-timeago', source: { attr: 'ts' }, fallback: null },\n  { name: 'score', selector: '[data-testid=\"search-counter-row\"] faceplate-number', nth: 0, source: { attr: 'number' }, parse: 'number', fallback: null },\n  { name: 'comment_count', selector: '[data-testid=\"search-counter-row\"] faceplate-number', nth: 1, source: { attr: 'number' }, parse: 'number', fallback: null },\n  { name: 'permalink', selector: titleSelector, source: 'href', transforms: [{ type: 'absoluteUrl', baseUrl: 'https://www.reddit.com' }], required: true }\n] }, { timeout: 12000 });\nconst records = extracted.records.map(record => ({ ...record.fields, ...(record.jsonFields ?? {}) }));\nconst collection = records.length ? await tobub.data.save(records.map(record => ({ type: 'reddit-post', id: record.id, payload: record, meta: { query, sort: 'new', source_url: sourceUrl } })), { name: 'reddit-keyword-posts', mode: 'event', outputs: [{ type: 'file', format: 'jsonl' }], policy: { maxRecords: maxItems, maxBytes: 2097152 } }) : null;\nreturn { status: extracted.failedCount ? 'partial' : records.length ? 'ok' : 'empty', target: query, source_url: sourceUrl, page_title: pageTitle, matched: extracted.domCount, collected: records.length, failed: extracted.failedCount, records, collection };",
+    "platform": null,
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Search words for public Reddit posts."
+        },
+        "max_items": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 20,
+          "description": "Maximum number of posts to collect from the currently rendered results."
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "additionalProperties": false
+    },
+    "output_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "target",
+        "source_url",
+        "page_title",
+        "matched",
+        "collected",
+        "failed",
+        "records",
+        "collection"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "partial",
+            "empty"
+          ]
+        },
+        "target": {
+          "type": "string"
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "page_title": {
+          "type": "string"
+        },
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "collected": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "title",
+              "community",
+              "created_at",
+              "score",
+              "comment_count",
+              "permalink"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "community": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "created_at": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "score": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "comment_count": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "permalink": {
+                "type": "string",
+                "format": "uri"
+              }
+            }
+          }
+        },
+        "collection": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        }
+      }
+    },
+    "ui_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "query",
+          "label": "Search words",
+          "type": "input",
+          "required": true,
+          "default": "climate technology",
+          "placeholder": "climate technology",
+          "help": "Search public Reddit posts; results use newest-first ordering."
+        },
+        {
+          "key": "max_items",
+          "label": "Maximum posts",
+          "type": "number",
+          "default": 20,
+          "min": 1,
+          "max": 50,
+          "step": 1,
+          "help": "Hard cap; only posts already rendered on the page are collected."
+        }
+      ]
+    },
+    "requirements": {},
+    "defaults": {
+      "params": {
+        "query": "climate technology",
+        "max_items": 20
+      },
+      "browser": {
+        "run_mode": "transient",
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "atoms-only"
+      }
+    },
+    "metadata": {}
+  }
+}

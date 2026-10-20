@@ -95,6 +95,12 @@ These Skills support market research, trend discovery, social listening, custome
 5. Tobub keeps the progress, sources, evidence, and intermediate work visible.
 6. The Agent delivers the result and saves a Session for follow-up work.
 
+## Use Tobub from Claude Code or Codex
+
+[skill/](./skill/) contains one complete Agent Skill for finding, running, composing, creating and modifying local Tobub Skills, with recording evidence, platform Rules and local datasets. Its searchable references are generated from current SDK contracts and [demos/](./demos/), with source hashes and explicit validation status.
+
+Follow [the installation guide](./skill/INSTALL.md) to install the Skill and register its bundled local MCP connection. Normal use requires Tobub and Node.js 22.18+ on the same computer; no Tobub Cloud account is required. The package explains the distinct roles of the Agent Skill, local API connection and native Tobub Skill JSON.
+
 ## Open Skills. Closed execution product.
 
 This repository is the open **Skill layer** around Tobub. A Skill is a JSON definition consumed by compatible Tobub software. It is an executable product artifact, not a standalone application.

@@ -1,0 +1,9 @@
+interface:
+  display_name: "Tobub"
+  short_description: "Use local Tobub automation and create reusable Tobub Skills"
+  default_prompt: "Use $tobub to complete my local automation task, reusing or creating a native Tobub Skill when appropriate."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "tobub"
+      description: "Local Tobub Runtime connection; configure the bundled stdio MCP launcher as described in INSTALL.md."

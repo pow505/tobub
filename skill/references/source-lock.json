@@ -1,0 +1,483 @@
+{
+  "schema_version": 1,
+  "runtime_version": "1.8.1",
+  "ui_catalog_hash": "10d3b3334da85bdd021f5bd3e0ae5864747ca1d7f3e6df9caf74e731714798fb",
+  "capability_count": 163,
+  "demo_count": 26,
+  "sources": [
+    {
+      "project": "sdk",
+      "path": "package.json",
+      "sha256": "67b4fe8dacf8bd67f40fdff2f57f4dff224ef06c1372e340b4a921599a8bcaf3"
+    },
+    {
+      "project": "sdk",
+      "path": "src/interfaces/http/ApiContracts.generated.ts",
+      "sha256": "ec3e05bd21d7f683fc6d86e44e77dde822c997527eb259576b2f7bed299a03f6"
+    },
+    {
+      "project": "sdk",
+      "path": "pnpm-lock.yaml",
+      "sha256": "d5cdebda4a3258392d416d8934651e3a397ff54d77dea064dda2a366cd1b452c"
+    },
+    {
+      "project": "sdk",
+      "path": "docs/api.md",
+      "sha256": "6e33914dfda2e393d2e4eb697d43aec9879bf0d451e953603cd0f9ade7ec5746"
+    },
+    {
+      "project": "repository",
+      "path": "LICENSE",
+      "sha256": "c63a2714924e8cfb3c09016148a099afc3c1a7a8b38325aa041a92e644892d7e"
+    },
+    {
+      "project": "sdk",
+      "path": "src/interfaces/mcp/RuntimeMcpTools.ts",
+      "sha256": "2c5b0ec7dcb6cada6822b102d89ce0a6a66d06624b3b0d5765cefd9d419a826b"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/execution/SkillRuntimeCapabilityManifest.ts",
+      "sha256": "ee4d31ae60b18b08a6db0d182a0e6f59ca7d13ef84d16651e47d8c27895f9aee"
+    },
+    {
+      "project": "sdk",
+      "path": "scripts/build-agent-skill.ts",
+      "sha256": "d7d8734f3b1c81d759a2ae5709acd98cdd1458c3b470eafa6c2cccae141e694a"
+    },
+    {
+      "project": "sdk",
+      "path": "scripts/agent-skill-signatures.ts",
+      "sha256": "cfb2a0ada7e22a3d4baf7933bf7aeb05ae2a7f380642d039fa991fa84d73b1cc"
+    },
+    {
+      "project": "sdk",
+      "path": "src/interfaces/mcp/RuntimeMcpServer.ts",
+      "sha256": "1ad09e5052acf7cb9fa0094ab8510ff7118b9e80db4e0497897b62682a8df37d"
+    },
+    {
+      "project": "sdk",
+      "path": "src/adapters/http/LocalRuntimeApiClient.ts",
+      "sha256": "95fc3f38b81a18118be244d26ea57c7f77a58dd603f01391d61f7a59ae94df56"
+    },
+    {
+      "project": "sdk",
+      "path": "src/main/AgentMcpLauncher.ts",
+      "sha256": "050883ed2311291e4143e18714a707b03bac80aa4f18a1a80361ebe7eb675fe1"
+    },
+    {
+      "project": "sdk",
+      "path": "src/runtime/composition/BuildAgentMcp.ts",
+      "sha256": "a6c5dee8389555e053d3efba156f06445396064bdc33d0eeccd02f178310cbdc"
+    },
+    {
+      "project": "sdk",
+      "path": "src/ports/runtime/RuntimeApiPort.ts",
+      "sha256": "dc62c88ca41f9b4b043d771af86d3ac282ac9c28fdb5f35a16646c46928b5bfe"
+    },
+    {
+      "project": "sdk",
+      "path": "src/shared/errors/RuntimeApiError.ts",
+      "sha256": "b7b1558701bad208ef3ebe575e53b97c800d2ac2306c39d0d54e2a9df179f99f"
+    },
+    {
+      "project": "ui",
+      "path": "scripts/generate-snippet-catalog.mjs",
+      "sha256": "27a078822e848c869a2622cd9ec8f5ac542cc552c4fdfb6a02bb046e5bcee0b0"
+    },
+    {
+      "project": "ui",
+      "path": "scripts/snippet-demos.json",
+      "sha256": "2609744c116b5d2df6c57e76ce1236c11c1de2432c43a1f5db38d8f25817b6ee"
+    },
+    {
+      "project": "ui",
+      "path": "scripts/snippet-catalog-policy.mjs",
+      "sha256": "f06e341f34fb3062cb4e00f984dcdc425856f6d178ace309567217e445c8f157"
+    },
+    {
+      "project": "ui",
+      "path": "src/locales/lang/en-US/snippets.json",
+      "sha256": "22de0323920ebf612d3c3b97b3ddf855f2e1117a817d8255965ef074c8b99f60"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/domain/Domain.type.ts",
+      "sha256": "85575e63bff358f1ebdb5ad295388559ec968bde9ee3582752c872c0cf155f68"
+    },
+    {
+      "project": "sdk",
+      "path": "src/runtime/composition/BuildDbCapabilities.ts",
+      "sha256": "4c046787ed0c44f74fb9ddd62ec13576b59a67f31083dcfa7c4d9bb26f66e8e5"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/rule/Rule.type.ts",
+      "sha256": "0a3064c0228a7fd1ac78a9fb095e83ff7729c81f8e0e06ad646e3b85c12c149b"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/extraction/FieldSpec.ts",
+      "sha256": "7085dca5a457ab230a5e8515276be0695c9a650a55b5c3b3bb6d7d7a43bc99ae"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/filter/Filter.type.ts",
+      "sha256": "aaa64c39141da3a2fb8fdd8df0d380b5ce5e3fc6d94cccb85d80ea71fd09efbd"
+    },
+    {
+      "project": "sdk",
+      "path": "src/shared/types/Common.type.ts",
+      "sha256": "663e60e59c88c2a9ec8bed4f8f13b4674813421f01e443dbafd5e05ba1bab784"
+    },
+    {
+      "project": "sdk",
+      "path": "src/modules/platform/Platform.type.ts",
+      "sha256": "45bc8d109ea35e4228e9b9f7d95ba3e4163f9c885e4ba27080915091c6aaddf8"
+    },
+    {
+      "project": "sdk",
+      "path": "src/adapters/persistence/sqlite/dao/PlatformDao.ts",
+      "sha256": "a6362f2710653a79d9510b405cf37b0989447f1d176d0ef19c0bef7a75321b78"
+    },
+    {
+      "project": "sdk",
+      "path": "src/modules/rule/Rule.type.ts",
+      "sha256": "feea90991f7ebfb61b7820b450b6d008732a6d0f3175896d4b1391f1ceca8377"
+    },
+    {
+      "project": "sdk",
+      "path": "src/adapters/persistence/sqlite/dao/RuleDao.ts",
+      "sha256": "20478d4f31f5ca6559bfa78eb1ef279491673f21e3fdec5acd727ef455af0231"
+    },
+    {
+      "project": "sdk",
+      "path": "src/modules/action/Action.type.ts",
+      "sha256": "e20c21ade87339b0e9e495d8c8ac11db600bc7793abaf0e6596498dd8451946d"
+    },
+    {
+      "project": "sdk",
+      "path": "src/adapters/persistence/sqlite/dao/ActionTypeDao.ts",
+      "sha256": "a09c6507de2fb4a5a8f07fb5f6663afebec2f61e38cf96681e831a1ac5581bf8"
+    },
+    {
+      "project": "sdk",
+      "path": "src/modules/account/Account.type.ts",
+      "sha256": "aa75b4d01d8670cb716fc41bee996fdb9686a2c1191370162c20dbceeb89c046"
+    },
+    {
+      "project": "sdk",
+      "path": "src/adapters/persistence/sqlite/dao/AccountDao.ts",
+      "sha256": "d3e5227b72771066d2d241d43983c3088bd351cf49eb019ab890da8b2dec6458"
+    },
+    {
+      "project": "sdk",
+      "path": "src/modules/statistics/Statistics.type.ts",
+      "sha256": "5f331e034778ba5e56ea77c8b29846a9d705c125da4e1373c3b1ceaaba1181d9"
+    },
+    {
+      "project": "sdk",
+      "path": "src/adapters/persistence/sqlite/dao/StatisticsDao.ts",
+      "sha256": "03b1e91230386691f74bd2cd917ceecd9bf7f6303654bcf0a0834156aec6d6db"
+    },
+    {
+      "project": "sdk",
+      "path": "src/modules/session/Session.type.ts",
+      "sha256": "7eaa5ad9e6dc812b8723fc36a6951fe7b28356771bce388aff4ebeb00ff5aa9a"
+    },
+    {
+      "project": "sdk",
+      "path": "src/adapters/persistence/sqlite/dao/SessionDao.ts",
+      "sha256": "d4c1243d8600d2d73c2d106ada1aee58bd8b17de16cc9aaa5e5dc7ca22330ac3"
+    },
+    {
+      "project": "sdk",
+      "path": "src/modules/content/Content.type.ts",
+      "sha256": "a206013496b6b2be6e765e2ab489c939d3c83e2cb61a0c713cf3bcd9b805425c"
+    },
+    {
+      "project": "sdk",
+      "path": "src/adapters/persistence/sqlite/dao/ContentDao.ts",
+      "sha256": "16b34229fe38736767e00c580d526b752afce31babd8d0e8f02f0abea3f032c5"
+    },
+    {
+      "project": "sdk",
+      "path": "src/modules/report/Report.type.ts",
+      "sha256": "e88d230325e3220fad5bfd97ed8c52068464b9bd26f7ab5fb4880bdc16f6c6b7"
+    },
+    {
+      "project": "sdk",
+      "path": "src/adapters/persistence/sqlite/dao/ActionDao.ts",
+      "sha256": "4bbd1e41a3be2483b7f46c56e07580cc21ab28a4557d8982b244ff36887b6848"
+    },
+    {
+      "project": "sdk",
+      "path": "src/adapters/persistence/sqlite/dao/ReportDao.ts",
+      "sha256": "c4e88ad976725996f421cf25614da4556fe8842e0d4676d880d358da9a0cb0ec"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/extraction/ExtractItemAtom.ts",
+      "sha256": "4360faa9c12e2f2ddced910b1ce44c837ad9fc2e78a8b3e2c6a820dcbf4c2274"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/extraction/ExtractListAtom.ts",
+      "sha256": "7b0f1a6bb7569aad2d032fdb40db138fdd21b2c2461a91e8b504d7ec2bb09f38"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/extraction/ScriptExtractionAtoms.ts",
+      "sha256": "f215b0fe909fd4e540666fd4f030d540b7b12037be67c854d5e46b61cf8a6269"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/humanize/RandomUtils.ts",
+      "sha256": "7a3b944b6399b742bd4327f13e5455d8e5969f0067a68c766216f17e289faad7"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/index.ts",
+      "sha256": "6d389d38e28749c06c895b1605e83f2faad93a1d798a26212f2e8395091b708d"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/keyboard/ClipboardAtom.ts",
+      "sha256": "5174e5f4c7e22ebd54a1e6ad98a1e43aa4c3ff6d43d65e0e374974dd5cbe49c3"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/keyboard/EditShortcutAtom.ts",
+      "sha256": "de764d534025442aa14da74aa438af95ae1faba7f7879c886b11c62e458d883b"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/keyboard/FillAtom.ts",
+      "sha256": "4b045325b4f2636736f8218b2be051e7491370282b5b2883648e96703ef9476a"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/keyboard/PressAtom.ts",
+      "sha256": "38158d6f77ed0e7a9d83b75eca6217b08411631d60947e027736ae7e1358ecf0"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/keyboard/SelectAtom.ts",
+      "sha256": "85d99f5460404124c6faac61d03fe51b036a701c9dd17e568af51c6c2efd3945"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/keyboard/UploadAtom.ts",
+      "sha256": "bffbea8aa77de60061940201d1730a8d751918bb39041c9bdde22d4a1784035e"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/mouse/ClickAtAtom.ts",
+      "sha256": "e6eae7e9a1a2e28421d1f6a14c0d19ef17a823e157bc89a63be760b248d26923"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/mouse/ClickAtom.ts",
+      "sha256": "4fc5f2ecef1c88285f6214ab5935dd216c2414b66ccb90f5732b5dd9caf68579"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/mouse/DragAtom.ts",
+      "sha256": "9c78467dbcd3f982c91da50b2ce331a4c42240a06b4b425bb4c218655b2cf23a"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/mouse/HoverAtom.ts",
+      "sha256": "a98af0d2a647d3405d79ce19606925174f66cd8cd01e3d23e987802a97b3b267"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/mouse/ScrollAtom.ts",
+      "sha256": "5206e1bebefa0e1c9d9182ea2564bd32c64fd9c8bbe38374f008986d6c98c149"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/mouse/SwipeAtom.ts",
+      "sha256": "0d427d18c2697edb91c772ee5424e2ff46e316cbcff530a26b27d80977dc658e"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/network/NetworkSessionAtoms.ts",
+      "sha256": "2baead472f64489734fa45cfba3f818e116fe4f9be87c2befe708cc633af9970"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/network/RequestAtom.ts",
+      "sha256": "cc6079fb366468650aa0203cdac4b64fea850b3a4cd70aa9f09eaf78c25933a3"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/page/ConditionAtom.ts",
+      "sha256": "6a6dc6a56b9c0da7a7f90709b1718623d49ca466f9db72c36ce0936dd8d3f341"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/page/DismissAtom.ts",
+      "sha256": "26c509f76c6d61bafa3750837a2df5952d09e1065f0f3eff245cc753e383278a"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/page/EvaluateAtom.ts",
+      "sha256": "ae313d52aaaab72e3ac06c33ac9554da06004d3e8b1a0b8cbec8bfbe86955410"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/page/NavigateAtom.ts",
+      "sha256": "7b36c64c1099f49b60c36180b811bef3728a316195b176fa7dbff2c3d2d12b59"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/page/RefreshAtom.ts",
+      "sha256": "6896e81bcb5cc549a16863b928485c60b05b835033c6af7af2a09b63a4730419"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/page/ScreenshotAtom.ts",
+      "sha256": "68ef096df0bc2e5f465f549566cc134d9fdcab2abddcc9909a4043d156e08e61"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/page/WaitForAtom.ts",
+      "sha256": "d136ac30b82d601fe051ef96f735b812d7e62df4bb188d06d8c1d39d4f894630"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/registry/AtomRegistry.ts",
+      "sha256": "1b27aac252ddb88bb9e8408c88a2dc3a3159b7b9a1a72373ae3b50f3903dc4c3"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/registry/AtomRegistry.type.ts",
+      "sha256": "0b7c9d2ddb6fb874e79d11c2810fb539638360388a2d31b97b2e1e8941b34413"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/registry/AtomSchemas.ts",
+      "sha256": "fa2581852a5ec4e3207af558e4dd140d2d790a43da48fa067113190bf551f71e"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/shared/LocatorUtils.ts",
+      "sha256": "76a1ab7838a2f9002241f9e3a02d95b163d360ea3ccc0b663aab442c69b219ea"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/shared/Range.ts",
+      "sha256": "d46438778ee73c7a68ffd71937c8cd059e31f3b060ed1b53c5a1de36fafa6f89"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/atom/shared/ViewportGeometry.ts",
+      "sha256": "bd46e8e7472f94f862784c2257948c170cb38a233316fcacfb8a6274406c67ca"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/ai/contracts/AiMethodCall.ts",
+      "sha256": "2d2caa0fb60ae8a41693400c6bfde3d27d88eb92eba2135bd8fd487f6bfc6e1e"
+    },
+    {
+      "project": "sdk",
+      "path": "src/kernel/ai/contracts/AiMethodContract.ts",
+      "sha256": "6c130af41ac65c6dc3d9f77200eaa85a1b1ecee846c846f002a864d8466d1eaa"
+    }
+  ],
+  "resources": [
+    {
+      "path": "INSTALL.md",
+      "sha256": "8d33bf2e051bc9c10280aa58851a7fcdd0df4941dcc55b8fb06f38118e640630"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "c63a2714924e8cfb3c09016148a099afc3c1a7a8b38325aa041a92e644892d7e"
+    },
+    {
+      "path": "SKILL.md",
+      "sha256": "1c99808427471c1716e16c8826cbe5209dd468f53b8b5fb2fdd975f9121ba507"
+    },
+    {
+      "path": "agents/openai.yaml",
+      "sha256": "e1124068948d5047a68c625f580447b920ad60970a9dc1a2a9aa1a07693c9d49"
+    },
+    {
+      "path": "references/authoring.md",
+      "sha256": "cd6d1e0f20bbb75dbcc16eb4b10eaf7fdeeec292097eadfe64e74096370e5249"
+    },
+    {
+      "path": "references/capability-catalog.json",
+      "sha256": "63c78704f8dfbedf4d73843a12bc487fc9a5febd9143a9c9c45693faf255f30c"
+    },
+    {
+      "path": "references/collection-quality.md",
+      "sha256": "e30d15bbeea4b842e7a3062e7a44ebcd93a6325922a8f13ffed9f0ed2dd0a7a3"
+    },
+    {
+      "path": "references/demos-index.json",
+      "sha256": "797cd815f8e42c53f0e68d7d1bb8a7ff83c287354ec544e054c358a0617bf1d0"
+    },
+    {
+      "path": "references/execution.md",
+      "sha256": "4d88233dddd627ec2a2543ec2ecbfd1a15dd9dfb087aa2f2ddb45ea9996a6e12"
+    },
+    {
+      "path": "references/exploration.md",
+      "sha256": "6686fc93b3d5051d4003d0c113dcbf461d8fbe59d02b9e1e3810447031980912"
+    },
+    {
+      "path": "references/native-skills.md",
+      "sha256": "6b4f0ea79e5b70680bc0972bf6c5d371791c200d031b37d333799dcc8d2e8e8f"
+    },
+    {
+      "path": "references/profiles.md",
+      "sha256": "b65521db63cdf3676df484beb2975b39fee4c1dc7e48f3bd9205136d1018f75a"
+    },
+    {
+      "path": "references/rules.md",
+      "sha256": "e5e02f791c10965adcfa192c346202c112483584781f332f25a6e846b994e4e5"
+    },
+    {
+      "path": "references/runtime-api.md",
+      "sha256": "2221c1cb20497d973206145012ca8b9b539c621bd4a511616232d6938aea2d9b"
+    },
+    {
+      "path": "references/runtime-tools.json",
+      "sha256": "c3b6a57e3c1941c9a880df0c9e2493ddbb483d0e8ec9487aba72bc0c4a7c77c8"
+    },
+    {
+      "path": "references/sdk-types.md",
+      "sha256": "cecf82f3f9874f776e8a44a29b7fc7f2e4c182e7b4ea64787997cbea090bebaa"
+    },
+    {
+      "path": "references/third-party-licenses.json",
+      "sha256": "a367bec1a87f49055b6aeeadb7e63a9afbac21bcdd674a7191f9203236d4a67f"
+    },
+    {
+      "path": "scripts/demo-resources.mjs",
+      "sha256": "c37c020337a2418724218ca53a317d75d247715091842bfa8bad1cf6e1692231"
+    },
+    {
+      "path": "scripts/install.mjs",
+      "sha256": "66e4168b0ffc8a9e5e02e7a08dd78b3c41cbc80fe66e6c46312943a9001a799f"
+    },
+    {
+      "path": "scripts/registration-command.mjs",
+      "sha256": "bdc4a8044a364413f2a55634273e2bbb8d2139415c9e3836b2f861115ce1e46c"
+    },
+    {
+      "path": "scripts/runtime-mcp.mjs",
+      "sha256": "e558ffe08fa4918a1b2b9d92d85b11b7816b2dceffb704208b6b207b2783da79"
+    },
+    {
+      "path": "scripts/search-capability.mjs",
+      "sha256": "cacf37f3092840dc154bf36ca8cd5581d448b64ae726361db9d1e120a7f333bb"
+    },
+    {
+      "path": "scripts/verify-package.mjs",
+      "sha256": "abea438ebcdb6863e8172d3177e088a23a71c0d431c9682b15dd7fa03b28768d"
+    }
+  ]
+}

@@ -1,0 +1,4746 @@
+{
+  "schema_version": 1,
+  "tools": [
+    {
+      "name": "tobub_runtime_health",
+      "description": "Check whether the local desktop Runtime is alive.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "description": "Optional Runtime query fields; see the generated runtime-api reference."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_runtime_version",
+      "description": "Read the actual Runtime version before using bundled syntax.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "description": "Optional Runtime query fields; see the generated runtime-api reference."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_runtime_capabilities",
+      "description": "Read live AI method schemas and Runtime capability descriptions. This is not the complete Atom catalog.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "description": "Optional Runtime query fields; see the generated runtime-api reference."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_skill_catalog",
+      "description": "Discover Skills explicitly enabled for external AI. Supports pagination.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "description": "Optional Runtime query fields; see the generated runtime-api reference."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_skill_contract",
+      "description": "Read an AI-enabled Skill invocation contract before running it.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "description": "Optional Runtime query fields; see the generated runtime-api reference."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_skill_list",
+      "description": "Search local declarations for an explicitly requested authoring or management task. This does not enable external AI invocation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_skill_get",
+      "description": "Read a declaration for authoring or inspection. Use source_type/editable; remote declarations do not expose code.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "description": "Optional Runtime query fields; see the generated runtime-api reference."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_skill_check",
+      "description": "Compile-only validation of a candidate save body. Never executes code, starts a browser or saves it.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_skill_create",
+      "description": "Save a new local Skill. code is plain JavaScript, not Base64. Check the candidate first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_skill_update",
+      "description": "Update an editable local Skill requested by the user. Check the complete candidate first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_skill_install_check",
+      "description": "Validate a Tobub installation package and report its dependency/install plan. This is different from a save body.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_skill_install",
+      "description": "Install an explicitly requested local Tobub package and its dependency plan.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_skill_ai_contract_save",
+      "description": "Set an external AI catalog summary, scope, instructions and enabled flag only when the user requests AI exposure.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_skill_execution_config_save",
+      "description": "Save user-owned execution overrides. Does not run the Skill.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_skill_run",
+      "description": "Start a local saved Skill. Requires skill_id and execution.agent_id (string or null). For a visible browser, set body.browser.headless to false. Read its contract; code override is not exposed by this tool. Returns acceptance, not completion.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "skill_id",
+              "execution"
+            ],
+            "properties": {
+              "skill_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "run_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "timeout_ms": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "params": {
+                "type": "object"
+              },
+              "browser": {
+                "type": "object",
+                "description": "Runtime browser overrides. Set headless to false to show the browser window.",
+                "properties": {
+                  "headless": {
+                    "type": "boolean",
+                    "description": "false opens a visible browser window."
+                  }
+                },
+                "additionalProperties": true
+              },
+              "execution": {
+                "type": "object",
+                "required": [
+                  "agent_id"
+                ],
+                "properties": {
+                  "agent_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "tobub_skill_run_status",
+      "description": "Poll a known run_id until a terminal state. A missing run after restart is not proof of success.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "runId"
+            ],
+            "properties": {
+              "runId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "description": "Optional Runtime query fields; see the generated runtime-api reference."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_skill_cancel",
+      "description": "Request cancellation of a known run_id, then poll until terminal. A true acknowledgement is not completed cleanup.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_skill_history",
+      "description": "Read persisted execution history and outputs after completion or Runtime restart.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_skill_delete",
+      "description": "Delete the explicitly selected Skill and dependent local records; inspect effects before proceeding.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_platform_list",
+      "description": "List locally configured platforms and their stable identifiers.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_account_list",
+      "description": "List account identifiers and runnable Profile summaries. Secret/extra data is omitted.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_profile_list",
+      "description": "List Profile identity and authentication status; browser configuration is omitted.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_plugin_list",
+      "description": "Inspect installed local plugin declarations before using required plugin capabilities.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_plugin_get",
+      "description": "Read one installed plugin declaration and its capability contract.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "description": "Optional Runtime query fields; see the generated runtime-api reference."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_rule_current",
+      "description": "Read the current published platform Rule. Never infer Rule method names from another platform.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "platform"
+            ],
+            "properties": {
+              "platform": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "description": "Optional Runtime query fields; see the generated runtime-api reference."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_rule_list",
+      "description": "Read platform Rule versions; select the Skill-bound published version when present.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "platform"
+            ],
+            "properties": {
+              "platform": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_rule_check",
+      "description": "Validate an explicit Rule candidate without publishing it.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "platform"
+            ],
+            "properties": {
+              "platform": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_rule_save",
+      "description": "Save an explicitly requested Rule draft; this does not publish it.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "platform"
+            ],
+            "properties": {
+              "platform": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_rule_publish",
+      "description": "Publish the selected validated Rule draft. Explicit activate_current is required: false publishes without changing platform current; true requires the user to request that platform-wide change.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "uuid"
+            ],
+            "properties": {
+              "uuid": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "activate_current"
+            ],
+            "properties": {
+              "activate_current": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "required": [
+          "path",
+          "body"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_rule_select",
+      "description": "Change platform current Rule only when the user explicitly requests the platform-wide change.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_recording_start",
+      "description": "Open a recording browser for user demonstration. Do not assume recording grants permission to submit website actions.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "tobub_recording_get",
+      "description": "Read redacted recording status and evidence.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "description": "Optional Runtime query fields; see the generated runtime-api reference."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_recording_stop",
+      "description": "Stop recording while retaining evidence for deterministic compilation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_recording_pause",
+      "description": "Pause evidence collection.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_recording_resume",
+      "description": "Resume evidence collection.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_recording_cancel",
+      "description": "Cancel the requested recording and release its browser.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_recording_compile",
+      "description": "Compile completed recording evidence into a candidate; does not save or run it.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_skill_author_proposal",
+      "description": "Optional: use the locally configured Tobub AI scene for an editable proposal. Requires a configured model Profile, may send evidence to its provider, and never saves the proposal.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "tobub_schedule_list",
+      "description": "List local scheduled tasks.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_schedule_create",
+      "description": "Create a recurring local task only when the user explicitly requests recurrence.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "tobub_schedule_update",
+      "description": "Update an explicitly selected local schedule. Include body.skill_id (the existing ID if unchanged) so the bridge can validate its local source; other fields are partial updates.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "tobub_schedule_delete",
+      "description": "Delete an explicitly selected local schedule.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_data_collections",
+      "description": "List datasets produced by a known execution session.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sessionId"
+            ],
+            "properties": {
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "description": "Optional Runtime query fields; see the generated runtime-api reference."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_data_collection_get",
+      "description": "Inspect a dataset and its output metadata.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sessionId",
+              "collectionId"
+            ],
+            "properties": {
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              },
+              "collectionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "description": "Optional Runtime query fields; see the generated runtime-api reference."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_data_records",
+      "description": "Read a bounded page of locally collected data.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sessionId",
+              "collectionId"
+            ],
+            "properties": {
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              },
+              "collectionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "description": "Optional Runtime query fields; see the generated runtime-api reference."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_discover_create",
+      "description": "Create a bounded Discover workspace for a user-requested unknown goal. Optional configured AI provider; distinct from generating a reusable Skill.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "tobub_discover_list",
+      "description": "List Discover workspaces.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "description": "Optional Runtime query fields; see the generated runtime-api reference."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_discover_get",
+      "description": "Read a workspace and its active Run.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "description": "Optional Runtime query fields; see the generated runtime-api reference."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_discover_run",
+      "description": "Start bounded exploration with expected_session_version and idempotency_key. Discover completes a task and records evidence; it never generates a Skill.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "tobub_discover_run_status",
+      "description": "Read exploration progress, waiting state and pending action.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "run_id"
+            ],
+            "properties": {
+              "run_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "description": "Optional Runtime query fields; see the generated runtime-api reference."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_discover_pause",
+      "description": "Pause an exploration and release its active resources.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "run_id"
+            ],
+            "properties": {
+              "run_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_discover_resume",
+      "description": "Resume a user-requested exploration from a fresh observation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "run_id"
+            ],
+            "properties": {
+              "run_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "tobub_discover_cancel",
+      "description": "Cancel a known exploration and release resources.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "run_id"
+            ],
+            "properties": {
+              "run_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_discover_approve",
+      "description": "Approve only the exact pending action_hash the user authorized. Never approve automatically merely because a tool is available.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "run_id"
+            ],
+            "properties": {
+              "run_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "tobub_discover_reject",
+      "description": "Reject the exact pending action_hash.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "run_id"
+            ],
+            "properties": {
+              "run_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_discover_input",
+      "description": "Supply requested non-sensitive business input. User credentials remain manual.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "run_id"
+            ],
+            "properties": {
+              "run_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_discover_takeover",
+      "description": "Record that the user is taking browser control; requires request_id.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "run_id"
+            ],
+            "properties": {
+              "run_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_discover_release",
+      "description": "Return browser control after the user finishes; requires request_id.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "run_id"
+            ],
+            "properties": {
+              "run_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Exact snake_case Runtime JSON body. Read this operation in references/runtime-api.md before first use.",
+            "examples": []
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_discover_artifacts",
+      "description": "Read immutable exploration_result artifacts from an explicitly selected completed Run.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "description": "Optional Runtime query fields; see the generated runtime-api reference."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "tobub_discover_events",
+      "description": "Read bounded, ordered evidence for an explicitly selected workspace/Run.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^/\\\\?#]+$"
+              }
+            }
+          },
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "description": "Optional Runtime query fields; see the generated runtime-api reference."
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "outcome_unknown"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "outcome_unknown": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "integer"
+              },
+              "details": {}
+            },
+            "additionalProperties": false
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "data"
+            ]
+          },
+          {
+            "required": [
+              "error"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    }
+  ]
+}

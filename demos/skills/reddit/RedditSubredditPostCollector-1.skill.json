@@ -1,0 +1,203 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:reddit-subreddit-post-collector@1",
+  "package_version": "1",
+  "source": "user",
+  "created_at": "2026-10-19T13:34:38.299Z",
+  "requirements": {
+    "platform": "none",
+    "rule": "none"
+  },
+  "skill": {
+    "market_skill_id": "reddit-subreddit-post-collector",
+    "release_id": "reddit-subreddit-post-collector",
+    "name": "Reddit Subreddit Post Collector",
+    "skill_version": "1",
+    "source_type": "local",
+    "skill_code": "const subreddit = String(tobub.params.subreddit ?? '').trim();\nconst maxItems = tobub.params.max_items ?? 20;\nif (!/^[A-Za-z0-9_]{2,21}$/.test(subreddit)) throw new Error('subreddit must be a Reddit name without the r/ prefix (2–21 letters, digits, or underscores).');\nif (!Number.isInteger(maxItems) || maxItems < 1 || maxItems > 50) throw new Error('max_items must be an integer from 1 to 50.');\nconst sourceUrl = 'https://www.reddit.com/r/' + subreddit + '/new/';\nconst itemSelector = 'shreddit-post[view-context=\"SubredditFeed\"]';\nawait tobub.atoms.navigate({ url: sourceUrl, waitUntil: 'domcontentloaded' });\nconst ready = await tobub.atoms.condition({ type: 'count', selector: itemSelector, comparison: 'gte', value: 1, throwOnTimeout: false }, { timeout: 12000 });\nconst pageTitle = (await tobub.atoms.evaluate({ expression: 'document.title' })).value;\nif (!ready.satisfied) return { status: 'empty', target: subreddit, source_url: sourceUrl, page_title: pageTitle, matched: 0, collected: 0, failed: 0, records: [], collection: null };\nconst extracted = await tobub.atoms.extractList({ itemSelector, idField: 'id', dedupe: 'field', maxItems, errorPolicy: 'skip', includeErrors: true, fields: [\n  { name: 'id', source: { attr: 'id' }, required: true },\n  { name: 'title', source: { attr: 'post-title' }, required: true },\n  { name: 'author', source: { attr: 'author' }, fallback: null },\n  { name: 'community', source: { attr: 'subreddit-prefixed-name' }, fallback: null },\n  { name: 'score', source: { attr: 'score' }, parse: 'number', fallback: null },\n  { name: 'comment_count', source: { attr: 'comment-count' }, parse: 'number', fallback: null },\n  { name: 'created_at', source: { attr: 'created-timestamp' }, fallback: null },\n  { name: 'permalink', source: { attr: 'permalink' }, transforms: [{ type: 'absoluteUrl', baseUrl: 'https://www.reddit.com' }], required: true },\n  { name: 'post_type', source: { attr: 'post-type' }, fallback: null }\n] }, { timeout: 12000 });\nconst records = extracted.records.map(record => ({ ...record.fields, ...(record.jsonFields ?? {}) }));\nconst collection = records.length ? await tobub.data.save(records.map(record => ({ type: 'reddit-post', id: record.id, payload: record, meta: { subreddit, source_url: sourceUrl } })), { name: 'reddit-subreddit-posts', mode: 'event', outputs: [{ type: 'file', format: 'jsonl' }], policy: { maxRecords: maxItems, maxBytes: 2097152 } }) : null;\nreturn { status: extracted.failedCount ? 'partial' : records.length ? 'ok' : 'empty', target: subreddit, source_url: sourceUrl, page_title: pageTitle, matched: extracted.domCount, collected: records.length, failed: extracted.failedCount, records, collection };",
+    "platform": null,
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "subreddit": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 21,
+          "pattern": "^[A-Za-z0-9_]{2,21}$",
+          "description": "Public subreddit name, without the r/ prefix."
+        },
+        "max_items": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 20,
+          "description": "Maximum number of posts to collect from the currently rendered feed."
+        }
+      },
+      "required": [
+        "subreddit"
+      ],
+      "additionalProperties": false
+    },
+    "output_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "target",
+        "source_url",
+        "page_title",
+        "matched",
+        "collected",
+        "failed",
+        "records",
+        "collection"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "partial",
+            "empty"
+          ]
+        },
+        "target": {
+          "type": "string"
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "page_title": {
+          "type": "string"
+        },
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "collected": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "title",
+              "author",
+              "community",
+              "score",
+              "comment_count",
+              "created_at",
+              "permalink",
+              "post_type"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "author": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "community": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "score": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "comment_count": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "created_at": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "permalink": {
+                "type": "string",
+                "format": "uri"
+              },
+              "post_type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        }
+      }
+    },
+    "ui_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "subreddit",
+          "label": "Subreddit",
+          "type": "input",
+          "required": true,
+          "default": "technology",
+          "placeholder": "technology",
+          "help": "Public subreddit name without the r/ prefix."
+        },
+        {
+          "key": "max_items",
+          "label": "Maximum posts",
+          "type": "number",
+          "default": 20,
+          "min": 1,
+          "max": 50,
+          "step": 1,
+          "help": "Hard cap; only posts already rendered on the page are collected."
+        }
+      ]
+    },
+    "requirements": {},
+    "defaults": {
+      "params": {
+        "subreddit": "technology",
+        "max_items": 20
+      },
+      "browser": {
+        "run_mode": "transient",
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "atoms-only"
+      }
+    },
+    "metadata": {}
+  }
+}
