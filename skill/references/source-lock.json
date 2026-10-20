@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
-  "runtime_version": "1.8.1",
-  "ui_catalog_hash": "10d3b3334da85bdd021f5bd3e0ae5864747ca1d7f3e6df9caf74e731714798fb",
+  "runtime_version": "1.8.2",
+  "ui_catalog_hash": "a894880090ada5aee3caf3606edd8f5d3a0e3771ed3c020e6617fd778321f672",
   "capability_count": 163,
   "demo_count": 26,
   "sources": [
     {
       "project": "sdk",
       "path": "package.json",
-      "sha256": "67b4fe8dacf8bd67f40fdff2f57f4dff224ef06c1372e340b4a921599a8bcaf3"
+      "sha256": "051cc426b1d625620d33580844f0aad2557d365b12d959171f1ddb937b00ec31"
     },
     {
       "project": "sdk",
@@ -409,7 +409,7 @@
     },
     {
       "path": "references/capability-catalog.json",
-      "sha256": "63c78704f8dfbedf4d73843a12bc487fc9a5febd9143a9c9c45693faf255f30c"
+      "sha256": "e879e24657903be58f6b871fb47e44f5f08d0c71f9c991c487ebb1fd92de9745"
     },
     {
       "path": "references/collection-quality.md",
@@ -417,7 +417,7 @@
     },
     {
       "path": "references/demos-index.json",
-      "sha256": "797cd815f8e42c53f0e68d7d1bb8a7ff83c287354ec544e054c358a0617bf1d0"
+      "sha256": "fe3fb3b312150062c6cf63d5c75555a1f6c16db856b6ec3c5137108bb0047cf8"
     },
     {
       "path": "references/execution.md",

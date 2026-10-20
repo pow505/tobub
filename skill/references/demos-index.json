@@ -5,13 +5,13 @@
     {
       "package_id": "user:user_1786714137833_0sody7@1",
       "platform": "amazon",
-      "source_path": "demos/skills/amazon/AmazonFetchProductScraping-1.skill.json",
-      "file": "../demos/skills/amazon/AmazonFetchProductScraping-1.skill.json",
+      "source_path": "demos/amazon/AmazonFetchProductScraping-1.skill.json",
+      "file": "../demos/amazon/AmazonFetchProductScraping-1.skill.json",
       "sha256": "bea55c3e5fbc5db520cafd7f0e05dbc6750d3191e0b9d35efb4208a65b7e4450",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
+        "runtime_version": "1.8.2",
         "valid": true,
         "diagnostics": []
       },
@@ -43,15 +43,672 @@
       "side_effects": "not-reviewed; inspect code and called Rules before execution"
     },
     {
+      "package_id": "user:local_a46cb629-4b60-4746-9742-db04a9351492@1",
+      "platform": null,
+      "source_path": "demos/baidu/百度地图坐标多屏店铺采集-1.skill.json",
+      "file": "../demos/baidu/百度地图坐标多屏店铺采集-1.skill.json",
+      "sha256": "a30e3e758507698355104fdb4667643a382e9d5760358dbd60597e02d627f77b",
+      "status": "reference-only",
+      "validation": {
+        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
+        "runtime_version": "1.8.2",
+        "valid": true,
+        "diagnostics": []
+      },
+      "capabilities": [
+        "ai.locateObjects",
+        "atoms.click",
+        "atoms.clickAt",
+        "atoms.drag",
+        "atoms.evaluate",
+        "atoms.navigate",
+        "atoms.screenshot",
+        "atoms.waitFor",
+        "data.open",
+        "db.saveContent"
+      ],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "zoom": {
+            "type": "number"
+          },
+          "screenshotWaitSeconds": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "additionalProperties": true
+      },
+      "output_schema": {},
+      "has_platform": false,
+      "has_rule": false,
+      "side_effects": "not-reviewed; inspect code and called Rules before execution"
+    },
+    {
+      "package_id": "user:local_990560a6-28a7-40e4-aa40-8ace0bba3191@1",
+      "platform": "bilibili",
+      "source_path": "demos/bilibili/b站通过搜索获取视频列表-1.skill.json",
+      "file": "../demos/bilibili/b站通过搜索获取视频列表-1.skill.json",
+      "sha256": "dbce05f4182b19aad5c27064c5d51b9da0cd8b06146e46b0467e877e8eb09702",
+      "status": "reference-only",
+      "validation": {
+        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
+        "runtime_version": "1.8.2",
+        "valid": true,
+        "diagnostics": []
+      },
+      "capabilities": [
+        "adapter.extract",
+        "atoms.navigate",
+        "atoms.waitFor",
+        "db.saveContent"
+      ],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "count"
+        ],
+        "additionalProperties": true
+      },
+      "output_schema": {},
+      "has_platform": true,
+      "has_rule": true,
+      "side_effects": "not-reviewed; inspect code and called Rules before execution"
+    },
+    {
+      "package_id": "user:tobub-live-room-monitor@1.4.1",
+      "platform": null,
+      "source_path": "demos/douyin/抖音直播间持续监控研究器-1.4.1.skill.json",
+      "file": "../demos/douyin/抖音直播间持续监控研究器-1.4.1.skill.json",
+      "sha256": "4cc66c988c083982666192a8db511911eb33f77d3b30d46265c69e64f1480163",
+      "status": "reference-only",
+      "validation": {
+        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
+        "runtime_version": "1.8.2",
+        "valid": true,
+        "diagnostics": []
+      },
+      "capabilities": [
+        "browser.close",
+        "browser.open",
+        "data.open",
+        "db.saveContent",
+        "execution.runId.trim",
+        "monitor.start",
+        "observe.next",
+        "observe.start",
+        "observe.stop"
+      ],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "durationMs": {
+            "type": "number"
+          },
+          "maxEvents": {
+            "type": "number"
+          },
+          "minMessageLength": {
+            "type": "number"
+          },
+          "deduplicate": {
+            "type": "boolean"
+          },
+          "captureSecUid": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "url",
+          "durationMs",
+          "maxEvents",
+          "minMessageLength",
+          "deduplicate"
+        ],
+        "additionalProperties": true
+      },
+      "output_schema": {
+        "type": "object",
+        "required": [
+          "url",
+          "roomId",
+          "startedAt",
+          "endedAt",
+          "eventCount",
+          "storage",
+          "stats"
+        ],
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "roomId": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "endedAt": {
+            "type": "string"
+          },
+          "eventCount": {
+            "type": "integer"
+          },
+          "storage": {
+            "type": "object",
+            "required": [
+              "metadataContentItemId",
+              "metadataObservationId",
+              "dataCollectionId",
+              "detailFile"
+            ],
+            "properties": {
+              "metadataContentItemId": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "metadataObservationId": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "dataCollectionId": {
+                "type": "string"
+              },
+              "detailFile": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "stats": {
+            "type": "object",
+            "required": [
+              "duplicates",
+              "secUidResolved",
+              "decoderErrors",
+              "delivered",
+              "filtered",
+              "dropped"
+            ],
+            "properties": {
+              "duplicates": {
+                "type": "integer"
+              },
+              "secUidResolved": {
+                "type": "integer"
+              },
+              "decoderErrors": {
+                "type": "integer"
+              },
+              "delivered": {
+                "type": "integer"
+              },
+              "filtered": {
+                "type": "integer"
+              },
+              "dropped": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "has_platform": false,
+      "has_rule": false,
+      "side_effects": "not-reviewed; inspect code and called Rules before execution"
+    },
+    {
+      "package_id": "user:douyin-browse-videos@1.0.0",
+      "platform": "douyin",
+      "source_path": "demos/douyin/抖音自动化浏览视频-1.0.0.skill.json",
+      "file": "../demos/douyin/抖音自动化浏览视频-1.0.0.skill.json",
+      "sha256": "6ac4b283ffc275bec90be36e7a4c211326333f46ec26e8038cde3e082470b7c4",
+      "status": "reference-only",
+      "validation": {
+        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
+        "runtime_version": "1.8.2",
+        "valid": true,
+        "diagnostics": []
+      },
+      "capabilities": [
+        "adapter.bootstrap",
+        "adapter.dismissPopups",
+        "adapter.extract",
+        "adapter.navigate",
+        "atoms.refresh",
+        "atoms.swipeVideo",
+        "atoms.waitFor",
+        "db.saveContent",
+        "utils.chance",
+        "utils.randInt"
+      ],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "minutes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "minutes"
+        ],
+        "additionalProperties": true
+      },
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "records": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "records"
+        ],
+        "type": "object"
+      },
+      "has_platform": true,
+      "has_rule": true,
+      "side_effects": "not-reviewed; inspect code and called Rules before execution"
+    },
+    {
+      "package_id": "user:local_75045bc4-8816-4aeb-9e19-e0aee108cddc@1",
+      "platform": "douyin",
+      "source_path": "demos/douyin/抖音自动点赞助手-1.skill.json",
+      "file": "../demos/douyin/抖音自动点赞助手-1.skill.json",
+      "sha256": "5b35eac6094098abe727044dfdc7abe4a1fe84904f796f2edff7410de6729b45",
+      "status": "reference-only",
+      "validation": {
+        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
+        "runtime_version": "1.8.2",
+        "valid": true,
+        "diagnostics": []
+      },
+      "capabilities": [
+        "adapter.dismissPopups",
+        "adapter.navigate",
+        "atoms.click",
+        "atoms.condition",
+        "atoms.evaluate",
+        "atoms.scroll",
+        "atoms.waitFor",
+        "utils.chance",
+        "utils.randInt"
+      ],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "vid": {
+            "type": "string"
+          },
+          "probability": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "vid"
+        ],
+        "additionalProperties": true
+      },
+      "output_schema": {},
+      "has_platform": true,
+      "has_rule": true,
+      "side_effects": "not-reviewed; inspect code and called Rules before execution"
+    },
+    {
+      "package_id": "user:douyin-get-video-comments@1.0.0",
+      "platform": "douyin",
+      "source_path": "demos/douyin/抖音获取作品评论-1.0.0.skill.json",
+      "file": "../demos/douyin/抖音获取作品评论-1.0.0.skill.json",
+      "sha256": "e25a1b4603a9d492fa1acea51d881117dec7a5283bc5ca7c714740b03b0f600f",
+      "status": "reference-only",
+      "validation": {
+        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
+        "runtime_version": "1.8.2",
+        "valid": true,
+        "diagnostics": []
+      },
+      "capabilities": [
+        "adapter.dismissPopups",
+        "adapter.extract",
+        "adapter.navigate",
+        "atoms.condition",
+        "atoms.scroll",
+        "atoms.waitFor",
+        "db.saveContent",
+        "utils.chance",
+        "utils.randInt"
+      ],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "vid": {
+            "type": "string"
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "vid",
+          "count"
+        ],
+        "additionalProperties": true
+      },
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "records": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "videoId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "videoId",
+          "records"
+        ],
+        "type": "object"
+      },
+      "has_platform": true,
+      "has_rule": true,
+      "side_effects": "not-reviewed; inspect code and called Rules before execution"
+    },
+    {
+      "package_id": "user:douyin-search-videos@1.0.0",
+      "platform": "douyin",
+      "source_path": "demos/douyin/抖音获取搜索结果-1.0.0.skill.json",
+      "file": "../demos/douyin/抖音获取搜索结果-1.0.0.skill.json",
+      "sha256": "61c35078c0c83af35f050b6a42463c337178b4fa404246a09df3a933ffcaeaec",
+      "status": "reference-only",
+      "validation": {
+        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
+        "runtime_version": "1.8.2",
+        "valid": true,
+        "diagnostics": []
+      },
+      "capabilities": [
+        "adapter.dismissPopups",
+        "adapter.extract",
+        "atoms.click",
+        "atoms.navigate",
+        "atoms.scroll",
+        "atoms.waitFor",
+        "db.saveContent",
+        "utils.randInt"
+      ],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "searchKey": {
+            "type": "string"
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "searchKey",
+          "count"
+        ],
+        "additionalProperties": true
+      },
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "records": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "scans": {
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query",
+          "records",
+          "scans"
+        ],
+        "type": "object"
+      },
+      "has_platform": true,
+      "has_rule": true,
+      "side_effects": "not-reviewed; inspect code and called Rules before execution"
+    },
+    {
+      "package_id": "user:douyin-get-user-videos@1.0.0",
+      "platform": "douyin",
+      "source_path": "demos/douyin/抖音获取用户作品-1.0.0.skill.json",
+      "file": "../demos/douyin/抖音获取用户作品-1.0.0.skill.json",
+      "sha256": "600ae0a19f642bea629626b18bd9a76d3a060eb703d3814faba6c5f507727224",
+      "status": "reference-only",
+      "validation": {
+        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
+        "runtime_version": "1.8.2",
+        "valid": true,
+        "diagnostics": []
+      },
+      "capabilities": [
+        "adapter.dismissPopups",
+        "adapter.extract",
+        "adapter.getCurrentLocation",
+        "adapter.navigate",
+        "atoms.condition",
+        "atoms.extractItem",
+        "atoms.scroll",
+        "atoms.waitFor",
+        "db.saveContent",
+        "utils.randInt"
+      ],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "uid": {
+            "type": "string"
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "uid",
+          "count"
+        ],
+        "additionalProperties": true
+      },
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "records": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "user": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "user",
+          "records"
+        ],
+        "type": "object"
+      },
+      "has_platform": true,
+      "has_rule": true,
+      "side_effects": "not-reviewed; inspect code and called Rules before execution"
+    },
+    {
+      "package_id": "user:douyin-get-user-info@1.0.0",
+      "platform": "douyin",
+      "source_path": "demos/douyin/抖音获取用户信息-1.0.0.skill.json",
+      "file": "../demos/douyin/抖音获取用户信息-1.0.0.skill.json",
+      "sha256": "3ed1f251caadfce5f7ba67b8d853d10c49c526b26829dbde1ee63a90e33a7b76",
+      "status": "reference-only",
+      "validation": {
+        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
+        "runtime_version": "1.8.2",
+        "valid": true,
+        "diagnostics": []
+      },
+      "capabilities": [
+        "adapter.dismissPopups",
+        "adapter.getCurrentLocation",
+        "adapter.navigate",
+        "atoms.extractItem",
+        "atoms.waitFor",
+        "db.saveContent"
+      ],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "uid": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "uid"
+        ],
+        "additionalProperties": true
+      },
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "user": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "user"
+        ],
+        "type": "object"
+      },
+      "has_platform": true,
+      "has_rule": true,
+      "side_effects": "not-reviewed; inspect code and called Rules before execution"
+    },
+    {
+      "package_id": "user:douyin-get-download-address@1.0.0",
+      "platform": "douyin",
+      "source_path": "demos/douyin/获取抖音视频下载地址-1.0.0.skill.json",
+      "file": "../demos/douyin/获取抖音视频下载地址-1.0.0.skill.json",
+      "sha256": "35bd0eeb0d991a5e895b4f4fbdb748ee4c033864900f8924e0cdafcd81e9206c",
+      "status": "reference-only",
+      "validation": {
+        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
+        "runtime_version": "1.8.2",
+        "valid": true,
+        "diagnostics": []
+      },
+      "capabilities": [
+        "atoms.navigate",
+        "atoms.waitFor",
+        "browser.network.collect",
+        "browser.network.watch",
+        "db.saveContent"
+      ],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "awemeId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "awemeId"
+        ],
+        "additionalProperties": true
+      },
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "awemeId": {
+            "type": "string"
+          },
+          "download1": {
+            "type": "string"
+          },
+          "download2": {
+            "type": "string"
+          },
+          "download3": {
+            "type": "string"
+          },
+          "downloadUrls": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "responseUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "awemeId",
+          "downloadUrls",
+          "download1",
+          "download2",
+          "download3",
+          "responseUrl"
+        ],
+        "type": "object"
+      },
+      "has_platform": true,
+      "has_rule": true,
+      "side_effects": "not-reviewed; inspect code and called Rules before execution"
+    },
+    {
       "package_id": "user:user_1786450804547_sfyiov@1",
       "platform": "github",
-      "source_path": "demos/skills/github/GithubTrendingScraping-1.skill.json",
-      "file": "../demos/skills/github/GithubTrendingScraping-1.skill.json",
+      "source_path": "demos/github/GithubTrendingScraping-1.skill.json",
+      "file": "../demos/github/GithubTrendingScraping-1.skill.json",
       "sha256": "d323411b6edc26c437ac30f2621547c74ecb78a7d5a39857847f36c5b15424a2",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
+        "runtime_version": "1.8.2",
         "valid": true,
         "diagnostics": []
       },
@@ -83,13 +740,13 @@
     {
       "package_id": "user:user_1784993996111_7lsl84@1",
       "platform": "reddit",
-      "source_path": "demos/skills/reddit/RedditAccountWarmUp-1.skill.json",
-      "file": "../demos/skills/reddit/RedditAccountWarmUp-1.skill.json",
+      "source_path": "demos/reddit/RedditAccountWarmUp-1.skill.json",
+      "file": "../demos/reddit/RedditAccountWarmUp-1.skill.json",
       "sha256": "8516ddaf83b425481eacd578d109cb2f33f522a10be63386488c9fd7e8cd0715",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
+        "runtime_version": "1.8.2",
         "valid": true,
         "diagnostics": []
       },
@@ -117,13 +774,13 @@
     {
       "package_id": "user:user_1785702085285_2mnckb@1",
       "platform": "reddit",
-      "source_path": "demos/skills/reddit/RedditCommentByPScraping-1.skill.json",
-      "file": "../demos/skills/reddit/RedditCommentByPScraping-1.skill.json",
+      "source_path": "demos/reddit/RedditCommentByPScraping-1.skill.json",
+      "file": "../demos/reddit/RedditCommentByPScraping-1.skill.json",
       "sha256": "c9936c8cf3f27586f7b6d413cdf9c7400ff7c029308531cf0ae7e279260d70ef",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
+        "runtime_version": "1.8.2",
         "valid": true,
         "diagnostics": []
       },
@@ -161,13 +818,13 @@
     {
       "package_id": "user:reddit-keyword-search-collector@1",
       "platform": null,
-      "source_path": "demos/skills/reddit/RedditKeywordSearchCollector-1.skill.json",
-      "file": "../demos/skills/reddit/RedditKeywordSearchCollector-1.skill.json",
+      "source_path": "demos/reddit/RedditKeywordSearchCollector-1.skill.json",
+      "file": "../demos/reddit/RedditKeywordSearchCollector-1.skill.json",
       "sha256": "cf6ed28adf70346c4f10afeedfd77441b1a284be8b160816d12dcd6c5c1699e4",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
+        "runtime_version": "1.8.2",
         "valid": true,
         "diagnostics": []
       },
@@ -313,13 +970,13 @@
     {
       "package_id": "user:user_1786167247717_e3luo1@1",
       "platform": "reddit",
-      "source_path": "demos/skills/reddit/RedditPostByKeyScraping-1.skill.json",
-      "file": "../demos/skills/reddit/RedditPostByKeyScraping-1.skill.json",
+      "source_path": "demos/reddit/RedditPostByKeyScraping-1.skill.json",
+      "file": "../demos/reddit/RedditPostByKeyScraping-1.skill.json",
       "sha256": "12e8ed169ed19aa695714079e42d684ef7f92a00cf9d5c1c0813a764f1a7d23c",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
+        "runtime_version": "1.8.2",
         "valid": true,
         "diagnostics": []
       },
@@ -357,13 +1014,13 @@
     {
       "package_id": "user:user_1785898077846_kik4fd@1",
       "platform": "reddit",
-      "source_path": "demos/skills/reddit/RedditPostByRScraping-1.skill.json",
-      "file": "../demos/skills/reddit/RedditPostByRScraping-1.skill.json",
+      "source_path": "demos/reddit/RedditPostByRScraping-1.skill.json",
+      "file": "../demos/reddit/RedditPostByRScraping-1.skill.json",
       "sha256": "4ff575bd9f43803f74d262050a18c83ca534b9010ae6b6c28f12cf84a5e00ad8",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
+        "runtime_version": "1.8.2",
         "valid": true,
         "diagnostics": []
       },
@@ -398,13 +1055,13 @@
     {
       "package_id": "user:reddit-subreddit-post-collector@1",
       "platform": null,
-      "source_path": "demos/skills/reddit/RedditSubredditPostCollector-1.skill.json",
-      "file": "../demos/skills/reddit/RedditSubredditPostCollector-1.skill.json",
+      "source_path": "demos/reddit/RedditSubredditPostCollector-1.skill.json",
+      "file": "../demos/reddit/RedditSubredditPostCollector-1.skill.json",
       "sha256": "0c48f808e6d223e21c675ce277309adf3d8888d10ee63f90cccf264dd3636e9c",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
+        "runtime_version": "1.8.2",
         "valid": true,
         "diagnostics": []
       },
@@ -565,13 +1222,13 @@
     {
       "package_id": "user:user_1786693823988_teeo99@1",
       "platform": "reddit",
-      "source_path": "demos/skills/reddit/RedditWatchNewInfoScraping-1.skill.json",
-      "file": "../demos/skills/reddit/RedditWatchNewInfoScraping-1.skill.json",
+      "source_path": "demos/reddit/RedditWatchNewInfoScraping-1.skill.json",
+      "file": "../demos/reddit/RedditWatchNewInfoScraping-1.skill.json",
       "sha256": "bf81004fd4d04946591692efa067efa288828484634e3298f5d9c7fada710859",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
+        "runtime_version": "1.8.2",
         "valid": true,
         "diagnostics": []
       },
@@ -613,13 +1270,13 @@
     {
       "package_id": "user:user_1785644546305_gad5yp@1",
       "platform": "tiktok",
-      "source_path": "demos/skills/tiktok/TikTokAccountWarmUp-1.skill.json",
-      "file": "../demos/skills/tiktok/TikTokAccountWarmUp-1.skill.json",
+      "source_path": "demos/tiktok/TikTokAccountWarmUp-1.skill.json",
+      "file": "../demos/tiktok/TikTokAccountWarmUp-1.skill.json",
       "sha256": "5fe10f2b381433feee0b725aca10b91aca645ec9c45bd6a1ca19c1892074c0a5",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
+        "runtime_version": "1.8.2",
         "valid": true,
         "diagnostics": []
       },
@@ -648,13 +1305,13 @@
     {
       "package_id": "user:user_1784014217327_vbjr6l@1",
       "platform": "toutiao",
-      "source_path": "demos/skills/toutiao/toutiao-WarmUp.skill.json",
-      "file": "../demos/skills/toutiao/toutiao-WarmUp.skill.json",
+      "source_path": "demos/toutiao/toutiao-WarmUp.skill.json",
+      "file": "../demos/toutiao/toutiao-WarmUp.skill.json",
       "sha256": "ec674e7df710beb5335b54391d9cf063c31c39ff3fe05734533f3ee0e509db46",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
+        "runtime_version": "1.8.2",
         "valid": true,
         "diagnostics": []
       },
@@ -688,125 +1345,15 @@
       "side_effects": "not-reviewed; inspect code and called Rules before execution"
     },
     {
-      "package_id": "user:user_1785611750077_anmpjb@1",
-      "platform": "youtube",
-      "source_path": "demos/skills/youtube/YoutubeAccountWarmUp-1.skill.json",
-      "file": "../demos/skills/youtube/YoutubeAccountWarmUp-1.skill.json",
-      "sha256": "035e3f681f9761ba41306f4c6b44604254ba4fea5dfdaed54b340cf3963ab1d7",
-      "status": "reference-only",
-      "validation": {
-        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
-        "valid": true,
-        "diagnostics": []
-      },
-      "capabilities": [
-        "adapter.action",
-        "adapter.bootstrap",
-        "adapter.getSelector",
-        "adapter.navigate",
-        "atoms.waitFor",
-        "utils.chance"
-      ],
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "minutes": {
-            "title": "minutes",
-            "type": "number"
-          }
-        },
-        "additionalProperties": true
-      },
-      "output_schema": {},
-      "has_platform": true,
-      "has_rule": true,
-      "side_effects": "not-reviewed; inspect code and called Rules before execution"
-    },
-    {
-      "package_id": "user:user_1785638268756_ueav3j@1",
-      "platform": "youtube",
-      "source_path": "demos/skills/youtube/YoutubeCommentScraping-1.skill.json",
-      "file": "../demos/skills/youtube/YoutubeCommentScraping-1.skill.json",
-      "sha256": "710820508206aea20e23b36fd8e85f800902296a8cf2f2c243cbd215d8134d36",
-      "status": "reference-only",
-      "validation": {
-        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
-        "valid": true,
-        "diagnostics": []
-      },
-      "capabilities": [
-        "adapter.action",
-        "adapter.extract",
-        "adapter.navigate",
-        "utils.randInt"
-      ],
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "times": {
-            "title": "times",
-            "type": "number"
-          }
-        },
-        "additionalProperties": true
-      },
-      "output_schema": {},
-      "has_platform": true,
-      "has_rule": true,
-      "side_effects": "not-reviewed; inspect code and called Rules before execution"
-    },
-    {
-      "package_id": "user:local_990560a6-28a7-40e4-aa40-8ace0bba3191@1",
-      "platform": "bilibili",
-      "source_path": "demos/study/b站通过搜索获取视频列表-1.skill.json",
-      "file": "../demos/study/b站通过搜索获取视频列表-1.skill.json",
-      "sha256": "dbce05f4182b19aad5c27064c5d51b9da0cd8b06146e46b0467e877e8eb09702",
-      "status": "research",
-      "validation": {
-        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
-        "valid": true,
-        "diagnostics": []
-      },
-      "capabilities": [
-        "adapter.extract",
-        "atoms.navigate",
-        "atoms.waitFor",
-        "db.saveContent"
-      ],
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "key": {
-            "type": "string"
-          },
-          "count": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "key",
-          "count"
-        ],
-        "additionalProperties": true
-      },
-      "output_schema": {},
-      "has_platform": true,
-      "has_rule": true,
-      "side_effects": "not-reviewed; inspect code and called Rules before execution"
-    },
-    {
       "package_id": "user:user_1784014217327_vbjr6l@1",
       "platform": "toutiao",
-      "source_path": "demos/study/头条获取新闻&自动发帖.skill.json",
-      "file": "../demos/study/头条获取新闻&自动发帖.skill.json",
+      "source_path": "demos/toutiao/头条获取新闻&自动发帖.skill.json",
+      "file": "../demos/toutiao/头条获取新闻&自动发帖.skill.json",
       "sha256": "ae010d2a9ddb967154da988dae3851ea40907d029591cffb7b0f987f6727071e",
-      "status": "research",
+      "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
+        "runtime_version": "1.8.2",
         "valid": true,
         "diagnostics": []
       },
@@ -842,13 +1389,13 @@
     {
       "package_id": "user:local_46e03ec0-8828-4795-8a9c-fa3b14a7b82b@1",
       "platform": "Redbook",
-      "source_path": "demos/study/小红书获取笔记byKey.skill.json",
-      "file": "../demos/study/小红书获取笔记byKey.skill.json",
+      "source_path": "demos/xiaohongshu/小红书获取笔记byKey.skill.json",
+      "file": "../demos/xiaohongshu/小红书获取笔记byKey.skill.json",
       "sha256": "f15c9bc003100421fb6cdc524a9bb489def626ce7b5e417c13bfe6ffbf87da38",
-      "status": "research",
+      "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
+        "runtime_version": "1.8.2",
         "valid": true,
         "diagnostics": []
       },
@@ -888,249 +1435,34 @@
       "side_effects": "not-reviewed; inspect code and called Rules before execution"
     },
     {
-      "package_id": "user:tobub-live-room-monitor@1.4.1",
-      "platform": null,
-      "source_path": "demos/study/抖音直播间持续监控研究器-1.4.1.skill.json",
-      "file": "../demos/study/抖音直播间持续监控研究器-1.4.1.skill.json",
-      "sha256": "4cc66c988c083982666192a8db511911eb33f77d3b30d46265c69e64f1480163",
-      "status": "research",
+      "package_id": "user:user_1785611750077_anmpjb@1",
+      "platform": "youtube",
+      "source_path": "demos/youtube/YoutubeAccountWarmUp-1.skill.json",
+      "file": "../demos/youtube/YoutubeAccountWarmUp-1.skill.json",
+      "sha256": "035e3f681f9761ba41306f4c6b44604254ba4fea5dfdaed54b340cf3963ab1d7",
+      "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
+        "runtime_version": "1.8.2",
         "valid": true,
         "diagnostics": []
       },
       "capabilities": [
-        "browser.close",
-        "browser.open",
-        "data.open",
-        "db.saveContent",
-        "execution.runId.trim",
-        "monitor.start",
-        "observe.next",
-        "observe.start",
-        "observe.stop"
-      ],
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "url": {
-            "type": "string"
-          },
-          "durationMs": {
-            "type": "number"
-          },
-          "maxEvents": {
-            "type": "number"
-          },
-          "minMessageLength": {
-            "type": "number"
-          },
-          "deduplicate": {
-            "type": "boolean"
-          },
-          "captureSecUid": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "url",
-          "durationMs",
-          "maxEvents",
-          "minMessageLength",
-          "deduplicate"
-        ],
-        "additionalProperties": true
-      },
-      "output_schema": {
-        "type": "object",
-        "required": [
-          "url",
-          "roomId",
-          "startedAt",
-          "endedAt",
-          "eventCount",
-          "storage",
-          "stats"
-        ],
-        "properties": {
-          "url": {
-            "type": "string"
-          },
-          "roomId": {
-            "type": "string"
-          },
-          "startedAt": {
-            "type": "string"
-          },
-          "endedAt": {
-            "type": "string"
-          },
-          "eventCount": {
-            "type": "integer"
-          },
-          "storage": {
-            "type": "object",
-            "required": [
-              "metadataContentItemId",
-              "metadataObservationId",
-              "dataCollectionId",
-              "detailFile"
-            ],
-            "properties": {
-              "metadataContentItemId": {
-                "type": [
-                  "integer",
-                  "null"
-                ]
-              },
-              "metadataObservationId": {
-                "type": [
-                  "integer",
-                  "null"
-                ]
-              },
-              "dataCollectionId": {
-                "type": "string"
-              },
-              "detailFile": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            }
-          },
-          "stats": {
-            "type": "object",
-            "required": [
-              "duplicates",
-              "secUidResolved",
-              "decoderErrors",
-              "delivered",
-              "filtered",
-              "dropped"
-            ],
-            "properties": {
-              "duplicates": {
-                "type": "integer"
-              },
-              "secUidResolved": {
-                "type": "integer"
-              },
-              "decoderErrors": {
-                "type": "integer"
-              },
-              "delivered": {
-                "type": "integer"
-              },
-              "filtered": {
-                "type": "integer"
-              },
-              "dropped": {
-                "type": "integer"
-              }
-            }
-          }
-        }
-      },
-      "has_platform": false,
-      "has_rule": false,
-      "side_effects": "not-reviewed; inspect code and called Rules before execution"
-    },
-    {
-      "package_id": "user:douyin-browse-videos@1.0.0",
-      "platform": "douyin",
-      "source_path": "demos/study/抖音自动化浏览视频-1.0.0.skill.json",
-      "file": "../demos/study/抖音自动化浏览视频-1.0.0.skill.json",
-      "sha256": "6ac4b283ffc275bec90be36e7a4c211326333f46ec26e8038cde3e082470b7c4",
-      "status": "research",
-      "validation": {
-        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
-        "valid": true,
-        "diagnostics": []
-      },
-      "capabilities": [
+        "adapter.action",
         "adapter.bootstrap",
-        "adapter.dismissPopups",
-        "adapter.extract",
+        "adapter.getSelector",
         "adapter.navigate",
-        "atoms.refresh",
-        "atoms.swipeVideo",
         "atoms.waitFor",
-        "db.saveContent",
-        "utils.chance",
-        "utils.randInt"
+        "utils.chance"
       ],
       "input_schema": {
         "type": "object",
         "properties": {
           "minutes": {
+            "title": "minutes",
             "type": "number"
           }
         },
-        "required": [
-          "minutes"
-        ],
-        "additionalProperties": true
-      },
-      "output_schema": {
-        "additionalProperties": false,
-        "properties": {
-          "records": {
-            "items": {
-              "type": "object"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "records"
-        ],
-        "type": "object"
-      },
-      "has_platform": true,
-      "has_rule": true,
-      "side_effects": "not-reviewed; inspect code and called Rules before execution"
-    },
-    {
-      "package_id": "user:local_75045bc4-8816-4aeb-9e19-e0aee108cddc@1",
-      "platform": "douyin",
-      "source_path": "demos/study/抖音自动点赞助手-1.skill.json",
-      "file": "../demos/study/抖音自动点赞助手-1.skill.json",
-      "sha256": "5b35eac6094098abe727044dfdc7abe4a1fe84904f796f2edff7410de6729b45",
-      "status": "research",
-      "validation": {
-        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
-        "valid": true,
-        "diagnostics": []
-      },
-      "capabilities": [
-        "adapter.dismissPopups",
-        "adapter.navigate",
-        "atoms.click",
-        "atoms.condition",
-        "atoms.evaluate",
-        "atoms.scroll",
-        "atoms.waitFor",
-        "utils.chance",
-        "utils.randInt"
-      ],
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "vid": {
-            "type": "string"
-          },
-          "probability": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "vid"
-        ],
         "additionalProperties": true
       },
       "output_schema": {},
@@ -1139,310 +1471,49 @@
       "side_effects": "not-reviewed; inspect code and called Rules before execution"
     },
     {
-      "package_id": "user:douyin-get-video-comments@1.0.0",
-      "platform": "douyin",
-      "source_path": "demos/study/抖音获取作品评论-1.0.0.skill.json",
-      "file": "../demos/study/抖音获取作品评论-1.0.0.skill.json",
-      "sha256": "e25a1b4603a9d492fa1acea51d881117dec7a5283bc5ca7c714740b03b0f600f",
-      "status": "research",
+      "package_id": "user:user_1785638268756_ueav3j@1",
+      "platform": "youtube",
+      "source_path": "demos/youtube/YoutubeCommentScraping-1.skill.json",
+      "file": "../demos/youtube/YoutubeCommentScraping-1.skill.json",
+      "sha256": "710820508206aea20e23b36fd8e85f800902296a8cf2f2c243cbd215d8134d36",
+      "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
+        "runtime_version": "1.8.2",
         "valid": true,
         "diagnostics": []
       },
       "capabilities": [
-        "adapter.dismissPopups",
+        "adapter.action",
         "adapter.extract",
         "adapter.navigate",
-        "atoms.condition",
-        "atoms.scroll",
-        "atoms.waitFor",
-        "db.saveContent",
-        "utils.chance",
         "utils.randInt"
       ],
       "input_schema": {
         "type": "object",
         "properties": {
-          "vid": {
-            "type": "string"
-          },
-          "count": {
+          "times": {
+            "title": "times",
             "type": "number"
           }
         },
-        "required": [
-          "vid",
-          "count"
-        ],
-        "additionalProperties": true
-      },
-      "output_schema": {
-        "additionalProperties": false,
-        "properties": {
-          "records": {
-            "items": {
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "videoId": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "videoId",
-          "records"
-        ],
-        "type": "object"
-      },
-      "has_platform": true,
-      "has_rule": true,
-      "side_effects": "not-reviewed; inspect code and called Rules before execution"
-    },
-    {
-      "package_id": "user:douyin-search-videos@1.0.0",
-      "platform": "douyin",
-      "source_path": "demos/study/抖音获取搜索结果-1.0.0.skill.json",
-      "file": "../demos/study/抖音获取搜索结果-1.0.0.skill.json",
-      "sha256": "61c35078c0c83af35f050b6a42463c337178b4fa404246a09df3a933ffcaeaec",
-      "status": "research",
-      "validation": {
-        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
-        "valid": true,
-        "diagnostics": []
-      },
-      "capabilities": [
-        "adapter.dismissPopups",
-        "adapter.extract",
-        "atoms.click",
-        "atoms.navigate",
-        "atoms.scroll",
-        "atoms.waitFor",
-        "db.saveContent",
-        "utils.randInt"
-      ],
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "searchKey": {
-            "type": "string"
-          },
-          "count": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "searchKey",
-          "count"
-        ],
-        "additionalProperties": true
-      },
-      "output_schema": {
-        "additionalProperties": false,
-        "properties": {
-          "query": {
-            "type": "string"
-          },
-          "records": {
-            "items": {
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "scans": {
-            "minimum": 1,
-            "type": "integer"
-          }
-        },
-        "required": [
-          "query",
-          "records",
-          "scans"
-        ],
-        "type": "object"
-      },
-      "has_platform": true,
-      "has_rule": true,
-      "side_effects": "not-reviewed; inspect code and called Rules before execution"
-    },
-    {
-      "package_id": "user:douyin-get-user-videos@1.0.0",
-      "platform": "douyin",
-      "source_path": "demos/study/抖音获取用户作品-1.0.0.skill.json",
-      "file": "../demos/study/抖音获取用户作品-1.0.0.skill.json",
-      "sha256": "600ae0a19f642bea629626b18bd9a76d3a060eb703d3814faba6c5f507727224",
-      "status": "research",
-      "validation": {
-        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
-        "valid": true,
-        "diagnostics": []
-      },
-      "capabilities": [
-        "adapter.dismissPopups",
-        "adapter.extract",
-        "adapter.getCurrentLocation",
-        "adapter.navigate",
-        "atoms.condition",
-        "atoms.extractItem",
-        "atoms.scroll",
-        "atoms.waitFor",
-        "db.saveContent",
-        "utils.randInt"
-      ],
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "uid": {
-            "type": "string"
-          },
-          "count": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "uid",
-          "count"
-        ],
-        "additionalProperties": true
-      },
-      "output_schema": {
-        "additionalProperties": false,
-        "properties": {
-          "records": {
-            "items": {
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "user": {
-            "type": "object"
-          }
-        },
-        "required": [
-          "user",
-          "records"
-        ],
-        "type": "object"
-      },
-      "has_platform": true,
-      "has_rule": true,
-      "side_effects": "not-reviewed; inspect code and called Rules before execution"
-    },
-    {
-      "package_id": "user:douyin-get-user-info@1.0.0",
-      "platform": "douyin",
-      "source_path": "demos/study/抖音获取用户信息-1.0.0.skill.json",
-      "file": "../demos/study/抖音获取用户信息-1.0.0.skill.json",
-      "sha256": "3ed1f251caadfce5f7ba67b8d853d10c49c526b26829dbde1ee63a90e33a7b76",
-      "status": "research",
-      "validation": {
-        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
-        "valid": true,
-        "diagnostics": []
-      },
-      "capabilities": [
-        "adapter.dismissPopups",
-        "adapter.getCurrentLocation",
-        "adapter.navigate",
-        "atoms.extractItem",
-        "atoms.waitFor",
-        "db.saveContent"
-      ],
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "uid": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "uid"
-        ],
-        "additionalProperties": true
-      },
-      "output_schema": {
-        "additionalProperties": false,
-        "properties": {
-          "user": {
-            "type": "object"
-          }
-        },
-        "required": [
-          "user"
-        ],
-        "type": "object"
-      },
-      "has_platform": true,
-      "has_rule": true,
-      "side_effects": "not-reviewed; inspect code and called Rules before execution"
-    },
-    {
-      "package_id": "user:local_a46cb629-4b60-4746-9742-db04a9351492@1",
-      "platform": null,
-      "source_path": "demos/study/百度地图坐标多屏店铺采集-1.skill.json",
-      "file": "../demos/study/百度地图坐标多屏店铺采集-1.skill.json",
-      "sha256": "a30e3e758507698355104fdb4667643a382e9d5760358dbd60597e02d627f77b",
-      "status": "research",
-      "validation": {
-        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
-        "valid": true,
-        "diagnostics": []
-      },
-      "capabilities": [
-        "ai.locateObjects",
-        "atoms.click",
-        "atoms.clickAt",
-        "atoms.drag",
-        "atoms.evaluate",
-        "atoms.navigate",
-        "atoms.screenshot",
-        "atoms.waitFor",
-        "data.open",
-        "db.saveContent"
-      ],
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "latitude": {
-            "type": "number"
-          },
-          "longitude": {
-            "type": "number"
-          },
-          "zoom": {
-            "type": "number"
-          },
-          "screenshotWaitSeconds": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "latitude",
-          "longitude"
-        ],
         "additionalProperties": true
       },
       "output_schema": {},
-      "has_platform": false,
-      "has_rule": false,
+      "has_platform": true,
+      "has_rule": true,
       "side_effects": "not-reviewed; inspect code and called Rules before execution"
     },
     {
       "package_id": "user:local_1f5a5ef8-d312-4915-9374-2e821450e49c@1",
       "platform": "zhihu",
-      "source_path": "demos/study/知乎获取热门榜单资讯-1.skill.json",
-      "file": "../demos/study/知乎获取热门榜单资讯-1.skill.json",
+      "source_path": "demos/zhihu/知乎获取热门榜单资讯-1.skill.json",
+      "file": "../demos/zhihu/知乎获取热门榜单资讯-1.skill.json",
       "sha256": "2b83f4dc75476e3b6029d004543ec9a3ceb9f06a36d9186fa05f740d43e5f3ee",
-      "status": "research",
+      "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
+        "runtime_version": "1.8.2",
         "valid": true,
         "diagnostics": []
       },
@@ -1458,77 +1529,6 @@
         "additionalProperties": true
       },
       "output_schema": {},
-      "has_platform": true,
-      "has_rule": true,
-      "side_effects": "not-reviewed; inspect code and called Rules before execution"
-    },
-    {
-      "package_id": "user:douyin-get-download-address@1.0.0",
-      "platform": "douyin",
-      "source_path": "demos/study/获取抖音视频下载地址-1.0.0.skill.json",
-      "file": "../demos/study/获取抖音视频下载地址-1.0.0.skill.json",
-      "sha256": "35bd0eeb0d991a5e895b4f4fbdb748ee4c033864900f8924e0cdafcd81e9206c",
-      "status": "research",
-      "validation": {
-        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.1",
-        "valid": true,
-        "diagnostics": []
-      },
-      "capabilities": [
-        "atoms.navigate",
-        "atoms.waitFor",
-        "browser.network.collect",
-        "browser.network.watch",
-        "db.saveContent"
-      ],
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "awemeId": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "awemeId"
-        ],
-        "additionalProperties": true
-      },
-      "output_schema": {
-        "additionalProperties": false,
-        "properties": {
-          "awemeId": {
-            "type": "string"
-          },
-          "download1": {
-            "type": "string"
-          },
-          "download2": {
-            "type": "string"
-          },
-          "download3": {
-            "type": "string"
-          },
-          "downloadUrls": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "responseUrl": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "awemeId",
-          "downloadUrls",
-          "download1",
-          "download2",
-          "download3",
-          "responseUrl"
-        ],
-        "type": "object"
-      },
       "has_platform": true,
       "has_rule": true,
       "side_effects": "not-reviewed; inspect code and called Rules before execution"

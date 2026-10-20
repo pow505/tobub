@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "runtime_version": "1.8.1",
+  "runtime_version": "1.8.2",
   "items": [
     {
       "id": "account.*",
