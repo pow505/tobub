@@ -2,39 +2,36 @@
   <a href="https://tobub.com"><img src="./public/tobub.svg" width="96" alt="Tobub logo"></a>
 </p>
 
-<h1 align="center">Tobub</h1>
+<h1 align="center">Tobub: Desktop Browser Automation for AI Agents</h1>
 
-<p align="center"><strong>Tobub is a local browser automation runtime with a built-in Agent harness.</strong></p>
+<p align="center"><strong>A desktop app that lets AI agents run reusable website workflows in your local browser and saves the results for review.</strong></p>
 
 <p align="center">
   <a href="https://tobub.com">Website</a> ·
   <a href="https://github.com/pow505/tobub/releases/latest">Download Tobub</a> ·
+  <a href="./demos/">Skill examples</a> ·
   <a href="readme.zh-CN.md">中文</a>
-  <a href="#">1.8.1</a>
 </p>
 
 ## What is Tobub?
 
-Tobub is a local runtime and execution platform for browser automation. It provides browser control, account and session management, Skill orchestration and execution, AI Agent collaboration, task scheduling, recording and Skill authoring, as well as unified HTTP and WebSocket interfaces.
-Tobub includes both an Agent harness and a Skill execution harness, handling execution context, authorization, browser environments, timeouts, cancellation, concurrency control, risk approval, and execution feedback. It goes beyond a conventional harness by also providing persistence, lifecycle management, and the runtime foundation for the product.
+Tobub is a desktop app for automating website tasks with AI agents. You can run a Skill yourself or let an agent choose one; Tobub operates the browser on your computer and saves each run and its results in a Session—a work record you can review or continue later.
 
-For example:
+A Skill is a saved, reusable workflow for one task, such as collecting recent Reddit posts or YouTube comments.
 
-> Review today’s market signals and prepare the three actions we should take next.
+This repository contains Skill definitions as JSON files, examples, and an Agent Skill for Claude Code and local Codex to connect to Tobub. The desktop app is distributed separately; you need it to run these workflows.
 
-Tobub can collect sources, filter useful information, compare changes, write a briefing, check the evidence, recommend actions, and save the complete work record for review.
-
-## Product Show
+## Product demo
 
 ![Tobub product Show](./public/tobub.gif)
 
-## Why Tobub is different
+## Why use Tobub for browser automation?
 
 | | What it means |
 | --- | --- |
-| **Digital Employees** | AI Agents with a professional role, a goal, a plan, and the ability to carry work through multiple steps. |
-| **Automation Skills** | JSON-based capabilities that connect an Agent to platforms and tools — collect, organize, analyze, and execute. |
-| **Work Sessions** | A visible record of the plan, progress, sources, result, and context, so work can be reviewed and continued. |
+| **Digital Employees** | AI Agents with specialized roles that plan work, coordinate Skills, and carry multi-step tasks forward. |
+| **Automation Skills** | Reusable JSON workflows that connect Agents to supported platforms and tools for research, analysis, and action. |
+| **Work Sessions** | Persistent records of plans, sources, progress, results, and context, ready for review or follow-up. |
 
 ```mermaid
 flowchart LR
@@ -49,14 +46,14 @@ flowchart LR
 
 ## How automation Skills work
 
-Skills turn external platforms and tools into capabilities an Agent can use. They work in four stages:
+A Skill is a saved workflow that tells Tobub how to carry out a task on a supported website—for example, collecting Reddit posts or YouTube comments. A typical Skill works in four stages:
 
-1. **Collect** information and data.
-2. **Organize** mixed sources into reusable work material.
-3. **Analyze** signals, changes, competitors, customers, and markets.
-4. **Execute** the next action and return a clear result.
+1. **Collect** information from supported websites and services.
+2. **Organize** results into structured, reusable work material.
+3. **Analyze** trends, customer activity, competitors, and market signals.
+4. **Execute** the requested next step and return a clear result.
 
-The value is in composition. A Research Analyst can combine Search, Web Crawler, RSS, GitHub, and community Skills into one repeatable market-intelligence workflow instead of making a person move data between isolated tools.
+Skills become more useful when combined. For example, a Research Analyst can connect Search, Web Crawler, RSS, GitHub, and community Skills into one repeatable market-intelligence workflow.
 
 ## Digital employee roles
 
@@ -75,50 +72,68 @@ Tobub currently presents these Agent roles:
 - Sales Researcher
 - Knowledge Curator
 
-Each role turns a professional method into a reusable workflow. The Agent coordinates Skills, retains context, checks progress, and leaves work that a person can inspect and continue.
+Each role turns a professional method into a reusable workflow. The Agent coordinates Skills, keeps context, tracks progress, and leaves work that people can review and continue.
 
-## Current Skill library
+## Current automation Skills
 
 - **Research:** Google Search, Web Crawler, RSS & Feeds, Reddit
 - **Social intelligence:** YouTube, Facebook, TikTok, Instagram, X / Twitter
 - **Business and market:** LinkedIn, Shopify / Amazon
 - **Developer intelligence:** GitHub
 
-These Skills support market research, trend discovery, social listening, customer insight, competitor monitoring, news monitoring, SEO research, and structured web extraction.
+Use these Skills for market research, trend discovery, social listening, customer insight, competitor monitoring, news monitoring, SEO research, and structured web extraction.
 
 ## Typical workflow
 
 1. Give Tobub a concrete outcome.
-2. The digital employee confirms the goal and creates a work plan.
+2. The digital employee confirms the goal and creates a step-by-step work plan.
 3. It selects the Skills needed for the task.
 4. Skills run through the Tobub Runtime against supported platforms.
-5. Tobub keeps the progress, sources, evidence, and intermediate work visible.
+5. Tobub keeps progress, sources, supporting evidence, and intermediate results visible in the Session.
 6. The Agent delivers the result and saves a Session for follow-up work.
 
-## Use Tobub from Claude Code or Codex
+## Use Tobub with Claude Code or local Codex
 
-[skill/](./skill/) contains one complete Agent Skill for finding, running, composing, creating and modifying local Tobub Skills, with recording evidence, platform Rules and local datasets. Its searchable references are generated from current SDK contracts and [demos/](./demos/), with source hashes and explicit validation status.
+The two “Skill” terms mean different things:
 
-Follow [the installation guide](./skill/INSTALL.md) to install the Skill and register its bundled local MCP connection. Normal use requires Tobub and Node.js 22.18+ on the same computer; no Tobub Cloud account is required. The package explains the distinct roles of the Agent Skill, local API connection and native Tobub Skill JSON.
+- **Tobub Agent Skill** ([`skill/`](./skill/)) is installed into Claude Code or local Codex. It provides instructions and references for finding, running, combining, creating, and editing Tobub Skills.
+- **Tobub Skill** (`.skill.json`) is a reusable automation workflow executed by the Tobub desktop app. The app saves each run and its results in a Session.
 
-## Open Skills. Closed execution product.
+The bundled MCP bridge is a local Node.js connector that forwards requests from the coding agent to the Tobub desktop Runtime; it does not launch the app. No Tobub Cloud account is needed. The agent must run locally; a cloud-hosted agent cannot reach your desktop Runtime.
 
-This repository is the open **Skill layer** around Tobub. A Skill is a JSON definition consumed by compatible Tobub software. It is an executable product artifact, not a standalone application.
+To install and connect:
 
-Cloning this repository alone does **not** provide the Tobub desktop application, Runtime, platform authentication, account management, or complete execution environment.
+1. Start Tobub and install Node.js 22.18 or later on the same computer as Claude Code or local Codex.
+2. From the repository root, run:
+
+   ```sh
+   cd skill
+   node scripts/install.mjs --host claude
+   ```
+
+   For local Codex, replace `claude` with `codex`. The installer validates the package, installs the Agent Skill with its examples, and prints the MCP registration command.
+3. Run that command once, then restart Claude Code or Codex. Installing the Agent Skill alone does not register the connection.
+
+See the [installation guide](./skill/INSTALL.md) for token setup and other details.
+
+## Open-source Skills for Tobub. Runtime distributed separately.
+
+This repository publishes Tobub’s open **Skill layer**: reusable JSON definitions that compatible Tobub software can install and execute. A Skill is an automation workflow, not a standalone browser automation application.
+
+The Tobub desktop application and Runtime implementation are proprietary products distributed separately. Cloning this repository alone does **not** provide the app, platform adapters, authentication, account management, or complete execution environment.
 
 | Open in this repository | Not included here |
 | --- | --- |
-| Skill JSON definitions | Tobub desktop application |
+| Native JSON Skill definitions | Tobub desktop application |
 | Skill documentation and examples | Tobub Runtime implementation |
-| Community review and improvements | Platform adapters and authentication |
-| Reusable automation workflows | Desktop installers and commercial distribution |
+| Agent Skill for Claude Code and Codex | Platform adapters and authentication |
+| Community review and improvements | Desktop installers and commercial distribution |
 
-This boundary is intentional: the community expands Tobub’s capability ecosystem, while Tobub provides the controlled execution workspace and product experience.
+This separation lets the community review and extend automation workflows while Tobub supplies the local execution environment and product experience.
 
 ## Running a Skill
 
-The intended flow is:
+To run a Skill in Tobub:
 
 1. Install Tobub for Windows, macOS, or Linux.
 2. Import or install a Skill from this repository.
@@ -126,11 +141,11 @@ The intended flow is:
 4. Run it directly or let a digital employee select it.
 5. Review the result and execution history in the Session.
 
-For teams and builders, Tobub also supports Docker/self-hosted deployment, local data control, and OpenAPI integration. Those capabilities belong to the closed Tobub application and Runtime.
+The Tobub application also supports Docker and self-hosted deployment, local data control, and OpenAPI integration. These product capabilities are provided by the separately distributed application and Runtime.
 
 ## Contributing a Skill
 
-Make every contribution easy to understand and safe to run:
+Make every Skill contribution easy to understand, review, and run safely:
 
 - explain the problem and workflow it improves;
 - state the platform, inputs, outputs, side effects, and required permissions;

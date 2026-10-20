@@ -2,39 +2,36 @@
   <a href="https://tobub.com"><img src="./public/tobub.svg" width="96" alt="Tobub logo"></a>
 </p>
 
-<h1 align="center">Tobub</h1>
+<h1 align="center">Tobub：面向 AI Agent 的浏览器自动化桌面应用</h1>
 
-<p align="center"><strong>让 AI 数字员工，把目标推进成真正完成的工作。</strong></p>
+<p align="center"><strong>让 AI Agent 操作本机浏览器、执行网站任务，并保存结果供复查。</strong></p>
 
 <p align="center">
   <a href="https://tobub.com">官网</a> ·
   <a href="https://github.com/pow505/tobub/releases/latest">下载 Tobub</a> ·
+  <a href="./demos/">Skill 示例</a> ·
   <a href="readme.md">English</a>
-  <a href="#">1.8.1</a>
 </p>
 
 ## Tobub 是什么？
 
-Tobub 是一个面向浏览器自动化的本地 Runtime 和执行平台。它提供浏览器控制、账号与登录态管理、Skill 编排与执行、AI Agent 协作、任务调度、录制与 Skill 制作，以及统一的 HTTP/WebSocket 接口。
-Tobub 内部包含 Agent harness 和 Skill execution harness，负责执行上下文、权限校验、浏览器环境、超时、取消、并发控制、风险审批和执行反馈。相比单纯的 harness，Tobub 还承担了持久化、生命周期管理和产品运行时的职责。
+Tobub 是一款浏览器自动化桌面应用，可让 AI Agent 操作本机浏览器执行网站任务。你可以手动运行 Skill，也可以让 Agent 根据目标选择 Skill；Tobub 会将每次执行和结果保存到 Session（工作记录）中，方便复查或继续处理。
 
-例如：
+Skill 是一份可重复运行的自动化流程定义，用来完成一类网站任务，例如采集 Reddit 新帖子或 YouTube 评论。
 
-> 整理今天的行业动态，并给出接下来最值得采取的三项行动。
-
-Tobub 可以自动收集来源、筛选有效信息、比较变化、生成简报、核对依据、推荐行动，并将完整工作过程保存下来，方便复查和继续推进。
+本仓库提供这些 Skills 的 JSON 定义和示例，以及供 Claude Code 和本地 Codex 调用 Tobub 的 Agent Skill。桌面应用不包含在仓库中；运行这些 Skill 需要另外安装 Tobub。
 
 ## 产品演示
 
 ![Tobub 产品演示](./public/tobub.gif)
 
-## Tobub 的核心价值
+## 为什么用 Tobub 做浏览器自动化？
 
 | | 说明 |
 | --- | --- |
-| **AI 数字员工** | 有专业角色、目标和工作计划，能够跨多个步骤持续完成工作的 Agent。 |
-| **自动化 Skills** | 以 JSON 定义的可执行能力，连接平台和工具，负责收集、整理、分析与执行。 |
-| **工作 Session** | 保存计划、进度、来源、结果和上下文，让工作过程可查看、可复盘、可继续。 |
+| **AI 数字员工** | 拥有专业角色并能制定计划、协调 Skills、持续推进多步骤任务的 AI Agent。 |
+| **自动化 Skills** | 以 JSON 定义、可复用的工作流，连接 Agent 与受支持的平台和工具，完成研究、分析和操作。 |
+| **工作 Session** | 持续记录计划、来源、进度、结果和上下文，便于复查与后续跟进。 |
 
 ```mermaid
 flowchart LR
@@ -49,18 +46,18 @@ flowchart LR
 
 ## 自动化 Skill 如何工作？
 
-Skill 把外部平台和工具变成 Agent 可以调用的能力，覆盖四个阶段：
+Skill 是一份保存好的自动化流程，告诉 Tobub 如何在受支持的网站上完成任务，例如采集 Reddit 帖子或 YouTube 评论。典型流程分为四步：
 
-1. **Collect / 收集**：采集信息与数据。
-2. **Organize / 整理**：把混合来源变成结构化、可复用的工作材料。
-3. **Analyze / 分析**：识别信号，比较变化，研究竞品、客户和市场。
-4. **Execute / 执行**：完成下一步动作并返回清晰结果。
+1. **Collect / 收集**：从受支持的网站和服务获取信息。
+2. **Organize / 整理**：将结果归纳为结构化、可复用的工作材料。
+3. **Analyze / 分析**：识别趋势，研究客户、竞品和市场信号。
+4. **Execute / 执行**：完成请求的下一步操作，并返回清晰结果。
 
-真正的价值在于组合。一个研究分析师可以把搜索、网页抓取、RSS、GitHub 和社区类 Skills 组合成一套完整的市场情报工作流，而不是让人手动在多个工具之间搬运信息。
+Skills 可以组合使用。例如，研究分析师可以把搜索、网页抓取、RSS、GitHub 和社区 Skills 串成可重复运行的市场情报工作流。
 
 ## AI 数字员工角色
 
-Tobub 当前展示的 Agent 包括：
+Tobub 当前展示的数字员工角色包括：
 
 - 运营专家
 - 数据工程师
@@ -75,48 +72,66 @@ Tobub 当前展示的 Agent 包括：
 - 销售研究员
 - 知识策展人
 
-每个角色都把一种专业工作方法变成可复用的工作流。Agent 负责协调 Skills、保留上下文、检查进度，并留下可以审阅和继续推进的成果。
+每个角色都把专业工作方法转化为可复用的工作流。Agent 负责协调 Skills、保留上下文、跟踪进度，并留下便于复查和继续推进的成果。
 
-## 当前 Skill 能力库
+## 当前自动化 Skill 能力库
 
 - **研究类**：Google Search、Web Crawler、RSS & Feeds、Reddit
 - **社交情报类**：YouTube、Facebook、TikTok、Instagram、X / Twitter
 - **商业与市场类**：LinkedIn、Shopify / Amazon
 - **开发者情报类**：GitHub
 
-这些 Skills 可以用于市场研究、趋势发现、社交监听、客户洞察、竞品监控、新闻监测、SEO 研究和结构化网页提取。
+可将这些 Skills 用于市场研究、趋势发现、社交监听、客户洞察、竞品监控、新闻监测、SEO 研究和结构化网页提取。
 
 ## 典型工作流
 
 1. 给 Tobub 一个明确目标。
-2. 数字员工确认目标并生成工作计划。
+2. 数字员工确认目标并生成分步骤的工作计划。
 3. Agent 选择任务所需的 Skills。
 4. Skills 通过 Tobub Runtime 访问支持的平台并执行。
-5. Tobub 展示进度、来源、依据和中间结果。
+5. Tobub 在 Session 中展示进度、来源、依据和中间结果。
 6. Agent 交付结果，并保存可继续使用的 Session。
 
-## 在 Claude Code / Codex 中使用 Tobub
+## 在 Claude Code 或本机 Codex 中使用 Tobub
 
-仓库的 [skill/](./skill/) 提供一份完整的 Agent Skill：调用、组合、生成和修改本地 Tobub Skills，并可利用录制证据、平台规则和本地数据能力。资料来自当前 SDK 契约与 [demos/](./demos/)，按需检索，保留示例的来源和验证状态。
+两种 Skill 指的是不同内容：
 
-请按 [安装说明](./skill/INSTALL.md) 安装并注册附带的本地 MCP 连接。运行需要同一台电脑上的 Tobub 和 Node.js 22.18+；无需 Tobub Cloud 账号。Agent Skill、本地 API 连接和原生 Tobub Skill JSON 的职责在资料包中分别说明。
+- **Tobub Agent Skill**（[`skill/`](./skill/)）安装到 Claude Code 或本机 Codex，提供查找、运行、组合、创建和修改 Tobub Skills 的操作指南与参考资料。
+- **Tobub Skill**（`.skill.json`）是由 Tobub 桌面应用执行的可复用自动化工作流。应用会把每次运行及结果保存到 Session（工作记录）中。
 
-## Skill 开源，执行产品闭源
+随 Agent Skill 提供的 MCP 桥接程序是一个本地 Node.js 连接器，负责把代码 Agent 的请求转发给 Tobub 桌面 Runtime；它不会启动桌面应用。此方式无需 Tobub Cloud 账号，但代码 Agent 必须在本机运行；云端 Agent 无法连接你电脑上的 Runtime。
 
-本仓库开放的是 Tobub 的 **Skill 能力层**。Skill 是由兼容 Tobub 的软件读取和执行的 JSON 定义，是可执行的产品工件，不是独立应用。
+安装和连接：
 
-单独克隆本仓库并不能获得 Tobub 桌面应用、Runtime、平台认证、账号管理或完整执行环境。
+1. 在运行 Claude Code 或本机 Codex 的同一台电脑上启动 Tobub，并安装 Node.js 22.18 或更高版本。
+2. 从仓库根目录运行：
+
+   ```sh
+   cd skill
+   node scripts/install.mjs --host claude
+   ```
+
+   使用本机 Codex 时，将 `claude` 改为 `codex`。安装器会校验并安装 Agent Skill 及其示例，然后打印 MCP 注册命令。
+3. 执行该注册命令并重启 Claude Code 或 Codex。单独安装 Agent Skill 不会注册连接。
+
+Token 配置和其他细节见[安装说明](./skill/INSTALL.md)。
+
+## 开源 Tobub Skills，Runtime 单独发布
+
+本仓库开放 Tobub 的 **Skill 能力层**：以 JSON 定义、可由兼容 Tobub 的软件安装和执行的自动化工作流。Skill 可以复用和审阅，但不是独立的浏览器自动化应用。
+
+Tobub 桌面应用和 Runtime 实现属于单独发布的闭源产品。仅克隆本仓库无法获得应用、平台适配器、认证、账号管理或完整执行环境。
 
 | 本仓库开放 | 不包含在本仓库 |
 | --- | --- |
-| Skill JSON 定义 | Tobub 桌面应用 |
+| 原生 JSON Skill 定义 | Tobub 桌面应用 |
 | Skill 文档与示例 | Tobub Runtime 实现 |
-| 社区评审与改进 | 平台适配器与认证系统 |
-| 可复用自动化工作流 | 安装包及商业发行代码 |
+| Claude Code 和 Codex Agent Skill | 平台适配器与认证系统 |
+| 社区评审与改进 | 安装包及商业发行代码 |
 
-这个边界是有意设计的：社区可以不断扩展 Tobub 的能力生态，而 Tobub 负责提供受控的执行工作区和完整产品体验。
+这样的分工让社区能够审阅和扩展自动化工作流，同时由 Tobub 提供本地执行环境和完整产品体验。
 
-## 如何运行 Skill？
+## 如何在 Tobub 中运行 Skill？
 
 1. 下载 Windows、macOS 或 Linux 版 Tobub。
 2. 在 Tobub 中导入或安装本仓库的 Skill。
@@ -124,11 +139,11 @@ Tobub 当前展示的 Agent 包括：
 4. 手动运行 Skill，或让数字员工自动选择它。
 5. 在 Session 中查看执行过程和结果。
 
-团队和开发者还可以使用 Docker / 自部署、数据边界控制与 OpenAPI 集成。这些能力属于闭源的 Tobub 应用与 Runtime。
+Tobub 应用还支持 Docker / 自部署、本地数据控制与 OpenAPI 集成。这些产品能力由单独发布的应用和 Runtime 提供。
 
 ## 如何贡献 Skill？
 
-每个贡献都应该清楚、安全、容易复用：
+每个 Skill 贡献都应清晰、便于评审，并能安全复用：
 
 - 说明它解决的问题和改善的工作流；
 - 写清平台、输入、输出、副作用和所需权限；
