@@ -738,11 +738,11 @@
       "side_effects": "not-reviewed; inspect code and called Rules before execution"
     },
     {
-      "package_id": "user:google-maps-nearby-stores-refresh2@1",
+      "package_id": "user:google-maps-nearby-stores-refresh2@2",
       "platform": null,
-      "source_path": "demos/google/GoogleMapStore-Collector.skill.json",
-      "file": "../../../demos/google/GoogleMapStore-Collector.skill.json",
-      "sha256": "b018003605c3bc2795331f81b18b835412a5c996e804f2c3cf0eb539eca413a6",
+      "source_path": "demos/google/GoogleMapStoreCollectorV1.skill.json",
+      "file": "../../../demos/google/GoogleMapStoreCollectorV1.skill.json",
+      "sha256": "e2ba0a01c8eb8b481698b1f14989061aafb90662aace17c55614a053fa4778d5",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
@@ -752,7 +752,6 @@
       },
       "capabilities": [
         "atoms.evaluate",
-        "atoms.navigate",
         "data.save",
         "db.saveContent"
       ],
@@ -762,19 +761,36 @@
           "location": {
             "title": "Address or coordinates",
             "type": "string",
-            "description": "Enter one public address/place or latitude,longitude. Searches within 2 km."
+            "description": "Enter a public address/place or latitude,longitude. This coordinate remains the center as the search expands across overlapping map tiles."
           },
           "limit": {
-            "title": "Maximum stores (0 = all)",
+            "title": "Target store count (0 = all)",
             "type": "number",
-            "description": "0 collects all qualifying nearby results Google Maps exposes, up to a safety cap of 1000.",
+            "description": "Target store count. The collector searches outward across map tiles until it reaches this count or exhausts max_radius_km.",
             "minimum": 0,
             "maximum": 1000
+          },
+          "search_zoom": {
+            "title": "Map zoom (14–21)",
+            "type": "integer",
+            "description": "Primary Google Maps zoom (14–21). Center searches also use zoom 20; cross-screen coverage uses zoom 15 and overlapping coordinate tiles.",
+            "minimum": 14,
+            "maximum": 21,
+            "default": 15
+          },
+          "max_radius_km": {
+            "title": "Maximum search radius (km)",
+            "type": "number",
+            "description": "Maximum distance from the original coordinate. Search expands in 1 km stages and stops when the target is met or this radius is exhausted.",
+            "minimum": 0.5,
+            "maximum": 10,
+            "default": 5
           }
         },
         "required": [
           "location",
-          "limit"
+          "limit",
+          "max_radius_km"
         ],
         "additionalProperties": true
       },
@@ -919,6 +935,14 @@
                     "string",
                     "null"
                   ]
+                },
+                "found_at_zooms": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 14,
+                    "maximum": 21
+                  }
                 }
               },
               "required": [
@@ -936,7 +960,8 @@
                 "longitude",
                 "distance_km",
                 "url",
-                "source_card_text"
+                "source_card_text",
+                "found_at_zooms"
               ],
               "type": "object"
             },
@@ -964,8 +989,10 @@
             "type": "object"
           },
           "search_radius_km": {
-            "const": 2,
-            "type": "number"
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 10,
+            "description": "Maximum allowed distance from the original center."
           },
           "search_url": {
             "format": "uri",
@@ -983,11 +1010,248 @@
             "enum": [
               "limit_reached",
               "all_results_loaded",
+              "max_radius_reached",
+              "tile_cap",
               "safety_cap",
               "batch_cap",
-              "no_new_results"
+              "no_new_results",
+              "query_failed"
             ],
             "type": "string"
+          },
+          "search_zoom": {
+            "type": "integer",
+            "description": "Zoom used by this single-center Google Maps search.",
+            "minimum": 14,
+            "maximum": 21
+          },
+          "coverage_mode": {
+            "type": "string",
+            "const": "multi_zoom_overlapping_map_tiles"
+          },
+          "coverage_note": {
+            "type": "string",
+            "description": "Explains bounded overlapping-tile coverage and the ranked Google Maps source limits."
+          },
+          "requested_count_met": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "True or false for a positive requested limit; null when limit is 0 (all exposed results)."
+          },
+          "search_zooms": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 14,
+              "maximum": 21
+            },
+            "description": "Zoom levels actually queried."
+          },
+          "search_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "searches": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "search_zoom": {
+                  "type": "integer",
+                  "minimum": 14,
+                  "maximum": 21
+                },
+                "search_url": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "complete",
+                    "target_met",
+                    "partial",
+                    "empty",
+                    "failed"
+                  ]
+                },
+                "stop_reason": {
+                  "type": "string",
+                  "enum": [
+                    "limit_reached",
+                    "all_results_loaded",
+                    "max_radius_reached",
+                    "tile_cap",
+                    "tile_batch_cap",
+                    "safety_cap",
+                    "batch_cap",
+                    "no_new_results",
+                    "query_failed"
+                  ]
+                },
+                "unique_candidates_seen": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "records_added": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "batches_loaded": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "has_more_results": {
+                  "type": "boolean"
+                },
+                "error": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "pass": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2
+                },
+                "search_center": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "lat": {
+                      "type": "number"
+                    },
+                    "lng": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "lat",
+                    "lng"
+                  ]
+                },
+                "search_radius_stage_km": {
+                  "type": "number",
+                  "minimum": 0.5,
+                  "maximum": 10
+                },
+                "tile_index": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "tile_distance_km": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "search_zoom",
+                "search_url",
+                "status",
+                "stop_reason",
+                "unique_candidates_seen",
+                "records_added",
+                "batches_loaded",
+                "has_more_results",
+                "error",
+                "pass"
+              ]
+            }
+          },
+          "query_failures": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "collection_persisted": {
+            "type": "boolean"
+          },
+          "collection_save_error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "initial_search_radius_km": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 2
+          },
+          "max_search_radius_km": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 10
+          },
+          "coverage_tile_step_km": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "coverage_tile_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 120
+          },
+          "coverage_tile_limit": {
+            "type": "integer",
+            "const": 120
+          },
+          "coverage_tile_failures": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "coverage_tile_centers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "tile_index": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "center": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "lat": {
+                      "type": "number"
+                    },
+                    "lng": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "lat",
+                    "lng"
+                  ]
+                },
+                "distance_from_center_km": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "radius_stage_km": {
+                  "type": "number",
+                  "minimum": 0.5,
+                  "maximum": 10
+                },
+                "stop_reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "tile_index",
+                "center",
+                "distance_from_center_km",
+                "radius_stage_km",
+                "stop_reason"
+              ]
+            }
           }
         },
         "required": [
@@ -1008,7 +1272,24 @@
           "database_saved",
           "database_save_failures",
           "records",
-          "collection"
+          "collection",
+          "search_zoom",
+          "coverage_mode",
+          "coverage_note",
+          "requested_count_met",
+          "search_zooms",
+          "search_urls",
+          "searches",
+          "query_failures",
+          "collection_persisted",
+          "collection_save_error",
+          "initial_search_radius_km",
+          "max_search_radius_km",
+          "coverage_tile_step_km",
+          "coverage_tile_count",
+          "coverage_tile_limit",
+          "coverage_tile_failures",
+          "coverage_tile_centers"
         ],
         "type": "object"
       },
