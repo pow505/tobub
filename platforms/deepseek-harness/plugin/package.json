@@ -1,0 +1,43 @@
+{
+  "name": "dsh-plugin-tobub",
+  "version": "0.1.0",
+  "description": "Use the local Tobub browser automation Runtime from DeepSeek Harness.",
+  "type": "module",
+  "main": "index.mjs",
+  "files": [
+    "index.mjs",
+    "schema.mjs",
+    "cordis.patch.yml",
+    "runtime-mcp.mjs",
+    "runtime-tools.json",
+    "skill",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.18.0",
+    "dsh": ">=0.2.1-rc.2 <0.3.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pow505/tobub.git",
+    "directory": "platforms/deepseek-harness/plugin"
+  },
+  "homepage": "https://github.com/pow505/tobub#readme",
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "tobub",
+    "browser-automation",
+    "mcp"
+  ]
+}

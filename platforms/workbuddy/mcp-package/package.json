@@ -1,0 +1,29 @@
+{
+  "name": "tobub-mcp",
+  "version": "__TOBUB_MCP_VERSION__",
+  "description": "Local stdio MCP bridge for the Tobub desktop Runtime",
+  "type": "module",
+  "bin": {
+    "tobub-mcp": "./runtime-mcp.mjs"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "files": [
+    "runtime-mcp.mjs",
+    "README.md",
+    "THIRD-PARTY-NOTICES.json",
+    "LICENSE"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pow505/tobub.git"
+  },
+  "homepage": "https://github.com/pow505/tobub#readme",
+  "keywords": [
+    "tobub",
+    "mcp",
+    "browser-automation"
+  ]
+}

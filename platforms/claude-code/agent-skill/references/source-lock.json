@@ -3,7 +3,7 @@
   "runtime_version": "1.8.2",
   "ui_catalog_hash": "a894880090ada5aee3caf3606edd8f5d3a0e3771ed3c020e6617fd778321f672",
   "capability_count": 163,
-  "demo_count": 26,
+  "demo_count": 27,
   "sources": [
     {
       "project": "sdk",
@@ -43,7 +43,7 @@
     {
       "project": "sdk",
       "path": "scripts/build-agent-skill.ts",
-      "sha256": "d7d8734f3b1c81d759a2ae5709acd98cdd1458c3b470eafa6c2cccae141e694a"
+      "sha256": "4884b31c40aff320ea9810a658e77e16545a6b310e0eb2d421caded501d9b14a"
     },
     {
       "project": "sdk",
@@ -389,7 +389,7 @@
   "resources": [
     {
       "path": "INSTALL.md",
-      "sha256": "8d33bf2e051bc9c10280aa58851a7fcdd0df4941dcc55b8fb06f38118e640630"
+      "sha256": "3fc65fa297c23f0ef9103b1550824c86a979a892eebcd3912ea21f2ec4b8acdb"
     },
     {
       "path": "LICENSE",
@@ -397,11 +397,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "1c99808427471c1716e16c8826cbe5209dd468f53b8b5fb2fdd975f9121ba507"
-    },
-    {
-      "path": "agents/openai.yaml",
-      "sha256": "e1124068948d5047a68c625f580447b920ad60970a9dc1a2a9aa1a07693c9d49"
+      "sha256": "4878f5737fb0232275c1ac5cbafc4d3031bab839f63396daf96e93f343e13f47"
     },
     {
       "path": "references/authoring.md",
@@ -417,7 +413,7 @@
     },
     {
       "path": "references/demos-index.json",
-      "sha256": "fe3fb3b312150062c6cf63d5c75555a1f6c16db856b6ec3c5137108bb0047cf8"
+      "sha256": "8ae0c08b68cd1a5133c1af557ffe9974f0de3bd614f443587f21a5303e877eee"
     },
     {
       "path": "references/execution.md",
@@ -456,12 +452,16 @@
       "sha256": "a367bec1a87f49055b6aeeadb7e63a9afbac21bcdd674a7191f9203236d4a67f"
     },
     {
+      "path": "scripts/bundle-package.mjs",
+      "sha256": "e9ad1dc81f9ecb813bd75216d891fd0681ae9d96b3c19d24037ce29c03060f5f"
+    },
+    {
       "path": "scripts/demo-resources.mjs",
-      "sha256": "c37c020337a2418724218ca53a317d75d247715091842bfa8bad1cf6e1692231"
+      "sha256": "3bcfb5a346e66208127a2290bddc19f29a9191cc7aee389247d409d557fbc43a"
     },
     {
       "path": "scripts/install.mjs",
-      "sha256": "66e4168b0ffc8a9e5e02e7a08dd78b3c41cbc80fe66e6c46312943a9001a799f"
+      "sha256": "297216667997e9b1a27e99174c148bc99961cc0b161dd3c38cc8c45169427d22"
     },
     {
       "path": "scripts/registration-command.mjs",
@@ -477,7 +477,7 @@
     },
     {
       "path": "scripts/verify-package.mjs",
-      "sha256": "abea438ebcdb6863e8172d3177e088a23a71c0d431c9682b15dd7fa03b28768d"
+      "sha256": "f65c3f5a7028777d691a701d537333e966023d3d2f0b93412a4cf27758bb339e"
     }
   ]
 }

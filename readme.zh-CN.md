@@ -19,7 +19,7 @@ Tobub 是一款浏览器自动化桌面应用，可让 AI Agent 操作本机浏�
 
 Skill 是一份可重复运行的自动化流程定义，用来完成一类网站任务，例如采集 Reddit 新帖子或 YouTube 评论。
 
-本仓库提供这些 Skills 的 JSON 定义和示例，以及供 Claude Code 和本地 Codex 调用 Tobub 的 Agent Skill。桌面应用不包含在仓库中；运行这些 Skill 需要另外安装 Tobub。
+本仓库提供这些 Skill 的 JSON 定义和示例、分别供 Claude Code 和本地 Codex 使用的 Agent Skill 包、WorkBuddy Connector，以及 DeepSeek Harness 插件。桌面应用不包含在仓库中；运行这些 Skill 需要另外安装 Tobub。
 
 ## 产品演示
 
@@ -92,29 +92,14 @@ Tobub 当前展示的数字员工角色包括：
 5. Tobub 在 Session 中展示进度、来源、依据和中间结果。
 6. Agent 交付结果，并保存可继续使用的 Session。
 
-## 在 Claude Code 或本机 Codex 中使用 Tobub
+## 在 AI 平台中使用 Tobub
 
-两种 Skill 指的是不同内容：
+各平台集成都连接本机 Tobub 桌面应用。请启动 Tobub，并按对应平台的指南安装和使用：
 
-- **Tobub Agent Skill**（[`skill/`](./skill/)）安装到 Claude Code 或本机 Codex，提供查找、运行、组合、创建和修改 Tobub Skills 的操作指南与参考资料。
-- **Tobub Skill**（`.skill.json`）是由 Tobub 桌面应用执行的可复用自动化工作流。应用会把每次运行及结果保存到 Session（工作记录）中。
-
-随 Agent Skill 提供的 MCP 桥接程序是一个本地 Node.js 连接器，负责把代码 Agent 的请求转发给 Tobub 桌面 Runtime；它不会启动桌面应用。此方式无需 Tobub Cloud 账号，但代码 Agent 必须在本机运行；云端 Agent 无法连接你电脑上的 Runtime。
-
-安装和连接：
-
-1. 在运行 Claude Code 或本机 Codex 的同一台电脑上启动 Tobub，并安装 Node.js 22.18 或更高版本。
-2. 从仓库根目录运行：
-
-   ```sh
-   cd skill
-   node scripts/install.mjs --host claude
-   ```
-
-   使用本机 Codex 时，将 `claude` 改为 `codex`。安装器会校验并安装 Agent Skill 及其示例，然后打印 MCP 注册命令。
-3. 执行该注册命令并重启 Claude Code 或 Codex。单独安装 Agent Skill 不会注册连接。
-
-Token 配置和其他细节见[安装说明](./skill/INSTALL.md)。
+- [Claude Code 使用指南](./platforms/claude-code/README.md)：Agent Skill + MCP。
+- [Codex 使用指南](./platforms/codex/README.md)：Agent Skill + MCP。
+- [DeepSeek Harness 使用指南](./platforms/deepseek-harness/README.md)：原生插件。
+- [WorkBuddy 使用指南](./platforms/workbuddy/README.md)：Connector。
 
 ## 开源 Tobub Skills，Runtime 单独发布
 
@@ -126,7 +111,7 @@ Tobub 桌面应用和 Runtime 实现属于单独发布的闭源产品。仅克�
 | --- | --- |
 | 原生 JSON Skill 定义 | Tobub 桌面应用 |
 | Skill 文档与示例 | Tobub Runtime 实现 |
-| Claude Code 和 Codex Agent Skill | 平台适配器与认证系统 |
+| Claude Code、Codex Agent Skill、WorkBuddy Connector 和 DeepSeek Harness 插件源文件 | 平台适配器与认证系统 |
 | 社区评审与改进 | 安装包及商业发行代码 |
 
 这样的分工让社区能够审阅和扩展自动化工作流，同时由 Tobub 提供本地执行环境和完整产品体验。

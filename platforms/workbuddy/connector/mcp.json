@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "tobub": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["--yes", "tobub-mcp@__TOBUB_MCP_VERSION__"],
+      "runtime": {
+        "type": "node",
+        "version": "22"
+      },
+      "env": {
+        "TOBUB_RUNTIME_URL": "${TOBUB_RUNTIME_URL}",
+        "TOBUB_RUNTIME_TOKEN": "${TOBUB_RUNTIME_TOKEN}"
+      },
+      "timeout": 30000
+    }
+  }
+}

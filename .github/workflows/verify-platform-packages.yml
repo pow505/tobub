@@ -1,0 +1,32 @@
+name: Verify platform packages
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.18.0
+      - name: Verify Claude Code package
+        run: node platforms/claude-code/agent-skill/scripts/verify-package.mjs --repository "$GITHUB_WORKSPACE"
+      - name: Verify Codex package
+        run: node platforms/codex/agent-skill/scripts/verify-package.mjs --repository "$GITHUB_WORKSPACE"
+      - name: Build and verify DeepSeek Harness package
+        run: |
+          node platforms/deepseek-harness/scripts/build.mjs --output "$RUNNER_TEMP/tobub-deepseek"
+          node platforms/deepseek-harness/scripts/verify.mjs --output "$RUNNER_TEMP/tobub-deepseek"
+      - name: Build and verify WorkBuddy artifacts
+        run: |
+          node platforms/workbuddy/scripts/build.mjs --output "$RUNNER_TEMP/tobub-workbuddy"
+          node platforms/workbuddy/scripts/verify.mjs --output "$RUNNER_TEMP/tobub-workbuddy"

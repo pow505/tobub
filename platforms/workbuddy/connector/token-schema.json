@@ -1,0 +1,27 @@
+{
+  "title": "Tobub 本地 Runtime 配置",
+  "title_en": "Tobub Local Runtime Configuration",
+  "description": "配置本机 Tobub Runtime 地址。若 Tobub 已启用 API Token，可选填该 Token；凭证保存在本机 WorkBuddy 配置中。",
+  "description_en": "Configure your local Tobub Runtime address. Enter an API token only if Tobub requires one; WorkBuddy stores credentials locally.",
+  "fields": [
+    {
+      "key": "TOBUB_RUNTIME_URL",
+      "label": "Tobub Runtime 地址",
+      "label_en": "Tobub Runtime URL",
+      "type": "text",
+      "required": true,
+      "defaultValue": "http://127.0.0.1:8510",
+      "description": "只支持本机回环地址，例如 http://127.0.0.1:8510；不要填写远程主机或 API 路径。",
+      "description_en": "Use a loopback origin only, such as http://127.0.0.1:8510. Remote hosts and API paths are rejected."
+    },
+    {
+      "key": "TOBUB_RUNTIME_TOKEN",
+      "label": "Tobub API Token（可选）",
+      "label_en": "Tobub API Token (optional)",
+      "type": "password",
+      "required": false,
+      "description": "仅当 Tobub Runtime 已配置 API Token 时填写；与 Tobub 中设置的 Token 相同。",
+      "description_en": "Only needed when your Tobub Runtime has an API token configured. Use the same token as in Tobub."
+    }
+  ]
+}

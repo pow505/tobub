@@ -1,11 +1,11 @@
 ---
 name: tobub
-description: Use the local Tobub desktop automation runtime to find, run, compose, create, modify and diagnose Tobub Skills. Use for reusable browser workflows, recording-based automation, platform Rules, bounded observation, data collection and explicitly requested local schedules. Generate native Tobub Skills from current SDK contracts and relevant packaged demos. Requires access to the user's local Tobub Runtime; Tobub Cloud is not required.
+description: Use Tobub through Claude Code to find, run, compose, create, modify, and diagnose browser automation Skills with the local Tobub desktop Runtime. Requires access to the user's local Tobub Runtime; Tobub Cloud is not required.
 ---
 
 # Tobub
 
-This is one Agent Skill for operating Tobub. A **Tobub Skill** is a native executable SkillDefinition or `.skill.json` installation package; creating one does not mean editing this Agent Skill's `SKILL.md`.
+This is the Claude Code Agent Skill for operating Tobub. A **Tobub Skill** is a native executable SkillDefinition or `.skill.json` installation package; creating one does not mean editing this Agent Skill's `SKILL.md`.
 
 ## Connect and choose the workflow
 
@@ -37,7 +37,7 @@ Read [authoring.md](references/authoring.md) and the relevant parts of [native-s
 6. Save when the user requested creation/installation in Tobub, using `tobub_skill_create/update`. Package imports use `tobub_skill_install_check/install`; never send a `.skill.json` package directly to `/skills/add`. Do not silently change platform current Rule; prefer binding the installed Rule to that Skill.
 7. Run only within the user's requested execution scope. Authoring a reusable Skill alone does not authorize posting, messaging, purchases, bulk account actions or scheduled execution. When browser execution is authorized for validation, explicitly pass `browser: { "headless": false }` in `tobub_skill_run` so the user can see it, then poll the returned run ID and inspect the actual output. Keep browser-based Skills headed by default; use a hidden run only when the user explicitly asks for it. Preserve the saved draft and evidence if Runtime verification cannot be completed.
 
-Claude/Codex can generate the candidate themselves using this package. `tobub_skill_author_proposal` is optional: it uses a separately configured Tobub AI scene, may send evidence to its configured provider, and returns a proposal without saving. No Tobub Cloud login is required by this Agent Skill.
+Claude Code can generate a native Skill candidate from these contracts and examples. `tobub_skill_author_proposal` is optional: it uses a separately configured Tobub AI scene, may send evidence to its configured provider, and returns a proposal without saving. No Tobub Cloud login is required by this Agent Skill.
 
 ## Recording, Discover, data and schedules
 

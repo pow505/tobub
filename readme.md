@@ -19,7 +19,7 @@ Tobub is a desktop app for automating website tasks with AI agents. You can run 
 
 A Skill is a saved, reusable workflow for one task, such as collecting recent Reddit posts or YouTube comments.
 
-This repository contains Skill definitions as JSON files, examples, and an Agent Skill for Claude Code and local Codex to connect to Tobub. The desktop app is distributed separately; you need it to run these workflows.
+This repository contains Skill definitions as JSON files, examples, separate Agent Skills for Claude Code and local Codex, a WorkBuddy Connector, and a DeepSeek Harness plugin. The desktop app is distributed separately; you need it to run these workflows.
 
 ## Product demo
 
@@ -92,29 +92,14 @@ Use these Skills for market research, trend discovery, social listening, custome
 5. Tobub keeps progress, sources, supporting evidence, and intermediate results visible in the Session.
 6. The Agent delivers the result and saves a Session for follow-up work.
 
-## Use Tobub with Claude Code or local Codex
+## Use Tobub with AI platforms
 
-The two “Skill” terms mean different things:
+Each integration connects a local agent to the Tobub desktop app. Start Tobub on the same computer, then follow the guide for your platform:
 
-- **Tobub Agent Skill** ([`skill/`](./skill/)) is installed into Claude Code or local Codex. It provides instructions and references for finding, running, combining, creating, and editing Tobub Skills.
-- **Tobub Skill** (`.skill.json`) is a reusable automation workflow executed by the Tobub desktop app. The app saves each run and its results in a Session.
-
-The bundled MCP bridge is a local Node.js connector that forwards requests from the coding agent to the Tobub desktop Runtime; it does not launch the app. No Tobub Cloud account is needed. The agent must run locally; a cloud-hosted agent cannot reach your desktop Runtime.
-
-To install and connect:
-
-1. Start Tobub and install Node.js 22.18 or later on the same computer as Claude Code or local Codex.
-2. From the repository root, run:
-
-   ```sh
-   cd skill
-   node scripts/install.mjs --host claude
-   ```
-
-   For local Codex, replace `claude` with `codex`. The installer validates the package, installs the Agent Skill with its examples, and prints the MCP registration command.
-3. Run that command once, then restart Claude Code or Codex. Installing the Agent Skill alone does not register the connection.
-
-See the [installation guide](./skill/INSTALL.md) for token setup and other details.
+- [Claude Code guide](./platforms/claude-code/README.md) — Agent Skill + MCP.
+- [Codex guide](./platforms/codex/README.md) — Agent Skill + MCP.
+- [DeepSeek Harness guide](./platforms/deepseek-harness/README.md) — native plugin.
+- [WorkBuddy guide](./platforms/workbuddy/README.md) — Connector.
 
 ## Open-source Skills for Tobub. Runtime distributed separately.
 
@@ -126,7 +111,7 @@ The Tobub desktop application and Runtime implementation are proprietary product
 | --- | --- |
 | Native JSON Skill definitions | Tobub desktop application |
 | Skill documentation and examples | Tobub Runtime implementation |
-| Agent Skill for Claude Code and Codex | Platform adapters and authentication |
+| Claude Code and Codex Agent Skills, WorkBuddy Connector, and DeepSeek Harness plugin source | Platform adapters and authentication |
 | Community review and improvements | Desktop installers and commercial distribution |
 
 This separation lets the community review and extend automation workflows while Tobub supplies the local execution environment and product experience.

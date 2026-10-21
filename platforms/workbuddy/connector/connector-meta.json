@@ -1,0 +1,23 @@
+{
+  "name": "Tobub Browser Automation",
+  "name_zh": "Tobub 浏览器自动化",
+  "name_en": "Tobub Browser Automation",
+  "description": "Use a local Tobub Runtime to run, inspect, compose, and create reusable browser automation Skills.",
+  "description_zh": "通过本机 Tobub Runtime 发现、运行、组合和创建浏览器自动化 Skill。",
+  "description_en": "Run, inspect, compose, and create reusable browser automation Skills through your local Tobub Runtime.",
+  "source": "pow505-tobub",
+  "type": "mcp",
+  "version": "1.0.0",
+  "minWorkbuddyVersion": "5.0.0",
+  "auth_mode": "token",
+  "examples_zh": [
+    "抓取今天 GitHub Trending 的 JavaScript 项目，并按星标数整理。",
+    "采集这个区域的咖啡馆名称、地址和评分，保存为结构化结果。",
+    "检查我已安装的 Tobub Skills，推荐适合监控 Reddit 新帖的流程。"
+  ],
+  "examples_en": [
+    "Collect today's trending JavaScript repositories on GitHub and sort them by stars.",
+    "Collect cafe names, addresses, and ratings in this area as structured data.",
+    "Inspect my installed Tobub Skills and recommend a workflow for monitoring new Reddit posts."
+  ]
+}
