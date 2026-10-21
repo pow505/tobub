@@ -1,0 +1,640 @@
+{
+  "created_at": "2026-10-20T00:00:00.000Z",
+  "manifest_version": 1,
+  "package_id": "user:google-maps-nearby-stores-refresh2@2",
+  "package_type": "tobub_skill",
+  "package_version": "2",
+  "requirements": {
+    "platform": "required",
+    "rule": "none"
+  },
+  "skill": {
+    "market_skill_id": "google-maps-nearby-stores",
+    "release_id": "google-maps-nearby-stores",
+    "name": "Google Maps Nearby Store Collector",
+    "skill_version": "2",
+    "source_type": "local",
+    "skill_code": "// Collect every non-sponsored shop Google Maps returns around a place or coordinate.\n// The result list is paginated with its public \"See more\" control. Store details are\n// read from the visible result cards, so the browser does not reload each place page.\n\n// Phase 1: validate the requested search scope.\nconst locationInput = String(tobub.params.location ?? '').trim();\nconst requestedLimit = Number(tobub.params.limit ?? 20);\nconst SAFETY_MAX_RESULTS = 1000;\nconst INITIAL_SEARCH_RADIUS_KM = 2;\nconst MAX_SEARCH_RADIUS_KM = Number(tobub.params.max_radius_km ?? 5);\nconst SEARCH_ZOOM = Number(tobub.params.search_zoom ?? 15);\nif (!Number.isInteger(SEARCH_ZOOM) || SEARCH_ZOOM < 14 || SEARCH_ZOOM > 21) {\n  throw new Error('search_zoom must be an integer from 14 to 21.');\n}\nif (!Number.isFinite(MAX_SEARCH_RADIUS_KM) || MAX_SEARCH_RADIUS_KM < 0.5 || MAX_SEARCH_RADIUS_KM > 10) {\n  throw new Error('max_radius_km must be between 0.5 and 10.');\n}\nconst INITIAL_RADIUS_KM = Math.min(INITIAL_SEARCH_RADIUS_KM, MAX_SEARCH_RADIUS_KM);\nconst COVERAGE_ZOOM = 15;\nconst MAX_COVERAGE_TILES = 120;\nconst MAX_TILE_RESULT_BATCHES = 20;\n// Zoom 20 is included as a second ranked-result pass because Maps returned a different\n// place set there during live validation. Keep it fixed and visible in the output.\nconst SEARCH_ZOOMS = Array.from(new Set([SEARCH_ZOOM, 20]));\nconst MAX_RESULT_BATCHES = 150;\nconst MAX_QUERY_LOAD_ATTEMPTS = 2;\nconst MAP_NAVIGATION_TIMEOUT_MS = 30000;\n// Navigate Maps until the response commits, then wait for the result feed separately.\n// Maps is a client-rendered app; waiting for DOMContentLoaded on every tile timed out live.\nconst navigateMapsUrl = async (url) => {\n  const expression = `async (page) => {\n    await page.goto(${JSON.stringify(url)}, {\n      waitUntil: 'commit',\n      timeout: ${MAP_NAVIGATION_TIMEOUT_MS},\n    });\n  }`;\n  await tobub.atoms.evaluate({ scope: 'playwright', expression }, {\n    timeout: MAP_NAVIGATION_TIMEOUT_MS + 5000,\n  });\n};\nconst MAX_QUERY_PASSES = 2;\n\nif (!locationInput) throw new Error('location is required. Enter an address or latitude,longitude.');\nif (!Number.isInteger(requestedLimit) || requestedLimit < 0 || requestedLimit > SAFETY_MAX_RESULTS) {\n  throw new Error(`limit must be 0 (all available results) or an integer from 1 to ${SAFETY_MAX_RESULTS}.`);\n}\n\nconst effectiveLimit = requestedLimit || SAFETY_MAX_RESULTS;\n\nfunction parseCoordinates(value) {\n  const match = String(value).match(/^\\s*(-?\\d{1,2}(?:\\.\\d+)?)\\s*,\\s*(-?\\d{1,3}(?:\\.\\d+)?)\\s*$/);\n  if (!match) return null;\n  const lat = Number(match[1]);\n  const lng = Number(match[2]);\n  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {\n    throw new Error('Coordinates are out of range. Latitude must be -90 to 90 and longitude -180 to 180.');\n  }\n  return { lat, lng };\n}\n\nfunction coordinatesFromUrl(value) {\n  const url = String(value ?? '');\n  const at = url.match(/@(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)/);\n  if (at) return { lat: Number(at[1]), lng: Number(at[2]) };\n  const place = url.match(/!3d(-?\\d+(?:\\.\\d+)?)!4d(-?\\d+(?:\\.\\d+)?)/);\n  if (place) return { lat: Number(place[1]), lng: Number(place[2]) };\n  return null;\n}\n\nfunction cleanText(value) {\n  const text = String(value ?? '').replace(/\\s+/g, ' ').trim();\n  return text || null;\n}\n\nconst isBrowserUnavailableError = (message) =>\n  /(?:main page|browser page|page|browser|context|target).*(?:closed|no longer available)|(?:closed|no longer available).*(?:main page|browser page|page|browser|context|target)/i\n    .test(String(message ?? ''));\n\nfunction cleanPhone(value) {\n  const text = cleanText(value);\n  return text && /^(?:n\\/?a|not available|none|-)$/i.test(text) ? null : text;\n}\n\nfunction parseRating(value) {\n  const match = String(value ?? '').trim().match(/(?:^|\\b)([0-5](?:[.,]\\d)?)(?:\\s*(?:stars?|星级|星)|\\s*\\()/i);\n  return match ? Number(match[1].replace(',', '.')) : null;\n}\n\nfunction parseReviewCount(value) {\n  const text = String(value ?? '').trim();\n  const ratingCount = text.match(/^[0-5](?:[.,]\\d)?\\s*\\(\\s*([\\d,.]+)\\s*\\)$/);\n  const labeledCount = text.match(/([\\d,\\.]+)\\s*(?:reviews?|评价|条评价)/i);\n  const match = ratingCount || labeledCount;\n  if (!match) return null;\n  const count = Number(match[1].replace(/[,.]/g, ''));\n  return Number.isFinite(count) ? count : null;\n}\n\nfunction distanceKm(a, b) {\n  const radians = (degrees) => degrees * Math.PI / 180;\n  const deltaLat = radians(b.lat - a.lat);\n  const deltaLng = radians(b.lng - a.lng);\n  const halfChord = Math.sin(deltaLat / 2) ** 2\n    + Math.cos(radians(a.lat)) * Math.cos(radians(b.lat)) * Math.sin(deltaLng / 2) ** 2;\n  return 6371 * 2 * Math.asin(Math.sqrt(halfChord));\n}\n\nasync function readPage(expression) {\n  return (await tobub.atoms.evaluate({ expression: expression.toString() })).value;\n}\n\n// Phase 2: resolve the input to a stable coordinate center.\nlet center = parseCoordinates(locationInput);\nif (!center) {\n  const addressUrl = 'https://www.google.com/maps/search/' + encodeURIComponent(locationInput) + '?hl=en';\n  await navigateMapsUrl(addressUrl);\n\n  const addressExpression = () => {\n    const firstPlace = Array.from(document.querySelectorAll('[role=\"feed\"] [role=\"article\"] a[href*=\"/maps/place/\"]'))\n      .filter((link) => !/\\b(Sponsored|赞助商|广告)\\b/i.test(link.closest('[role=\"article\"]')?.innerText || ''))\n      .map((link) => ({ href: link.href, label: link.getAttribute('aria-label') || link.innerText || '' }))[0] || null;\n    return { url: location.href, firstPlace };\n  };\n\n  const addressReadyExpression = async (page) => {\n    await page.waitForFunction(() => {\n      const firstPlace = Array.from(document.querySelectorAll('[role=\"feed\"] [role=\"article\"] a[href*=\"/maps/place/\"]'))\n        .find((link) => !/\\b(Sponsored|赞助商|广告)\\b/i.test(link.closest('[role=\"article\"]')?.innerText || ''));\n      return Boolean(firstPlace) || /@-?\\d+(?:\\.\\d+)?,-?\\d+(?:\\.\\d+)?/.test(location.href);\n    }, null, { timeout: 12000, polling: 250 });\n  };\n  try {\n    await tobub.atoms.evaluate({ scope: 'playwright', expression: addressReadyExpression.toString() }, { timeout: 15000 });\n  } catch {\n    // The explicit resolution check below returns the useful error message.\n  }\n  const addressState = await readPage(addressExpression);\n  center = coordinatesFromUrl(addressState.firstPlace?.href) || coordinatesFromUrl(addressState.url);\n\n  if (!center) {\n    throw new Error('Could not resolve this address to a Google Maps place. Try a more specific address or latitude,longitude.');\n  }\n}\n\n// Phase 3: read and paginate each configured Google Maps result feed.\n// The collector merges different ranked lists by stable Place ID and filters each\n// candidate against the original center and radius.\nconst listingExpression = () => {\n  const feed = document.querySelector('[role=\"feed\"]');\n  if (!feed) {\n    return {\n      candidates: [], cardCount: 0, hasFeed: false, hasMore: false,\n      scrollTop: 0, scrollHeight: 0, clientHeight: 0,\n      pageText: (document.body?.innerText || '').slice(0, 500),\n    };\n  }\n\n  const cards = Array.from(feed.querySelectorAll('[role=\"article\"]'));\n  const candidates = [];\n  for (const card of cards) {\n    const link = card.querySelector('a[href*=\"/maps/place/\"]');\n    if (!link) continue;\n\n    const text = (card.innerText || '').trim();\n    const sponsoredHeading = Array.from(card.querySelectorAll('h1,h2,h3'))\n      .some((heading) => /^(Sponsored|Ad|赞助商|广告)$/i.test((heading.innerText || '').trim()));\n    if (sponsoredHeading || /(^|\\n)\\s*(Sponsored|赞助商|广告)\\s*(\\n|$)/i.test(text)) continue;\n\n    const href = link.href.split('?')[0] + '?hl=en';\n    const placeId = href.match(/!1s([^!?#]+)/)?.[1] || href;\n    const cardLines = text.split('\\n').map((line) => line.trim()).filter(Boolean);\n    const name = (link.getAttribute('aria-label') || link.innerText || '').trim();\n    const ratingLine = cardLines.find((line) => /^[0-5](?:[.,]\\d)?\\s*\\(\\s*[\\d,.]+\\s*\\)$/.test(line)) || '';\n    const accessibleRating = Array.from(card.querySelectorAll('[role=\"img\"][aria-label], span[aria-label]'))\n      .map((element) => element.getAttribute('aria-label') || '')\n      .find((label) => /[0-5](?:[.,]\\d)?\\s*(?:stars?|星级|星)/i.test(label)) || '';\n    const ratingLabel = accessibleRating || ratingLine;\n\n    const detailLines = cardLines.filter((line) => line !== name && line !== ratingLine);\n    const rawMetadataLine = detailLines.find((line) => /[·•]/.test(line)\n      && !/\\b(open|closed|opens|temporarily|permanently)\\b/i.test(line)) || '';\n    const metadataLine = rawMetadataLine.split(/\\b(?:open|closed|opens|temporarily|permanently)\\b/i)[0].trim();\n    const metadataParts = metadataLine.split(/[·•]/)\n      .map((part) => part.replace(/\\s+/g, ' ').trim())\n      .filter((part) => part && !/^[\\uE000-\\uF8FF\\s]+$/.test(part));\n    const category = metadataParts[0] || null;\n    const metadataTail = metadataParts.slice(1).join(' · ');\n    const addressPattern = /(?:Pier\\s+\\d+\\s*,?\\s*)?\\d{1,5}\\s+[^·•\\n,]{1,50}?\\b(?:street|st|avenue|ave|road|rd|boulevard|blvd|way|wy|drive|dr|lane|ln|alley|aly|pike|place|pl|highway|hwy|terrace|ter|court|ct)\\b(?:\\s*(?:#|suite|ste|apt|unit)\\s*[\\w-]+)?/i;\n    const addressMatch = metadataTail.match(addressPattern);\n    const address = addressMatch?.[0] || metadataParts[1] || null;\n\n    const textSegments = text.split(/[·•\\n]/).map((segment) => segment.trim()).filter(Boolean);\n    const phone = textSegments.slice().reverse().find((segment) => {\n      const digits = segment.replace(/\\D/g, '');\n      return digits.length >= 7 && digits.length <= 15 && /^[+\\d\\s().-]+$/.test(segment);\n    }) || null;\n    const hours = textSegments\n      .filter((segment) => /\\b(open|closed|opens|temporarily|permanently)\\b/i.test(segment))\n      .join(' · ') || null;\n    const description = addressMatch\n      ? (metadataTail.replace(addressMatch[0], '').replace(/^[·•\\s]+/, '').replace(/\\s+/g, ' ').trim() || null)\n      : null;\n\n    candidates.push({\n      id: placeId,\n      name: name.trim(),\n      category,\n      rating_label: ratingLabel,\n      reviews_label: ratingLine || text,\n      address,\n      phone,\n      hours,\n      description,\n      href,\n      card_text: text,\n    });\n  }\n\n  const moreButton = Array.from(feed.querySelectorAll('button')).find((button) => {\n    const label = (button.getAttribute('aria-label') || button.innerText || '').trim();\n    const style = window.getComputedStyle(button);\n    const visible = button.getClientRects().length > 0\n      && style.display !== 'none'\n      && style.visibility !== 'hidden'\n      && Number(style.opacity) !== 0;\n    return visible\n      && !button.closest('[role=\"article\"]')\n      && /^(See more|More results|查看更多|查看更多结果)$/i.test(label);\n  });\n  return {\n    candidates,\n    cardCount: cards.length,\n    hasFeed: true,\n    hasMore: Boolean(moreButton),\n    scrollTop: feed.scrollTop,\n    scrollHeight: feed.scrollHeight,\n    clientHeight: feed.clientHeight,\n    pageText: (document.body?.innerText || '').slice(0, 500),\n  };\n};\n\n// Scroll the visible result feed only. Never click result or generic \"See more\" controls;\n// Google Maps uses similarly named controls for place navigation and external viewers.\nconst loadNextBatchExpression = (previousCardCount, previousPlaceHrefs) => `async (page) => {\n  const feed = page.locator('[role=\"feed\"]').first();\n  if (!(await feed.count())) return false;\n  const beforePath = await page.evaluate(() => location.pathname);\n  if (!beforePath.startsWith('/maps/search/')) return false;\n\n  await feed.evaluate((element) => element.scrollBy({\n    top: Math.max(element.clientHeight, 700),\n    behavior: 'instant',\n  }));\n  const progressed = await page.waitForFunction((previous) => {\n    const currentFeed = document.querySelector('[role=\"feed\"]');\n    if (!currentFeed || !location.pathname.startsWith('/maps/search/')) return false;\n    const cards = Array.from(currentFeed.querySelectorAll('[role=\"article\"]'));\n    if (cards.length > previous.cardCount) return true;\n    const hrefs = cards.flatMap((card) => Array.from(card.querySelectorAll('a[href*=\"/maps/place/\"]'))\n      .map((link) => link.href.split('?')[0] + '?hl=en'));\n    return hrefs.some((href) => !previous.hrefs.includes(href));\n  }, { cardCount: ${previousCardCount}, hrefs: ${JSON.stringify(previousPlaceHrefs)} },\n  { timeout: 8000, polling: 250 }).then(() => true).catch(() => false);\n  const afterPath = await page.evaluate(() => location.pathname);\n  return afterPath.startsWith('/maps/search/') && progressed;\n}`\n\n// Phase 4: cache stable Place IDs, then rebuild the eligible nearest-first result set\n// whenever the active radius expands. This lets later overlapping map tiles promote\n// previously observed outer candidates without duplicating or losing them.\nconst recordsById = new Map();\nconst seenPlaceIds = new Set();\nconst foundZoomsById = new Map();\nconst candidateById = new Map();\nlet activeRadiusKm = INITIAL_RADIUS_KM;\nlet outOfRadiusCount = 0;\nlet missingCoordinatesCount = 0;\nlet excludedAccommodationCount = 0;\nconst accommodationPattern = /\\b(?:apartment|lodging|hotel|motel|hostel|resort|vacation rental|bed and breakfast|guest house|inn)\\b|\\b(?:sleeps?\\s+\\d+|\\d+\\s+bedrooms?)\\b|\\bblueground\\b/i;\n\nconst refreshRecords = () => {\n  recordsById.clear();\n  outOfRadiusCount = 0;\n  missingCoordinatesCount = 0;\n  excludedAccommodationCount = 0;\n  const eligible = [];\n  for (const candidate of candidateById.values()) {\n    if (!candidate.name) continue;\n    const coordinates = coordinatesFromUrl(candidate.href);\n    if (!coordinates) {\n      missingCoordinatesCount += 1;\n      continue;\n    }\n    const distance = distanceKm(center, coordinates);\n    if (distance > activeRadiusKm) {\n      outOfRadiusCount += 1;\n      continue;\n    }\n    if (accommodationPattern.test(`${candidate.category || ''} ${candidate.name} ${candidate.card_text || ''}`)) {\n      excludedAccommodationCount += 1;\n      continue;\n    }\n    const foundAtZooms = foundZoomsById.get(candidate.id) || [];\n    eligible.push({\n      id: candidate.id,\n      name: cleanText(candidate.name),\n      category: cleanText(candidate.category),\n      rating: parseRating(candidate.rating_label),\n      reviews_count: parseReviewCount(candidate.reviews_label),\n      address: cleanText(candidate.address),\n      phone: cleanPhone(candidate.phone),\n      website: null,\n      hours: cleanText(candidate.hours),\n      description: cleanText(candidate.description),\n      latitude: coordinates.lat,\n      longitude: coordinates.lng,\n      distance_km: Number(distance.toFixed(3)),\n      url: candidate.href,\n      source_card_text: cleanText(candidate.card_text),\n      found_at_zooms: [...foundAtZooms],\n    });\n  }\n  eligible.sort((a, b) => a.distance_km - b.distance_km || String(a.name).localeCompare(String(b.name)));\n  for (const record of eligible.slice(0, effectiveLimit)) recordsById.set(record.id, record);\n};\n\nconst addCandidates = (listing, zoom) => {\n  let newPlaceCount = 0;\n  for (const candidate of listing?.candidates || []) {\n    if (!candidate.id) continue;\n    let foundAtZooms = foundZoomsById.get(candidate.id);\n    if (!foundAtZooms) {\n      foundAtZooms = [];\n      foundZoomsById.set(candidate.id, foundAtZooms);\n    }\n    if (!foundAtZooms.includes(zoom)) foundAtZooms.push(zoom);\n    seenPlaceIds.add(candidate.id);\n    if (!candidateById.has(candidate.id)) {\n      candidateById.set(candidate.id, candidate);\n      newPlaceCount += 1;\n    } else {\n      const stored = candidateById.get(candidate.id);\n      for (const key of ['name', 'category', 'rating_label', 'reviews_label', 'address', 'phone', 'hours', 'description', 'href', 'card_text']) {\n        if (!stored[key] && candidate[key]) stored[key] = candidate[key];\n      }\n    }\n  }\n  refreshRecords();\n  return newPlaceCount;\n};\n\nconst resultsReadyExpression = async (page) => {\n  await page.waitForFunction(() => {\n    const feed = document.querySelector('[role=\"feed\"]');\n    return Boolean(feed?.querySelector('[role=\"article\"]'));\n  }, null, { timeout: 12000, polling: 250 });\n};\nconst searchPageStateExpression = () => ({\n  url: location.href,\n  isSearchPage: location.pathname.startsWith('/maps/search/'),\n});\nconst restoreSearchPageAfterPaginationNavigation = async (searchUrl) => {\n  const pageState = await readPage(searchPageStateExpression);\n  if (pageState.isSearchPage) return null;\n  await navigateMapsUrl(searchUrl);\n  try {\n    await tobub.atoms.evaluate({ scope: 'playwright', expression: resultsReadyExpression.toString() }, { timeout: 15000 });\n  } catch {}\n  return pageState.url;\n};\nconst searchUrls = SEARCH_ZOOMS.map((zoom) =>\n  `https://www.google.com/maps/search/shops/@${center.lat},${center.lng},${zoom}z?hl=en`\n);\nconst searches = [];\nlet batchesLoaded = 0;\nlet stopReason = '';\nlet browserUnavailable = false;\n\nfor (let searchIndex = 0; searchIndex < SEARCH_ZOOMS.length; searchIndex += 1) {\n  const zoom = SEARCH_ZOOMS[searchIndex];\n  const searchUrl = searchUrls[searchIndex];\n\n  for (let pass = 1; pass <= MAX_QUERY_PASSES; pass += 1) {\n    if (recordsById.size >= effectiveLimit) {\n      stopReason = requestedLimit ? 'limit_reached' : 'safety_cap';\n      break;\n    }\n\n    const candidatesBeforeSearch = seenPlaceIds.size;\n    const recordsBeforeSearch = recordsById.size;\n    let listing = null;\n    let loadError = null;\n    let validEmptyResult = false;\n\n    for (let attempt = 1; attempt <= MAX_QUERY_LOAD_ATTEMPTS; attempt += 1) {\n      try {\n        await navigateMapsUrl(searchUrl);\n        try {\n          await tobub.atoms.evaluate({ scope: 'playwright', expression: resultsReadyExpression.toString() }, { timeout: 15000 });\n        } catch {\n          // Inspect the current page below; the feed may be empty or slow to render.\n        }\n        listing = await readPage(listingExpression);\n        if (listing?.hasFeed && listing.cardCount > 0) {\n          loadError = null;\n          break;\n        }\n\n        const pageText = cleanText(listing?.pageText) || '';\n        if (/unusual traffic|not a robot|captcha|unfortunately/i.test(pageText)) {\n          loadError = 'Google Maps is showing an access challenge.';\n        } else if (/no results|没有结果|找不到结果/i.test(pageText)) {\n          validEmptyResult = true;\n          loadError = null;\n          break;\n        } else {\n          loadError = 'Google Maps did not render a result feed.';\n        }\n      } catch (error) {\n        loadError = String(error?.message || error || 'Unknown page-load error');\n        listing = null;\n        if (isBrowserUnavailableError(loadError)) {\n          browserUnavailable = true;\n          break;\n        }\n      }\n    }\n\n    if (!listing?.hasFeed || !listing.cardCount) {\n      const empty = validEmptyResult && !loadError;\n      const emptySummary = {\n        pass,\n        search_zoom: zoom,\n        search_url: searchUrl,\n        status: empty ? 'empty' : 'failed',\n        stop_reason: empty ? 'all_results_loaded' : 'query_failed',\n        unique_candidates_seen: seenPlaceIds.size - candidatesBeforeSearch,\n        records_added: recordsById.size - recordsBeforeSearch,\n        batches_loaded: 0,\n        has_more_results: !empty,\n        error: loadError,\n      };\n      searches.push(emptySummary);\n      if (browserUnavailable) {\n        stopReason = 'query_failed';\n        break;\n      }\n      if (!empty && pass < MAX_QUERY_PASSES) continue;\n      break;\n    }\n\n    batchesLoaded += 1;\n    let queryBatchesLoaded = 1;\n    let idleBatches = 0;\n    let queryStopReason = '';\n    addCandidates(listing, zoom);\n    if (recordsById.size >= effectiveLimit) {\n      queryStopReason = requestedLimit ? 'limit_reached' : 'safety_cap';\n    }\n\n    for (let batch = 0; !queryStopReason && batch < MAX_RESULT_BATCHES && recordsById.size < effectiveLimit; batch += 1) {\n      const previousSeenCount = seenPlaceIds.size;\n      const canScroll = listing.scrollTop + listing.clientHeight < listing.scrollHeight - 12;\n      if (!listing.hasMore && !canScroll) {\n        queryStopReason = 'all_results_loaded';\n        break;\n      }\n\n      try {\n        await tobub.atoms.evaluate({\n          scope: 'playwright',\n          expression: loadNextBatchExpression(listing.cardCount, listing.candidates.map((candidate) => candidate.href)),\n        }, { timeout: 12000 });\n      } catch {\n        // Re-read the feed after the interaction, including when Maps has no next batch.\n      }\n      let navigatedToDetailUrl = null;\n      try {\n        navigatedToDetailUrl = await restoreSearchPageAfterPaginationNavigation(searchUrl);\n      } catch (error) {\n        queryStopReason = 'query_failed';\n        loadError = String(error?.message || error || 'Could not verify the results page after pagination.');\n        if (isBrowserUnavailableError(loadError)) browserUnavailable = true;\n        break;\n      }\n      if (navigatedToDetailUrl) {\n        queryStopReason = 'query_failed';\n        loadError = 'Pagination left the Google Maps results page. The search was restored and this query was stopped safely.';\n        break;\n      }\n      try {\n        listing = await readPage(listingExpression);\n      } catch (error) {\n        queryStopReason = 'query_failed';\n        loadError = String(error?.message || error || 'Could not read the result feed.');\n        break;\n      }\n      addCandidates(listing, zoom);\n      const grew = seenPlaceIds.size > previousSeenCount;\n      if (grew) {\n        batchesLoaded += 1;\n        queryBatchesLoaded += 1;\n      }\n\n      if (recordsById.size >= effectiveLimit) {\n        queryStopReason = requestedLimit ? 'limit_reached' : 'safety_cap';\n        break;\n      }\n      if (grew) {\n        idleBatches = 0;\n        continue;\n      }\n      if (!listing.hasMore && listing.scrollTop + listing.clientHeight >= listing.scrollHeight - 12) {\n        queryStopReason = 'all_results_loaded';\n        break;\n      }\n\n      idleBatches += 1;\n      if (idleBatches >= 2) {\n        queryStopReason = 'no_new_results';\n        break;\n      }\n    }\n\n    if (!queryStopReason) queryStopReason = recordsById.size >= SAFETY_MAX_RESULTS ? 'safety_cap' : 'batch_cap';\n    const queryHasMore = Boolean(listing?.hasMore)\n      || ['safety_cap', 'batch_cap', 'no_new_results', 'query_failed'].includes(queryStopReason);\n    searches.push({\n      pass,\n      search_zoom: zoom,\n      search_url: searchUrl,\n      status: queryStopReason === 'all_results_loaded' ? 'complete'\n        : queryStopReason === 'limit_reached' ? 'target_met'\n          : 'partial',\n      stop_reason: queryStopReason,\n      unique_candidates_seen: seenPlaceIds.size - candidatesBeforeSearch,\n      records_added: recordsById.size - recordsBeforeSearch,\n      batches_loaded: queryBatchesLoaded,\n      has_more_results: queryHasMore,\n      error: loadError,\n    });\n\n    if (queryStopReason === 'limit_reached') {\n      stopReason = 'limit_reached';\n      break;\n    }\n    if (queryStopReason === 'safety_cap') {\n      stopReason = 'safety_cap';\n      break;\n    }\n    if (queryStopReason === 'batch_cap') {\n      stopReason = 'batch_cap';\n      break;\n    }\n    if (queryStopReason === 'all_results_loaded') break;\n    // A healthy feed with no new Place IDs is exhausted for this pass; reloading\n    // the same search URL adds latency without recovering records. Retry only failures.\n    if (browserUnavailable) {\n      stopReason = 'query_failed';\n      break;\n    }\n    if (pass < MAX_QUERY_PASSES && queryStopReason === 'query_failed') continue;\n    break;\n  }\n\n  if (browserUnavailable) {\n    stopReason = 'query_failed';\n    break;\n  }\n  if (['limit_reached', 'safety_cap', 'batch_cap'].includes(stopReason)) break;\n}\n\n// Phase 4b: expand coverage across overlapping map-sized coordinate tiles, nearest first.\n// Tile spacing is estimated from the live browser/map viewport at COVERAGE_ZOOM; each\n// tile is a fresh Maps search center, not a pan gesture with ambiguous final coordinates.\nconst viewportInfoExpression = () => {\n  const canvasWidths = Array.from(document.querySelectorAll('canvas'))\n    .map((canvas) => {\n      const rect = canvas.getBoundingClientRect();\n      return rect.width > 0 && rect.height > 0 ? rect.width : 0;\n    })\n    .sort((a, b) => b - a);\n  return {\n    viewportWidth: Number(window.innerWidth) || 0,\n    mapCanvasWidth: canvasWidths[0] || 0,\n  };\n};\nlet viewportInfo = { viewportWidth: 0, mapCanvasWidth: 0 };\ntry { viewportInfo = await readPage(viewportInfoExpression); } catch {}\nconst coverageMapWidthPx = viewportInfo.mapCanvasWidth || viewportInfo.viewportWidth * 0.62;\nconst metersPerPixel = 156543.03392 * Math.cos(center.lat * Math.PI / 180) / (2 ** COVERAGE_ZOOM);\nconst coverageTileStepKm = Math.max(0.45, Math.min(1.5, metersPerPixel * coverageMapWidthPx * 0.5 / 1000));\nconst tileOverlapMarginKm = coverageTileStepKm * 0.55;\n\nfunction coordinateOffset(origin, eastKm, northKm) {\n  const latitude = origin.lat + northKm / 111.32;\n  const longitude = origin.lng + eastKm / (111.32 * Math.max(0.01, Math.cos(origin.lat * Math.PI / 180)));\n  return { lat: Number(latitude.toFixed(6)), lng: Number(longitude.toFixed(6)) };\n}\n\nfunction buildCoverageTiles(maxRadiusKm, stepKm) {\n  const halfCount = Math.ceil((maxRadiusKm + stepKm) / stepKm);\n  const tiles = [];\n  for (let row = -halfCount; row <= halfCount; row += 1) {\n    for (let column = -halfCount; column <= halfCount; column += 1) {\n      const eastKm = column * stepKm;\n      const northKm = row * stepKm;\n      const radialDistanceKm = Math.hypot(eastKm, northKm);\n      if (radialDistanceKm < stepKm * 0.45 || radialDistanceKm > maxRadiusKm + tileOverlapMarginKm) continue;\n      tiles.push({\n        east_km: Number(eastKm.toFixed(3)),\n        north_km: Number(northKm.toFixed(3)),\n        distance_km: Number(radialDistanceKm.toFixed(3)),\n        center: coordinateOffset(center, eastKm, northKm),\n        key: `${row}:${column}`,\n      });\n    }\n  }\n  tiles.sort((a, b) => a.distance_km - b.distance_km || a.north_km - b.north_km || a.east_km - b.east_km);\n  return tiles;\n}\n\nconst coverageTiles = buildCoverageTiles(MAX_SEARCH_RADIUS_KM, coverageTileStepKm);\nconst searchedTileKeys = new Set();\nlet tileSearchCount = 0;\nlet tileFailureCount = 0;\nlet consecutiveTileFailures = 0;\nlet tileCapReached = false;\nlet radiusStage = INITIAL_RADIUS_KM;\nconst radiusStages = [];\nwhile (radiusStage < MAX_SEARCH_RADIUS_KM) {\n  radiusStages.push(Number(radiusStage.toFixed(3)));\n  radiusStage = Math.min(MAX_SEARCH_RADIUS_KM, radiusStage + 1);\n}\nradiusStages.push(Number(MAX_SEARCH_RADIUS_KM.toFixed(3)));\n\ncoverageSweep: for (const stageRadiusKm of [...new Set(radiusStages)]) {\n  if (browserUnavailable) {\n    stopReason = 'query_failed';\n    break;\n  }\n  activeRadiusKm = stageRadiusKm;\n  refreshRecords();\n  if (recordsById.size >= effectiveLimit) {\n    stopReason = requestedLimit ? 'limit_reached' : 'safety_cap';\n    break;\n  }\n  const stageTiles = coverageTiles.filter((tile) =>\n    tile.distance_km <= stageRadiusKm + tileOverlapMarginKm && !searchedTileKeys.has(tile.key)\n  );\n  for (const tile of stageTiles) {\n    if (recordsById.size >= effectiveLimit) {\n      stopReason = requestedLimit ? 'limit_reached' : 'safety_cap';\n      break coverageSweep;\n    }\n    if (tileSearchCount >= MAX_COVERAGE_TILES) {\n      tileCapReached = true;\n      stopReason = 'tile_cap';\n      break coverageSweep;\n    }\n    searchedTileKeys.add(tile.key);\n    tileSearchCount += 1;\n    const tileIndex = tileSearchCount;\n    const searchUrl = `https://www.google.com/maps/search/shops/@${tile.center.lat},${tile.center.lng},${COVERAGE_ZOOM}z?hl=en`;\n    const candidatesBeforeSearch = seenPlaceIds.size;\n    const recordsBeforeSearch = recordsById.size;\n    let listing = null;\n    let loadError = null;\n    let validEmptyResult = false;\n\n    for (let attempt = 1; attempt <= MAX_QUERY_LOAD_ATTEMPTS; attempt += 1) {\n      try {\n        await navigateMapsUrl(searchUrl);\n        try {\n          await tobub.atoms.evaluate({ scope: 'playwright', expression: resultsReadyExpression.toString() }, { timeout: 15000 });\n        } catch {}\n        listing = await readPage(listingExpression);\n        if (listing?.hasFeed && listing.cardCount > 0) {\n          loadError = null;\n          break;\n        }\n        const pageText = cleanText(listing?.pageText) || '';\n        if (/unusual traffic|not a robot|captcha|unfortunately/i.test(pageText)) {\n          loadError = 'Google Maps is showing an access challenge.';\n        } else if (/no results|没有结果|找不到结果/i.test(pageText)) {\n          validEmptyResult = true;\n          loadError = null;\n          break;\n        } else {\n          loadError = 'Google Maps did not render a result feed.';\n        }\n      } catch (error) {\n        loadError = String(error?.message || error || 'Unknown tile-load error');\n        listing = null;\n        if (isBrowserUnavailableError(loadError)) {\n          browserUnavailable = true;\n          break;\n        }\n      }\n    }\n\n    if (!listing?.hasFeed || !listing.cardCount) {\n      const empty = validEmptyResult && !loadError;\n      if (!empty) {\n        tileFailureCount += 1;\n        consecutiveTileFailures += 1;\n      } else {\n        consecutiveTileFailures = 0;\n      }\n      searches.push({\n        pass: 1,\n        search_zoom: COVERAGE_ZOOM,\n        search_url: searchUrl,\n        search_center: tile.center,\n        search_radius_stage_km: stageRadiusKm,\n        tile_index: tileIndex,\n        tile_distance_km: tile.distance_km,\n        status: empty ? 'empty' : 'failed',\n        stop_reason: empty ? 'all_results_loaded' : 'query_failed',\n        unique_candidates_seen: seenPlaceIds.size - candidatesBeforeSearch,\n        records_added: recordsById.size - recordsBeforeSearch,\n        batches_loaded: 0,\n        has_more_results: !empty,\n        error: loadError,\n      });\n      if (!empty && (browserUnavailable || consecutiveTileFailures >= 2)) {\n        stopReason = 'query_failed';\n        break coverageSweep;\n      }\n      continue;\n    }\n\n    consecutiveTileFailures = 0;\n    batchesLoaded += 1;\n    let queryBatchesLoaded = 1;\n    let idleBatches = 0;\n    let queryStopReason = '';\n    addCandidates(listing, COVERAGE_ZOOM);\n    if (recordsById.size >= effectiveLimit) queryStopReason = requestedLimit ? 'limit_reached' : 'safety_cap';\n\n    for (let batch = 0; !queryStopReason && batch < MAX_TILE_RESULT_BATCHES && recordsById.size < effectiveLimit; batch += 1) {\n      const previousSeenCount = seenPlaceIds.size;\n      const canScroll = listing.scrollTop + listing.clientHeight < listing.scrollHeight - 12;\n      if (!listing.hasMore && !canScroll) {\n        queryStopReason = 'all_results_loaded';\n        break;\n      }\n      try {\n        await tobub.atoms.evaluate({\n          scope: 'playwright',\n          expression: loadNextBatchExpression(listing.cardCount, listing.candidates.map((candidate) => candidate.href)),\n        }, { timeout: 12000 });\n      } catch {}\n      let navigatedToDetailUrl = null;\n      try {\n        navigatedToDetailUrl = await restoreSearchPageAfterPaginationNavigation(searchUrl);\n      } catch (error) {\n        queryStopReason = 'query_failed';\n        loadError = String(error?.message || error || 'Could not verify the results page after pagination.');\n        if (isBrowserUnavailableError(loadError)) browserUnavailable = true;\n        break;\n      }\n      if (navigatedToDetailUrl) {\n        queryStopReason = 'query_failed';\n        loadError = 'Pagination left the Google Maps results page. The search was restored and this tile was stopped safely.';\n        break;\n      }\n      try {\n        listing = await readPage(listingExpression);\n      } catch (error) {\n        queryStopReason = 'query_failed';\n        loadError = String(error?.message || error || 'Could not read the tile result feed.');\n        break;\n      }\n      addCandidates(listing, COVERAGE_ZOOM);\n      const grew = seenPlaceIds.size > previousSeenCount;\n      if (grew) {\n        batchesLoaded += 1;\n        queryBatchesLoaded += 1;\n      }\n      if (recordsById.size >= effectiveLimit) {\n        queryStopReason = requestedLimit ? 'limit_reached' : 'safety_cap';\n        break;\n      }\n      if (grew) {\n        idleBatches = 0;\n        continue;\n      }\n      if (!listing.hasMore && listing.scrollTop + listing.clientHeight >= listing.scrollHeight - 12) {\n        queryStopReason = 'all_results_loaded';\n        break;\n      }\n      idleBatches += 1;\n      if (idleBatches >= 2) {\n        queryStopReason = 'no_new_results';\n        break;\n      }\n    }\n\n    if (!queryStopReason) queryStopReason = 'tile_batch_cap';\n    if (queryStopReason === 'query_failed') {\n      tileFailureCount += 1;\n      consecutiveTileFailures += 1;\n    } else {\n      consecutiveTileFailures = 0;\n    }\n    searches.push({\n      pass: 1,\n      search_zoom: COVERAGE_ZOOM,\n      search_url: searchUrl,\n      search_center: tile.center,\n      search_radius_stage_km: stageRadiusKm,\n      tile_index: tileIndex,\n      tile_distance_km: tile.distance_km,\n      status: queryStopReason === 'all_results_loaded' ? 'complete'\n        : queryStopReason === 'limit_reached' ? 'target_met' : 'partial',\n      stop_reason: queryStopReason,\n      unique_candidates_seen: seenPlaceIds.size - candidatesBeforeSearch,\n      records_added: recordsById.size - recordsBeforeSearch,\n      batches_loaded: queryBatchesLoaded,\n      has_more_results: Boolean(listing?.hasMore)\n        || ['tile_batch_cap', 'no_new_results', 'query_failed'].includes(queryStopReason),\n      error: loadError,\n    });\n    if (browserUnavailable || (queryStopReason === 'query_failed' && consecutiveTileFailures >= 2)) {\n      stopReason = 'query_failed';\n      break coverageSweep;\n    }\n    if (queryStopReason === 'tile_batch_cap') {\n      // The batch cap applies to this tile only. Continue to neighboring tiles so\n      // the collector can still meet the requested count within its bounded grid.\n      tileCapReached = true;\n      stopReason = 'tile_cap';\n    }\n    if (queryStopReason === 'limit_reached' || queryStopReason === 'safety_cap') {\n      stopReason = queryStopReason;\n      break coverageSweep;\n    }\n  }\n}\n\nif (recordsById.size >= effectiveLimit) stopReason = requestedLimit ? 'limit_reached' : 'safety_cap';\nelse if (!requestedLimit && !tileCapReached && tileFailureCount === 0) stopReason = 'max_radius_reached';\nelse if (requestedLimit && recordsById.size >= requestedLimit) stopReason = 'limit_reached';\nelse if (tileCapReached) stopReason = 'tile_cap';\nelse if (tileFailureCount && recordsById.size < effectiveLimit) stopReason = 'query_failed';\nelse if (recordsById.size < effectiveLimit) stopReason = 'max_radius_reached';\n\nconst records = Array.from(recordsById.values()).slice(0, effectiveLimit);\nconst requestedCountMet = requestedLimit === 0 ? null : records.length >= requestedLimit;\nconst finalSearches = SEARCH_ZOOMS.map((zoom) =>\n  searches.slice().reverse().find((search) => !search.tile_index && search.search_zoom === zoom)\n).filter(Boolean);\nconst hasMoreResults = searches.some((search) => search.has_more_results);\nconst centerZoomsExhausted = SEARCH_ZOOMS.every((zoom) =>\n  searches.some((search) => !search.tile_index && search.search_zoom === zoom\n    && ['all_results_loaded', 'limit_reached'].includes(search.stop_reason))\n);\nconst allCoverageTilesExhausted = !tileCapReached && tileFailureCount === 0\n  && searches.filter((search) => search.tile_index).every((search) => search.stop_reason === 'all_results_loaded')\n  && tileSearchCount === coverageTiles.length;\nconst allZoomsExhausted = centerZoomsExhausted && allCoverageTilesExhausted;\nif (!stopReason) {\n  if (requestedCountMet) stopReason = 'limit_reached';\n  else if (records.length >= SAFETY_MAX_RESULTS) stopReason = 'safety_cap';\n  else if (searches.some((search) => search.stop_reason === 'query_failed')) stopReason = 'query_failed';\n  else if (tileCapReached || searches.some((search) => search.stop_reason === 'tile_batch_cap')) stopReason = 'tile_cap';\n  else if (searches.some((search) => search.stop_reason === 'batch_cap')) stopReason = 'batch_cap';\n  else if (searches.some((search) => search.stop_reason === 'no_new_results')) stopReason = 'no_new_results';\n  else stopReason = requestedLimit ? 'max_radius_reached' : 'max_radius_reached';\n}\n\n// Phase 5: persist records and report collection completeness separately.\nlet collection = null;\nlet collectionSaveError = null;\nif (records.length) {\n  try {\n    collection = await tobub.data.save(records.map((record) => ({\n      type: 'google-maps-business',\n      id: record.id,\n      payload: record,\n      meta: {\n        location_input: locationInput,\n        resolved_coordinates: center,\n        search_urls: [...new Set(searches.map((search) => search.search_url))],\n        search_zooms: [...new Set(searches.map((search) => search.search_zoom))],\n        search_radius_km: MAX_SEARCH_RADIUS_KM,\n        coverage_tile_count: tileSearchCount,\n        coverage_tile_step_km: coverageTileStepKm,\n      },\n    })), {\n      name: 'google-maps-nearby-stores',\n      mode: 'event',\n      outputs: [{ type: 'file', format: 'jsonl' }],\n      policy: { maxRecords: effectiveLimit, maxBytes: 10485760 },\n    });\n  } catch (error) {\n    collectionSaveError = String(error?.message || error || 'Collection persistence failed.');\n  }\n}\n\nlet databaseSaved = 0;\nlet databaseSaveFailures = 0;\nfor (const record of records) {\n  try {\n    await tobub.db.saveContent({\n      platform: 'google_maps',\n      contentType: 'business',\n      externalId: record.id,\n      title: record.name || 'Google Maps business',\n      summary: record.address || record.category || '',\n      url: record.url,\n      metadata: {\n        category: record.category,\n        rating: record.rating,\n        reviews_count: record.reviews_count,\n        phone: record.phone,\n        website: record.website,\n        hours: record.hours,\n        latitude: record.latitude,\n        longitude: record.longitude,\n        found_at_zooms: record.found_at_zooms,\n      },\n      rawData: record,\n    });\n    databaseSaved += 1;\n  } catch {\n    databaseSaveFailures += 1;\n  }\n}\n\nconst collectionPersisted = records.length === 0\n  || (!collectionSaveError && collection?.status === 'completed'\n    && collection?.recordCount === records.length && collection?.droppedCount === 0);\nconst targetSatisfied = requestedLimit > 0 && requestedCountMet === true;\nconst allResultFeedsExhausted = requestedLimit === 0 && allZoomsExhausted;\nconst queryFailures = searches.filter((search) => search.stop_reason === 'query_failed').length;\nconst persistenceComplete = databaseSaveFailures === 0 && collectionPersisted;\nconst status = persistenceComplete && queryFailures === 0\n  && (targetSatisfied || allResultFeedsExhausted)\n  ? (records.length ? 'ok' : 'empty')\n  : 'partial';\nconst searchUrl = searches[0]?.search_url || searchUrls[0];\n\nreturn {\n  status,\n  location_input: locationInput,\n  resolved_coordinates: center,\n  search_radius_km: MAX_SEARCH_RADIUS_KM,\n  initial_search_radius_km: INITIAL_RADIUS_KM,\n  max_search_radius_km: MAX_SEARCH_RADIUS_KM,\n  coverage_tile_step_km: Number(coverageTileStepKm.toFixed(3)),\n  coverage_tile_count: tileSearchCount,\n  coverage_tile_limit: MAX_COVERAGE_TILES,\n  coverage_tile_failures: tileFailureCount,\n  search_zoom: SEARCH_ZOOM,\n  search_zooms: [...new Set(searches.map((search) => search.search_zoom))],\n  coverage_mode: 'multi_zoom_overlapping_map_tiles',\n  coverage_note: 'Searches start at the coordinate center, then move through overlapping map-sized coordinate tiles from nearest to farthest, expanding the accepted radius in 1 km stages up to max_search_radius_km. Place IDs are deduplicated and results are distance-sorted from the original center. The tile grid is bounded; Google Maps ranked feeds do not guarantee every business in the area is indexed or returned.',\n  search_url: searchUrl,\n  search_urls: [...new Set(searches.map((search) => search.search_url))],\n  searches,\n  coverage_tile_centers: searches.filter((search) => search.tile_index).map((search) => ({\n    tile_index: search.tile_index,\n    center: search.search_center,\n    distance_from_center_km: search.tile_distance_km,\n    radius_stage_km: search.search_radius_stage_km,\n    stop_reason: search.stop_reason,\n  })),\n  query_failures: queryFailures,\n  requested_limit: requestedLimit,\n  requested_count_met: requestedCountMet,\n  collected: records.length,\n  candidates_seen: seenPlaceIds.size,\n  excluded_out_of_radius: outOfRadiusCount,\n  excluded_missing_coordinates: missingCoordinatesCount,\n  excluded_accommodation: excludedAccommodationCount,\n  batches_loaded: batchesLoaded,\n  stop_reason: stopReason,\n  has_more_results: hasMoreResults,\n  database_saved: databaseSaved,\n  database_save_failures: databaseSaveFailures,\n  collection_persisted: collectionPersisted,\n  collection_save_error: collectionSaveError,\n  records,\n  collection,\n};\n",
+    "platform": "google",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "title": "Address or coordinates",
+          "type": "string",
+          "description": "Enter a public address/place or latitude,longitude. This coordinate remains the center as the search expands across overlapping map tiles."
+        },
+        "limit": {
+          "title": "Target store count",
+          "type": "number",
+          "description": "Target store count. The collector searches outward across map tiles until it reaches this count or exhausts max_radius_km.",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "max_radius_km": {
+          "title": "Maximum search radius (km)",
+          "type": "number",
+          "description": "Maximum distance from the original coordinate. Search expands in 1 km stages and stops when the target is met or this radius is exhausted.",
+          "minimum": 0.5,
+          "maximum": 10
+        },
+        "search_zoom": {
+          "title": "Map zoom (14–21)",
+          "type": "number",
+          "description": "Primary Google Maps zoom (14–21). Center searches also use zoom 20; cross-screen coverage uses zoom 15 and overlapping coordinate tiles.",
+          "minimum": 14,
+          "maximum": 21
+        }
+      },
+      "required": [
+        "location",
+        "limit",
+        "max_radius_km"
+      ],
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "batches_loaded": {
+          "maximum": 151,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "candidates_seen": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "collected": {
+          "maximum": 1000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "collection": {
+          "additionalProperties": true,
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "database_save_failures": {
+          "maximum": 1000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "database_saved": {
+          "maximum": 1000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "excluded_accommodation": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "excluded_missing_coordinates": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "excluded_out_of_radius": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "has_more_results": {
+          "type": "boolean"
+        },
+        "location_input": {
+          "type": "string"
+        },
+        "records": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "address": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "category": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "distance_km": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "hours": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "id": {
+                "type": "string"
+              },
+              "latitude": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "longitude": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "phone": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "rating": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "reviews_count": {
+                "minimum": 0,
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "source_card_text": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "url": {
+                "format": "uri",
+                "type": "string"
+              },
+              "website": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "found_at_zooms": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 14,
+                  "maximum": 21
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "category",
+              "rating",
+              "reviews_count",
+              "address",
+              "phone",
+              "website",
+              "hours",
+              "description",
+              "latitude",
+              "longitude",
+              "distance_km",
+              "url",
+              "source_card_text",
+              "found_at_zooms"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "requested_limit": {
+          "maximum": 1000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "resolved_coordinates": {
+          "additionalProperties": false,
+          "properties": {
+            "lat": {
+              "type": "number"
+            },
+            "lng": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "lat",
+            "lng"
+          ],
+          "type": "object"
+        },
+        "search_radius_km": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 10,
+          "description": "Maximum allowed distance from the original center."
+        },
+        "search_url": {
+          "format": "uri",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "partial",
+            "empty"
+          ],
+          "type": "string"
+        },
+        "stop_reason": {
+          "enum": [
+            "limit_reached",
+            "all_results_loaded",
+            "max_radius_reached",
+            "tile_cap",
+            "safety_cap",
+            "batch_cap",
+            "no_new_results",
+            "query_failed"
+          ],
+          "type": "string"
+        },
+        "search_zoom": {
+          "type": "integer",
+          "description": "Zoom used by this single-center Google Maps search.",
+          "minimum": 14,
+          "maximum": 21
+        },
+        "coverage_mode": {
+          "type": "string",
+          "const": "multi_zoom_overlapping_map_tiles"
+        },
+        "coverage_note": {
+          "type": "string",
+          "description": "Explains bounded overlapping-tile coverage and the ranked Google Maps source limits."
+        },
+        "requested_count_met": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "True or false for a positive requested limit; null when limit is 0 (all exposed results)."
+        },
+        "search_zooms": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 14,
+            "maximum": 21
+          },
+          "description": "Zoom levels actually queried."
+        },
+        "search_urls": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "searches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "search_zoom": {
+                "type": "integer",
+                "minimum": 14,
+                "maximum": 21
+              },
+              "search_url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "complete",
+                  "target_met",
+                  "partial",
+                  "empty",
+                  "failed"
+                ]
+              },
+              "stop_reason": {
+                "type": "string",
+                "enum": [
+                  "limit_reached",
+                  "all_results_loaded",
+                  "max_radius_reached",
+                  "tile_cap",
+                  "tile_batch_cap",
+                  "safety_cap",
+                  "batch_cap",
+                  "no_new_results",
+                  "query_failed"
+                ]
+              },
+              "unique_candidates_seen": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "records_added": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "batches_loaded": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "has_more_results": {
+                "type": "boolean"
+              },
+              "error": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "pass": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2
+              },
+              "search_center": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "lat": {
+                    "type": "number"
+                  },
+                  "lng": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "lat",
+                  "lng"
+                ]
+              },
+              "search_radius_stage_km": {
+                "type": "number",
+                "minimum": 0.5,
+                "maximum": 10
+              },
+              "tile_index": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "tile_distance_km": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "search_zoom",
+              "search_url",
+              "status",
+              "stop_reason",
+              "unique_candidates_seen",
+              "records_added",
+              "batches_loaded",
+              "has_more_results",
+              "error",
+              "pass"
+            ]
+          }
+        },
+        "query_failures": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "collection_persisted": {
+          "type": "boolean"
+        },
+        "collection_save_error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "initial_search_radius_km": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 2
+        },
+        "max_search_radius_km": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 10
+        },
+        "coverage_tile_step_km": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "coverage_tile_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 120
+        },
+        "coverage_tile_limit": {
+          "type": "integer",
+          "const": 120
+        },
+        "coverage_tile_failures": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "coverage_tile_centers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "tile_index": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "center": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "lat": {
+                    "type": "number"
+                  },
+                  "lng": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "lat",
+                  "lng"
+                ]
+              },
+              "distance_from_center_km": {
+                "type": "number",
+                "minimum": 0
+              },
+              "radius_stage_km": {
+                "type": "number",
+                "minimum": 0.5,
+                "maximum": 10
+              },
+              "stop_reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "tile_index",
+              "center",
+              "distance_from_center_km",
+              "radius_stage_km",
+              "stop_reason"
+            ]
+          }
+        }
+      },
+      "required": [
+        "status",
+        "location_input",
+        "resolved_coordinates",
+        "search_radius_km",
+        "search_url",
+        "requested_limit",
+        "collected",
+        "candidates_seen",
+        "excluded_out_of_radius",
+        "excluded_missing_coordinates",
+        "excluded_accommodation",
+        "batches_loaded",
+        "stop_reason",
+        "has_more_results",
+        "database_saved",
+        "database_save_failures",
+        "records",
+        "collection",
+        "search_zoom",
+        "coverage_mode",
+        "coverage_note",
+        "requested_count_met",
+        "search_zooms",
+        "search_urls",
+        "searches",
+        "query_failures",
+        "collection_persisted",
+        "collection_save_error",
+        "initial_search_radius_km",
+        "max_search_radius_km",
+        "coverage_tile_step_km",
+        "coverage_tile_count",
+        "coverage_tile_limit",
+        "coverage_tile_failures",
+        "coverage_tile_centers"
+      ],
+      "type": "object"
+    },
+    "ui_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "default": "47.6096619,-122.342241",
+          "help": "Enter a public address/place or latitude,longitude. This coordinate remains the center as the search expands across overlapping map tiles.",
+          "key": "location",
+          "label": "Address or coordinates",
+          "placeholder": "Pike Place Market, Seattle, WA or 47.6096619,-122.342241",
+          "required": true,
+          "type": "input"
+        },
+        {
+          "default": 20,
+          "help": "Target store count. The collector searches outward across map tiles until it reaches this count or exhausts max_radius_km.",
+          "key": "limit",
+          "label": "Target store count",
+          "max": 1000,
+          "min": 0,
+          "required": true,
+          "step": 1,
+          "type": "number"
+        },
+        {
+          "key": "max_radius_km",
+          "label": "Maximum search radius (km)",
+          "type": "number",
+          "default": 5,
+          "min": 0.5,
+          "max": 10,
+          "step": 0.5,
+          "required": true,
+          "help": "Maximum distance from the original coordinate. Search expands in 1 km stages and stops when the target is met or this radius is exhausted."
+        },
+        {
+          "key": "search_zoom",
+          "label": "Map zoom (14–21)",
+          "type": "number",
+          "default": 15,
+          "min": 14,
+          "max": 21,
+          "step": 1,
+          "required": false,
+          "help": "Primary Google Maps zoom (14–21). Center searches also use zoom 20; cross-screen coverage uses zoom 15 and overlapping coordinate tiles."
+        }
+      ]
+    },
+    "requirements": {},
+    "defaults": {
+      "params": {
+        "limit": 20,
+        "location": "47.6096619,-122.342241",
+        "search_zoom": 15,
+        "max_radius_km": 5
+      },
+      "browser": {
+        "run_mode": "transient",
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "atoms-only"
+      }
+    },
+    "metadata": {
+      "category": "maps-and-local-discovery",
+      "description": "Collect Google Maps shop results around a coordinate using center zoom passes, bounded overlapping map-sized tile expansion, Place ID deduplication, nearest-first sorting, and an explicit maximum radius.",
+      "language": "en"
+    }
+  },
+  "source": "user",
+  "platform": {
+    "code": "google",
+    "name": "google",
+    "version": "1",
+    "base_url": "https://www.google.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "google.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "a70384fa2c69f894e91342c9fd702ae9ab7106b36442fa986fe0b54c5efed563"
+  }
+}
