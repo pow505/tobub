@@ -1,0 +1,713 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:baidu-map-store-collector@2.6",
+  "package_version": "2.0",
+  "source": "user",
+  "created_at": "2026-10-21T00:00:00.000Z",
+  "runtime_compatibility": {
+    "min_version": "1.8.2"
+  },
+  "requirements": {
+    "platform": "none",
+    "rule": "none"
+  },
+  "skill": {
+    "market_skill_id": "baidu-map-store-collector",
+    "release_id": "baidu-map-store-collector",
+    "name": "百度地图坐标多屏店铺采集 v2",
+    "skill_version": "2",
+    "source_type": "local",
+    "skill_code": "// 百度地图坐标多屏店铺采集 v2\n// 流程：验证输入 -> 地址解析/坐标标准化 -> 中心半径检索 -> 必要时重叠网格补采 -> UID 去重 -> 有界保存。\nconst input = tobub.params || {};\nconst locationInput = String(input.location ?? '').trim();\nconst keyword = String(input.keyword ?? '店铺').trim();\nconst region = String(input.region ?? '').trim();\nconst coordinateType = String(input.coordinateType ?? 'bd09ll').trim().toLowerCase();\nconst radiusKm = Number(input.radiusKm ?? 2);\nconst requestedLimit = Number(input.limit ?? 20);\nconst requestedZoom = Number(input.zoom ?? 18);\n\nif (!locationInput) throw new Error('location is required: enter an address or latitude,longitude.');\nif (!keyword || keyword.length > 100) throw new Error('keyword must contain 1 to 100 characters.');\nif (region.length > 80) throw new Error('region must contain no more than 80 characters.');\nif (!['bd09ll', 'gcj02', 'wgs84'].includes(coordinateType))\n  throw new Error('coordinateType must be bd09ll, gcj02, or wgs84.');\nif (!Number.isFinite(radiusKm) || radiusKm < 0.2 || radiusKm > 10)\n  throw new Error('radiusKm must be between 0.2 and 10.');\nif (!Number.isInteger(requestedLimit) || requestedLimit < 1 || requestedLimit > 500)\n  throw new Error('limit must be an integer from 1 through 500.');\nif (!Number.isInteger(requestedZoom) || requestedZoom < 10 || requestedZoom > 21)\n  throw new Error('zoom must be an integer from 10 through 21.');\n\nconst MAX_TILES = 120;\nconst MAX_PAGES_PER_QUERY = 8;\nconst MAX_CONSECUTIVE_QUERY_FAILURES = 3;\nconst MAP_TIMEOUT_MS = 60000;\nconst SEARCH_READY_TIMEOUT_MS = 20000;\nconst PAGE_CHANGE_TIMEOUT_MS = 10000;\nconst RADIUS_EDGE_TOLERANCE_KM = 0;\nconst PI = Math.PI;\n\nfunction validateLatLng(lat, lng, label) {\n  if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lng) || lng < -180 || lng > 180)\n    throw new Error(label + ' must contain valid latitude and longitude values.');\n  return { lat, lng };\n}\n\nfunction parseCoordinateInput(value) {\n  const parts = value.replace(/[，；;]/g, ',').trim().split(/[\\s,]+/).filter(Boolean);\n  if (parts.length !== 2) return null;\n  const lat = Number(parts[0]);\n  const lng = Number(parts[1]);\n  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;\n  return validateLatLng(lat, lng, 'Coordinate input');\n}\n\nfunction outsideChina(lat, lng) {\n  return lng < 72.004 || lng > 137.8347 || lat < 0.8293 || lat > 55.8271;\n}\nfunction transformLatitude(x, y) {\n  let value = -100 + 2 * x + 3 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x));\n  value += (20 * Math.sin(6 * x * PI) + 20 * Math.sin(2 * x * PI)) * 2 / 3;\n  value += (20 * Math.sin(y * PI) + 40 * Math.sin(y / 3 * PI)) * 2 / 3;\n  value += (160 * Math.sin(y / 12 * PI) + 320 * Math.sin(y * PI / 30)) * 2 / 3;\n  return value;\n}\nfunction transformLongitude(x, y) {\n  let value = 300 + x + 2 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.sqrt(Math.abs(x));\n  value += (20 * Math.sin(6 * x * PI) + 20 * Math.sin(2 * x * PI)) * 2 / 3;\n  value += (20 * Math.sin(x * PI) + 40 * Math.sin(x / 3 * PI)) * 2 / 3;\n  value += (150 * Math.sin(x / 12 * PI) + 300 * Math.sin(x / 30 * PI)) * 2 / 3;\n  return value;\n}\nfunction wgs84ToGcj02(point) {\n  if (outsideChina(point.lat, point.lng)) return point;\n  const a = 6378245;\n  const eccentricity = 0.00669342162296594323;\n  let dLat = transformLatitude(point.lng - 105, point.lat - 35);\n  let dLng = transformLongitude(point.lng - 105, point.lat - 35);\n  const radLat = point.lat / 180 * PI;\n  let magic = Math.sin(radLat);\n  magic = 1 - eccentricity * magic * magic;\n  const sqrtMagic = Math.sqrt(magic);\n  dLat = dLat * 180 / ((a * (1 - eccentricity)) / (magic * sqrtMagic) * PI);\n  dLng = dLng * 180 / (a / sqrtMagic * Math.cos(radLat) * PI);\n  return { lat: point.lat + dLat, lng: point.lng + dLng };\n}\nfunction gcj02ToBd09(point) {\n  const z = Math.sqrt(point.lng * point.lng + point.lat * point.lat) + 0.00002 * Math.sin(point.lat * PI * 3000 / 180);\n  const theta = Math.atan2(point.lat, point.lng) + 0.000003 * Math.cos(point.lng * PI * 3000 / 180);\n  return { lat: z * Math.sin(theta) + 0.006, lng: z * Math.cos(theta) + 0.0065 };\n}\nfunction inputToBd09(point, type) {\n  if (type === 'bd09ll') return point;\n  return gcj02ToBd09(type === 'wgs84' ? wgs84ToGcj02(point) : point);\n}\n\n// 百度地图官方 JS API 使用分带多项式进行 BD09MC/BD09LL 转换。\nconst MC_BANDS = [12890594.86, 8362377.87, 5591021, 3481989.83, 1678043.12, 0];\nconst MC2LL = [\n  [1.410526172116255e-8, 0.00000898305509648872, -1.9939833816331, 200.9824383106796, -187.2403703815547, 91.6087516669843, -23.38765649603339, 2.57121317296198, -0.03801003308653, 17337981.2],\n  [-7.435856389565537e-9, 0.000008983055097726239, -0.78625201886289, 96.32687599759846, -1.85204757529826, -59.36935905485877, 47.40033549296737, -16.50741931063887, 2.28786674699375, 10260144.86],\n  [-3.030883460898826e-8, 0.00000898305509983578, 0.30071316287616, 59.74293618442277, 7.35798407487126, -25.38371002664745, 13.45380521110908, -3.29883767235584, 0.32710905363475, 6856817.37],\n  [-1.981981304930552e-8, 0.000008983055099779535, 0.03278182852591, 40.31678527705744, 0.65659298677277, -4.44255534477492, 0.85341911805263, 0.12923347998204, -0.04625736007561, 4482777.06],\n  [3.09191371068437e-9, 0.000008983055096812155, 0.00006995724062, 23.10934304144901, -0.00023663490511, -0.6321817810242, -0.00663494467273, 0.03430082397953, -0.00466043876332, 2555164.4],\n  [2.890871144776878e-9, 0.000008983055095805407, -3.068298e-8, 7.47137025468032, -0.00000353937994, -0.02145144861037, -0.00001234426596, 0.00010322952773, -0.00000323890364, 826088.5],\n];\nfunction bd09McToBd09Ll(mapX, mapY) {\n  const ax = Math.abs(mapX);\n  const ay = Math.abs(mapY);\n  let bandIndex = MC_BANDS.findIndex((band) => ay >= band);\n  if (bandIndex < 0) bandIndex = MC_BANDS.length - 1;\n  const c = MC2LL[bandIndex];\n  const ratio = ay / c[9];\n  const lng = c[0] + c[1] * ax;\n  const lat = c[2] + c[3] * ratio + c[4] * ratio ** 2 + c[5] * ratio ** 3\n    + c[6] * ratio ** 4 + c[7] * ratio ** 5 + c[8] * ratio ** 6;\n  return { lat: mapY < 0 ? -lat : lat, lng: mapX < 0 ? -lng : lng };\n}\nfunction mapCenterFromUrl(url) {\n  const match = String(url).match(/@(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?),(\\d+(?:\\.\\d+)?)z(?:[/?#]|$)/);\n  let mapX = null;\n  let mapY = null;\n  let zoom = null;\n  if (match) {\n    mapX = Number(match[1]);\n    mapY = Number(match[2]);\n    zoom = Number(match[3]);\n  } else {\n    try {\n      const current = new URL(String(url));\n      mapX = Number(current.searchParams.get('nb_x'));\n      mapY = Number(current.searchParams.get('nb_y'));\n      if (![mapX, mapY].every(Number.isFinite)) {\n        const rawCenter = current.searchParams.get('c');\n        const centerParts = rawCenter ? rawCenter.split(',').map(Number) : [];\n        if (centerParts.length === 2 && centerParts.every(Number.isFinite)) [mapX, mapY] = centerParts;\n      }\n      zoom = mapZoomFromUrl(url);\n    } catch {\n      return null;\n    }\n  }\n  const center = bd09McToBd09Ll(mapX, mapY);\n  if (![center.lat, center.lng, zoom].every(Number.isFinite)) return null;\n  return { ...center, mapX, mapY, zoom };\n}\nfunction mapZoomFromUrl(url) {\n  try {\n    const rawZoom = new URL(String(url)).searchParams.get('l');\n    if (rawZoom !== null) {\n      const queryZoom = Number(rawZoom);\n      if (Number.isFinite(queryZoom) && queryZoom >= 0) return queryZoom;\n    }\n  } catch {}\n  const match = String(url).match(/,(-?\\d+(?:\\.\\d+)?)z(?:[/?#]|$)/);\n  return match ? Number(match[1]) : null;\n}\nfunction mapCenterFromMapUrl(url) {\n  const routeCenter = mapCenterFromUrl(url);\n  if (routeCenter) return routeCenter;\n  try {\n    const current = new URL(String(url));\n    let mapX = Number(current.searchParams.get('nb_x'));\n    let mapY = Number(current.searchParams.get('nb_y'));\n    if (![mapX, mapY].every(Number.isFinite)) {\n      const rawCenter = current.searchParams.get('c');\n      const centerParts = rawCenter ? rawCenter.split(',').map(Number) : [];\n      if (centerParts.length === 2 && centerParts.every(Number.isFinite)) [mapX, mapY] = centerParts;\n    }\n    if (![mapX, mapY].every(Number.isFinite)) return null;\n    const point = bd09McToBd09Ll(mapX, mapY);\n    return { ...point, mapX, mapY };\n  } catch {\n    return null;\n  }\n}\nfunction buildVisibleMapUrl(sourceUrl) {\n  try {\n    const pageUrl = new URL(String(sourceUrl));\n    let mapX = Number(pageUrl.searchParams.get('nb_x'));\n    let mapY = Number(pageUrl.searchParams.get('nb_y'));\n    if (![mapX, mapY].every(Number.isFinite)) {\n      const routeCenter = mapCenterFromUrl(sourceUrl);\n      if (!routeCenter) return null;\n      mapX = routeCenter.mapX;\n      mapY = routeCenter.mapY;\n    }\n    const x = Number(mapX.toFixed(6));\n    const y = Number(mapY.toFixed(6));\n    pageUrl.pathname = '/search/' + encodeURIComponent(keyword) + '/@' + x + ',' + y + ',' + requestedZoom + 'z';\n    pageUrl.searchParams.set('querytype', 'nb');\n    pageUrl.searchParams.set('wd', keyword);\n    pageUrl.searchParams.set('nb_x', String(x));\n    pageUrl.searchParams.set('nb_y', String(y));\n    return 'https://map.baidu.com/@' + x + ',' + y + ',' + requestedZoom + 'z';\n  } catch {\n    return null;\n  }\n}\n\nlet center;\nlet locationMode;\nlet mapPage = null;\nlet coveragePage = null;\nconst visiblePage = await tobub.browser.current();\nlet addressResolution = null;\nconst coordinateInput = parseCoordinateInput(locationInput);\nif (coordinateInput) {\n  center = inputToBd09(coordinateInput, coordinateType);\n  locationMode = 'coordinates';\n} else {\n  locationMode = 'address';\n  const geocodeAddress = (region && !locationInput.includes(region) ? region + ' ' : '') + locationInput;\n  const geocodeParams = new URLSearchParams({\n    address: geocodeAddress,\n    output: 'html',\n    src: 'webapp.baidu.openAPIdemo',\n    coord_type: 'bd09ll',\n    // 百度地址 URI 在 zoom=19 时可能退回城市概览；固定用已验证的 18 级解析中心。\n    zoom: '18',\n  });\n  mapPage = await tobub.browser.open({\n    url: 'https://api.map.baidu.com/geocoder?' + geocodeParams.toString(),\n    waitUntil: 'domcontentloaded',\n    timeout: MAP_TIMEOUT_MS,\n  });\n  await tobub.browser.bringToFront(visiblePage);\n  let resolvedState = null;\n  let stableAddressUrl = '';\n  let stableAddressSamples = 0;\n  for (let attempt = 0; attempt < 40; attempt++) {\n    const observation = await tobub.atoms.evaluate({\n      expression: '() => ({ url: location.href, title: document.title, text: (document.body?.innerText || \"\").slice(0, 1200), links: Array.from(document.querySelectorAll(\"a[href]\")).map(a => a.href).filter(href => /uid=/.test(href) && /lat=/.test(href) && /lng=/.test(href)).slice(0, 40) })',\n    }, { page: mapPage });\n    resolvedState = observation.value;\n    const currentUrl = new URL(resolvedState.url);\n    const currentQuery = currentUrl.searchParams.get('wd') || '';\n    const normalizeAddress = (value) => String(value || '').replace(/[\\s,，;；\\-—（）()]+/g, '').toLowerCase();\n    const normalizedInput = normalizeAddress(locationInput);\n    const normalizedRegion = normalizeAddress(region);\n    const addressCore = normalizedRegion ? normalizedInput.replace(normalizedRegion, '') : normalizedInput;\n    const normalizedQuery = normalizeAddress(currentQuery);\n    const queryMatches = normalizedQuery.includes(normalizedInput)\n      || (addressCore.length >= 2 && normalizedQuery.includes(addressCore));\n    const addressPageMatches = currentUrl.hostname === 'map.baidu.com'\n      && currentUrl.pathname.startsWith('/search/')\n      && queryMatches;\n    const addressPins = addressPageMatches ? (resolvedState.links || []).map((href) => {\n      try {\n        const linkUrl = new URL(href);\n        const params = linkUrl.searchParams;\n        const mapX = Number(params.get('lng'));\n        const mapY = Number(params.get('lat'));\n        const name = normalizeAddress(params.get('place') || '');\n        const hasUid = Boolean(params.get('uid'));\n        if (!hasUid || !name || !Number.isFinite(mapX) || !Number.isFinite(mapY)\n          || Math.abs(mapX) < 1000000 || Math.abs(mapY) < 1000000) return null;\n        const exactOrContained = addressCore.length >= 2\n          && (name.includes(addressCore) || addressCore.includes(name));\n        const inputContained = normalizedInput.length >= 2\n          && (name.includes(normalizedInput) || normalizedInput.includes(name));\n        return { mapX, mapY, name, score: exactOrContained ? 3 : inputContained ? 2 : 0 };\n      } catch { return null; }\n    }).filter((pin) => pin && pin.score > 0).sort((a, b) => b.score - a.score) : [];\n    const matchedPin = addressPins[0] || null;\n    const candidateCenter = matchedPin\n      ? { ...bd09McToBd09Ll(matchedPin.mapX, matchedPin.mapY), mapX: matchedPin.mapX, mapY: matchedPin.mapY }\n      : null;\n    // 地址中心采用与搜索词匹配的百度 POI 标记坐标，不使用自动缩放后的视口中心。\n    if (candidateCenter) {\n      stableAddressSamples = resolvedState.url === stableAddressUrl ? stableAddressSamples + 1 : 0;\n      stableAddressUrl = resolvedState.url;\n      center = candidateCenter;\n    } else {\n      stableAddressUrl = '';\n      stableAddressSamples = 0;\n      center = null;\n    }\n    if (center && stableAddressSamples >= 2) {\n      addressResolution = {\n        url: resolvedState.url,\n        title: resolvedState.title,\n        preview: String(resolvedState.text || '').slice(0, 500),\n      };\n      break;\n    }\n    if (resolvedState.url.includes('error.html')) break;\n    await tobub.atoms.waitFor({ delay: 300 });\n  }\n  if (!center)\n    throw new Error('Could not resolve a matching Baidu POI coordinate for the address: ' + JSON.stringify(resolvedState));\n  center = { lat: center.lat, lng: center.lng };\n}\ncenter = validateLatLng(Number(center.lat), Number(center.lng), 'Resolved center');\n\nfunction distanceKm(a, b) {\n  const rad = (degrees) => degrees * PI / 180;\n  const dLat = rad(b.lat - a.lat);\n  const dLng = rad(b.lng - a.lng);\n  const h = Math.sin(dLat / 2) ** 2\n    + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;\n  return 6371.0088 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(Math.max(0, 1 - h)));\n}\nfunction coordinateOffset(origin, eastKm, northKm) {\n  const lat = origin.lat + northKm / 111.32;\n  const cosine = Math.max(0.2, Math.cos(origin.lat * PI / 180));\n  const lng = origin.lng + eastKm / (111.32 * cosine);\n  return { lat: Number(lat.toFixed(7)), lng: Number(lng.toFixed(7)) };\n}\nfunction buildSearchUrl(searchCenter, radiusMeters) {\n  const params = new URLSearchParams({\n    query: keyword,\n    location: searchCenter.lat.toFixed(7) + ',' + searchCenter.lng.toFixed(7),\n    radius: String(Math.round(radiusMeters)),\n    output: 'html',\n    src: 'webapp.baidu.openAPIdemo',\n    coord_type: 'bd09ll',\n    zoom: String(requestedZoom),\n  });\n  if (region) params.set('region', region);\n  return 'https://api.map.baidu.com/place/search?' + params.toString();\n}\n\nconst listExpression = `() => {\n  const visible = (element) => {\n    const rect = element.getBoundingClientRect();\n    const style = getComputedStyle(element);\n    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';\n  };\n  const list = document.querySelector('.poilist');\n  const items = Array.from(document.querySelectorAll('.poilist > li.search-item')).filter(visible).map((element) => {\n    const title = element.querySelector('a.n-blue');\n    const amend = element.querySelector('a.amend[href]');\n    let uid = '';\n    let mapX = null;\n    let mapY = null;\n    try {\n      const url = amend ? new URL(amend.href) : null;\n      uid = url?.searchParams.get('uid') || '';\n      mapX = Number(url?.searchParams.get('lng'));\n      mapY = Number(url?.searchParams.get('lat'));\n    } catch {}\n    const addressNode = element.querySelector('.row.addr span[title]') || element.querySelector('.row.addr span');\n    const phoneNode = element.querySelector('.row.tel');\n    const distanceNode = element.querySelector('.mt_5 .n-grey');\n    return {\n      uid,\n      name: (title?.textContent || '').trim(),\n      address: (addressNode?.getAttribute('title') || addressNode?.textContent || '').trim(),\n      phone: (phoneNode?.textContent || '').trim().replace(/^电话\\\\s*[:：]?\\\\s*/, ''),\n      distanceLabel: (distanceNode?.textContent || '').trim(),\n      mapX,\n      mapY,\n    };\n  }).filter((item) => item.name);\n  const pager = document.querySelector('.poi-page');\n  const pageText = pager?.querySelector('.curPage')?.textContent?.trim() || '';\n  const currentPage = Number.parseInt(pageText, 10) || 1;\n  const nextAnchor = pager?.querySelector('a[tid=\"toNextPage\"]');\n  const nextPageTarget = Number(nextAnchor?.getAttribute('onclick')?.match(/toPage\\\\((\\\\d+)\\\\)/)?.[1] || 0);\n  const pageNumbers = Array.from(pager?.querySelectorAll('a') || []).map((a) => Number((a.textContent || '').trim())).filter(Number.isInteger);\n  const listText = (list?.innerText || '') + ' ' + (document.querySelector('.poi-empty')?.innerText || '');\n  const emptySignal = /暂无|没有找到|未找到|未能找到|没有相关|无相关|抱歉|无结果|0条/.test(listText);\n  return {\n    url: location.href,\n    title: document.title,\n    currentPage,\n    pageNumbers,\n    nextPageTarget,\n    nextPageAvailable: !!nextAnchor && nextPageTarget > currentPage,\n    items,\n    emptySignal,\n    listExists: !!list,\n    listText: listText.slice(0, 500),\n  };\n}`;\nasync function readListState(page = mapPage) {\n  const result = await tobub.atoms.evaluate({ expression: listExpression }, { page });\n  return result.value;\n}\nasync function waitForFirstListState(page = mapPage) {\n  const startedAt = Date.now();\n  let latest = null;\n  let emptySamples = 0;\n  while (Date.now() - startedAt < SEARCH_READY_TIMEOUT_MS) {\n    latest = await readListState(page);\n    if (latest.items.length > 0) return latest;\n    emptySamples = latest.emptySignal ? emptySamples + 1 : 0;\n    if (latest.listExists && emptySamples >= 2) return latest;\n    await tobub.atoms.waitFor({ delay: 300 });\n  }\n  throw new Error('Baidu result list did not become ready: ' + JSON.stringify(latest));\n}\nfunction parseDistanceLabel(value) {\n  const match = String(value || '').match(/([\\d.]+)\\s*(公里|千米|km|米|m)/i);\n  if (!match) return null;\n  const amount = Number(match[1]);\n  if (!Number.isFinite(amount)) return null;\n  return /^(公里|千米|km)$/i.test(match[2]) ? amount : amount / 1000;\n}\nfunction formatDistanceLabel(distanceKmValue) {\n  const meters = Math.round(distanceKmValue * 1000);\n  return meters < 1000 ? meters + '米' : (distanceKmValue.toFixed(2) + '公里');\n}\n\nconst recordsByUid = new Map();\nconst searches = [];\nlet candidatesSeen = 0;\nlet duplicateCount = 0;\nlet excludedOutsideRadius = 0;\nlet extractionFailures = 0;\nlet totalPagesLoaded = 0;\nlet consecutiveQueryFailures = 0;\nlet queryRetries = 0;\nlet tileLimitReached = false;\nlet pageLimitReached = false;\n\nasync function collectSearch(searchCenter, searchRadiusKm, searchKind, tileIndex = 0) {\n  const search = {\n    index: searches.length + 1,\n    kind: searchKind,\n    tile_index: tileIndex,\n    center: { lat: searchCenter.lat, lng: searchCenter.lng },\n    radius_m: Math.round(searchRadiusKm * 1000),\n    zoom: requestedZoom,\n    pages_loaded: 0,\n    results_seen: 0,\n    records_added: 0,\n    status: 'partial',\n    stop_reason: 'query_failed',\n    error: null,\n    retry_scheduled: false,\n    page_url: '',\n    actual_map_zoom: null,\n    zoom_mismatch: false,\n  };\n  searches.push(search);\n  let targetPage = mapPage;\n  try {\n    const searchUrl = buildSearchUrl(searchCenter, search.radius_m);\n    if (!mapPage) {\n      mapPage = await tobub.browser.open({ url: searchUrl, waitUntil: 'domcontentloaded', timeout: MAP_TIMEOUT_MS });\n      await tobub.browser.bringToFront(visiblePage);\n      targetPage = mapPage;\n    } else if (searchKind === 'coverage_tile') {\n      if (!coveragePage) {\n        coveragePage = await tobub.browser.open({});\n        await tobub.browser.bringToFront(visiblePage);\n      }\n      targetPage = coveragePage;\n      await tobub.atoms.navigate(\n        { url: searchUrl, waitUntil: 'domcontentloaded' },\n        { page: targetPage, timeout: MAP_TIMEOUT_MS },\n      );\n    } else {\n      targetPage = mapPage;\n      await tobub.atoms.navigate(\n        { url: searchUrl, waitUntil: 'domcontentloaded' },\n        { page: targetPage, timeout: MAP_TIMEOUT_MS },\n      );\n    }\n    let state = await waitForFirstListState(targetPage);\n    search.page_url = String(state.url || '');\n    search.actual_map_zoom = mapZoomFromUrl(state.url);\n    search.zoom_mismatch = search.actual_map_zoom !== null && search.actual_map_zoom !== requestedZoom;\n    if (!state.items.length && state.emptySignal) {\n      search.status = 'empty';\n      search.stop_reason = 'no_results';\n      consecutiveQueryFailures = 0;\n      return search;\n    }\n    for (let pageAttempt = 0; pageAttempt < MAX_PAGES_PER_QUERY; pageAttempt++) {\n      if (pageAttempt > 0) {\n        if (!state.nextPageAvailable) {\n          search.status = 'complete';\n          search.stop_reason = 'no_next_page';\n          break;\n        }\n        const priorPage = state.currentPage;\n        const expectedNextPage = state.nextPageTarget || priorPage + 1;\n        const activation = await tobub.atoms.evaluate({\n          expression: '() => { const anchor = document.querySelector(\".poi-page a[tid=toNextPage]\"); if (!anchor) return { activated: false }; const onclick = anchor.getAttribute(\"onclick\") || \"\"; anchor.click(); return { activated: true, onclick }; }',\n        }, { page: targetPage });\n        if (!activation.value?.activated) {\n          search.status = 'complete';\n          search.stop_reason = 'no_next_page';\n          break;\n        }\n        const pageWaitStartedAt = Date.now();\n        let nextState = state;\n        while (Date.now() - pageWaitStartedAt < PAGE_CHANGE_TIMEOUT_MS) {\n          await tobub.atoms.waitFor({ delay: 250 });\n          nextState = await readListState(targetPage);\n          if (nextState.currentPage >= expectedNextPage && nextState.items.length > 0) break;\n        }\n        if (nextState.currentPage < expectedNextPage || !nextState.items.length) {\n          search.status = 'partial';\n          search.stop_reason = 'page_cap';\n          search.error = 'The Baidu result feed did not advance to the next page.';\n          pageLimitReached = true;\n          break;\n        }\n        state = nextState;\n      }\n      search.pages_loaded++;\n      totalPagesLoaded++;\n      search.results_seen += state.items.length;\n      for (const item of state.items) {\n        if (recordsByUid.size >= requestedLimit) {\n          search.status = 'complete';\n          search.stop_reason = 'limit_reached';\n          break;\n        }\n        if (!item.uid || !Number.isFinite(item.mapX) || !Number.isFinite(item.mapY)) {\n          extractionFailures++;\n          continue;\n        }\n        candidatesSeen++;\n        const poi = bd09McToBd09Ll(item.mapX, item.mapY);\n        const distanceFromOriginKm = distanceKm(center, poi);\n        if (distanceFromOriginKm > radiusKm) {\n          excludedOutsideRadius++;\n          continue;\n        }\n        if (recordsByUid.has(item.uid)) {\n          duplicateCount++;\n          const existing = recordsByUid.get(item.uid);\n          if (!existing.found_in_queries.includes(search.index)) existing.found_in_queries.push(search.index);\n          continue;\n        }\n        const record = {\n          uid: item.uid,\n          name: item.name,\n          address: item.address,\n          phone: item.phone,\n          latitude: Number(poi.lat.toFixed(7)),\n          longitude: Number(poi.lng.toFixed(7)),\n          map_x: item.mapX,\n          map_y: item.mapY,\n          distance_km: Number(distanceFromOriginKm.toFixed(4)),\n          distance_label: formatDistanceLabel(distanceFromOriginKm),\n          baidu_distance_label: item.distanceLabel,\n          distance_label_center: { lat: center.lat, lng: center.lng },\n          detail_url: 'https://api.map.baidu.com/place/detail?' + new URLSearchParams({ uid: item.uid, output: 'html', src: 'webapp.baidu.openAPIdemo' }).toString(),\n          found_in_queries: [search.index],\n        };\n        recordsByUid.set(item.uid, record);\n        search.records_added++;\n        if (recordsByUid.size >= requestedLimit) {\n          search.status = 'complete';\n          search.stop_reason = 'limit_reached';\n          break;\n        }\n      }\n      if (search.stop_reason === 'limit_reached') break;\n      if (!state.nextPageAvailable) {\n        search.status = 'complete';\n        search.stop_reason = 'no_next_page';\n        break;\n      }\n      if (search.pages_loaded >= MAX_PAGES_PER_QUERY) {\n        search.status = 'partial';\n        search.stop_reason = 'page_cap';\n        pageLimitReached = true;\n        break;\n      }\n    }\n    if (recordsByUid.size >= requestedLimit) {\n      search.status = 'complete';\n      search.stop_reason = 'limit_reached';\n    }\n    consecutiveQueryFailures = 0;\n    return search;\n  } catch (error) {\n    search.status = 'failed';\n    search.stop_reason = 'query_failed';\n    search.error = String(error?.message || error || 'Baidu map search failed.').slice(0, 800);\n    consecutiveQueryFailures++;\n    return search;\n  }\n}\n\nasync function collectSearchWithRetry(searchCenter, searchRadiusKm, searchKind, tileIndex = 0) {\n  const firstAttempt = await collectSearch(searchCenter, searchRadiusKm, searchKind, tileIndex);\n  if (firstAttempt.status !== 'failed') return firstAttempt;\n  const firstError = firstAttempt.error || 'Baidu result list did not become ready.';\n  firstAttempt.status = 'partial';\n  firstAttempt.retry_scheduled = true;\n  firstAttempt.error = ('Retrying once after transient failure: ' + firstError).slice(0, 800);\n  queryRetries++;\n  await tobub.atoms.waitFor({ delay: 500 });\n  return await collectSearch(searchCenter, searchRadiusKm, searchKind, tileIndex);\n}\n\nconst centerSearch = await collectSearchWithRetry(center, radiusKm, 'center');\nlet tileRadiusKm = Math.min(1.5, Math.max(0.5, radiusKm));\nlet tileStepKm = tileRadiusKm * 1.25;\nlet plannedTiles = [];\nlet tilesOmittedByCap = 0;\nif (recordsByUid.size < requestedLimit && centerSearch.status !== 'failed') {\n  const spanKm = radiusKm + tileRadiusKm;\n  const steps = Math.ceil(spanKm / tileStepKm);\n  for (let row = -steps; row <= steps; row++) {\n    for (let column = -steps; column <= steps; column++) {\n      const eastKm = column * tileStepKm;\n      const northKm = row * tileStepKm;\n      const fromCenterKm = Math.hypot(eastKm, northKm);\n      if (fromCenterKm < tileStepKm * 0.25 || fromCenterKm > spanKm) continue;\n      plannedTiles.push({\n        center: coordinateOffset(center, eastKm, northKm),\n        distance_from_center_km: Number(fromCenterKm.toFixed(4)),\n        east_km: Number(eastKm.toFixed(4)),\n        north_km: Number(northKm.toFixed(4)),\n      });\n    }\n  }\n  plannedTiles.sort((a, b) => a.distance_from_center_km - b.distance_from_center_km\n    || a.north_km - b.north_km || a.east_km - b.east_km);\n  if (plannedTiles.length > MAX_TILES) {\n    tilesOmittedByCap = plannedTiles.length - MAX_TILES;\n    plannedTiles = plannedTiles.slice(0, MAX_TILES);\n    tileLimitReached = true;\n  }\n  for (let index = 0; index < plannedTiles.length; index++) {\n    if (recordsByUid.size >= requestedLimit) break;\n    if (consecutiveQueryFailures >= MAX_CONSECUTIVE_QUERY_FAILURES) {\n      tileLimitReached = true;\n      break;\n    }\n    await collectSearchWithRetry(plannedTiles[index].center, tileRadiusKm, 'coverage_tile', index + 1);\n  }\n}\n\nlet coveragePageClosed = false;\nlet coveragePageCloseError = null;\nlet sourceMapUrl = '';\nif (mapPage) {\n  try {\n    const sourceView = await tobub.atoms.evaluate({ expression: '() => ({ url: location.href })' }, { page: mapPage });\n    sourceMapUrl = String(sourceView.value?.url || '');\n  } catch {}\n}\nconst visibleMapTargetUrl = sourceMapUrl ? buildVisibleMapUrl(sourceMapUrl) : null;\nfor (const pageToClose of [coveragePage, mapPage]) {\n  if (!pageToClose) continue;\n  try {\n    await tobub.browser.close(pageToClose);\n  } catch (error) {\n    coveragePageCloseError = String(error?.message || error || 'A temporary query tab could not be closed.').slice(0, 500);\n  }\n}\ncoveragePage = null;\nmapPage = null;\ncoveragePageClosed = !coveragePageCloseError;\nlet visibleMapUrl = '';\nlet visibleMapZoom = null;\nlet visibleMapCenter = null;\nlet visibleMapCenterDistanceKm = null;\nlet visibleMapVerified = false;\nlet visibleMapRestoreError = null;\nif (visibleMapTargetUrl) {\n  try {\n    await tobub.browser.bringToFront(visiblePage);\n    await tobub.atoms.navigate(\n      { url: visibleMapTargetUrl, waitUntil: 'domcontentloaded' },\n      { page: visiblePage, timeout: MAP_TIMEOUT_MS },\n    );\n    let lastObservedUrl = '';\n    let stableMatches = 0;\n    for (let attempt = 0; attempt < 24; attempt++) {\n      const mapView = await tobub.atoms.evaluate({ expression: '() => ({ url: location.href })' }, { page: visiblePage });\n      visibleMapUrl = String(mapView.value?.url || '');\n      visibleMapZoom = mapZoomFromUrl(visibleMapUrl);\n      const currentCenter = mapCenterFromMapUrl(visibleMapUrl);\n      visibleMapCenter = currentCenter ? { lat: Number(currentCenter.lat.toFixed(7)), lng: Number(currentCenter.lng.toFixed(7)) } : null;\n      const currentCenterDistanceKm = currentCenter ? distanceKm(center, currentCenter) : null;\n      visibleMapCenterDistanceKm = currentCenterDistanceKm === null ? null : Number(currentCenterDistanceKm.toFixed(4));\n      const matchesRequestedView = visibleMapZoom === requestedZoom && currentCenterDistanceKm !== null && currentCenterDistanceKm <= 0.1;\n      stableMatches = matchesRequestedView && visibleMapUrl === lastObservedUrl ? stableMatches + 1 : (matchesRequestedView ? 1 : 0);\n      lastObservedUrl = visibleMapUrl;\n      if (stableMatches >= 2) { visibleMapVerified = true; break; }\n      await tobub.atoms.waitFor({ delay: 250 });\n    }\n    if (!visibleMapVerified) visibleMapRestoreError = 'Baidu did not keep the requested center and zoom after loading.';\n  } catch (error) {\n    visibleMapRestoreError = String(error?.message || error || 'Could not open or verify the requested map view.').slice(0, 500);\n  }\n} else {\n  visibleMapRestoreError = 'Baidu did not return coordinates needed to restore the map view.';\n}\n\nconst records = Array.from(recordsByUid.values())\n  .sort((a, b) => a.distance_km - b.distance_km || a.name.localeCompare(b.name, 'zh-CN'))\n  .slice(0, requestedLimit);\nconst requestedCountMet = records.length >= requestedLimit;\nconst queryFailures = searches.filter((search) => search.status === 'failed').length;\nconst partialSearchCount = searches.filter((search) => search.status === 'partial' && !search.retry_scheduled).length;\nconst searchRedirectZoomMismatchCount = searches.filter((search) => search.zoom_mismatch).length;\nconst zoomMismatchCount = visibleMapZoom === requestedZoom ? 0 : 1;\nconst searchUrls = searches.map((search) => buildSearchUrl(search.center, search.radius_m));\nlet collection = null;\nlet collectionSaveError = null;\nlet collectionPersisted = records.length === 0;\nif (records.length > 0) {\n  try {\n    collection = await tobub.data.save(records.map((record) => ({\n      type: 'baidu-map-store',\n      id: record.uid,\n      payload: record,\n      meta: {\n        location_input: locationInput,\n        location_mode: locationMode,\n        resolved_center: center,\n        coordinate_type: 'bd09ll',\n        keyword,\n        radius_km: radiusKm,\n        zoom: requestedZoom,\n      },\n    })), {\n      name: 'baidu-map-stores-v2',\n      mode: 'event',\n      outputs: [{ type: 'file', format: 'jsonl' }],\n      policy: { maxRecords: requestedLimit, maxBytes: 12000000, retentionDays: 30 },\n    });\n    collectionPersisted = collection?.status === 'completed'\n      && collection?.recordCount === records.length && collection?.droppedCount === 0;\n  } catch (error) {\n    collectionSaveError = String(error?.message || error || 'Collection save failed.').slice(0, 800);\n    collectionPersisted = false;\n  }\n}\n\nlet contentItemsSaved = 0;\nlet contentSaveFailures = 0;\nlet contentSaveError = null;\nlet contentPersisted = records.length === 0;\nif (records.length > 0) {\n  const saveErrors = [];\n  const CONTENT_SAVE_BATCH_SIZE = 20;\n  for (let offset = 0; offset < records.length; offset += CONTENT_SAVE_BATCH_SIZE) {\n    const batch = records.slice(offset, offset + CONTENT_SAVE_BATCH_SIZE);\n    const settled = await Promise.allSettled(batch.map((record) => tobub.db.saveContent({\n      platform: 'baidu',\n      contentType: 'store',\n      externalId: record.uid,\n      title: record.name || '百度地图店铺',\n      summary: record.address || '',\n      url: record.detail_url || '',\n      rawData: record,\n      tags: ['百度地图', '店铺', keyword],\n      observationSource: 'baidu-map-store-collector',\n      observationMeta: {\n        uid: record.uid,\n        keyword,\n        radiusKm,\n        distanceKm: record.distance_km,\n        collectionId: collection?.id || null,\n      },\n      metadata: {\n        source: 'baidu-map-store-collector-v2.6',\n        locationInput,\n        locationMode,\n        resolvedCenter: center,\n        coordinateType: 'bd09ll',\n        keyword,\n        region,\n        radiusKm,\n        zoom: requestedZoom,\n        distanceKm: record.distance_km,\n        tobub_data: {\n          collection_id: collection?.id || null,\n          role: 'detail',\n          mode: 'event',\n          format: 'jsonl',\n          schema_version: 1,\n        },\n      },\n    })));\n    for (const result of settled) {\n      if (result.status === 'fulfilled') {\n        contentItemsSaved++;\n      } else {\n        contentSaveFailures++;\n        if (saveErrors.length < 5) saveErrors.push(String(result.reason?.message || result.reason || 'Content save failed.'));\n      }\n    }\n  }\n  contentPersisted = contentItemsSaved === records.length && contentSaveFailures === 0;\n  if (!contentPersisted) contentSaveError = saveErrors.join(' | ').slice(0, 800) || 'Some content records were not persisted.';\n}\n\nlet stopReason;\nif (requestedCountMet) stopReason = 'limit_reached';\nelse if (queryFailures > 0 || consecutiveQueryFailures >= MAX_CONSECUTIVE_QUERY_FAILURES) stopReason = 'query_failed';\nelse if (tileLimitReached) stopReason = 'tile_cap';\nelse if (pageLimitReached) stopReason = 'page_cap';\nelse if (extractionFailures > 0) stopReason = 'extraction_failed';\nelse if (records.length === 0) stopReason = 'no_results';\nelse stopReason = 'max_radius_reached';\nconst status = records.length === 0 && queryFailures === 0 && extractionFailures === 0 && stopReason === 'no_results'\n  ? 'empty'\n  : requestedCountMet && queryFailures === 0 && extractionFailures === 0 && collectionPersisted && contentPersisted\n    && zoomMismatchCount === 0 && coveragePageClosed && !coveragePageCloseError\n    ? (partialSearchCount === 0 ? 'ok' : 'partial')\n    : 'partial';\nlet statusNote = requestedCountMet\n  ? 'Requested count reached; all saved POIs passed the strict distance check from the input center.'\n  : 'Requested count was not reached within the selected radius.';\nif (partialSearchCount > 0) statusNote += ' At least one Baidu results page did not advance, so search coverage may be incomplete.';\nif (zoomMismatchCount > 0) statusNote += ' The visible map zoom differs from the requested zoom.';\nif (searchRedirectZoomMismatchCount > 0 && visibleMapVerified) statusNote += ' Search result pages use Baidu’s own zoom; the final visible map was opened at the requested level.';\nif (!coveragePageClosed) statusNote += ' The temporary coverage tab could not be closed: ' + (coveragePageCloseError || 'unknown error');\nif (visibleMapZoom !== null && visibleMapZoom !== requestedZoom) statusNote += ' The visible map finished at zoom ' + visibleMapZoom + ' instead of ' + requestedZoom + '.';\nconst summary = {\n  status,\n  location_input: locationInput,\n  location_mode: locationMode,\n  resolved_center: { lat: Number(center.lat.toFixed(7)), lng: Number(center.lng.toFixed(7)), coordinate_type: 'bd09ll' },\n  location_resolution: addressResolution,\n  keyword,\n  region,\n  radius_km: radiusKm,\n  requested_limit: requestedLimit,\n  requested_count_met: requestedCountMet,\n  zoom: requestedZoom,\n  collected: records.length,\n  candidates_seen: candidatesSeen,\n  duplicate_count: duplicateCount,\n  excluded_outside_radius: excludedOutsideRadius,\n  extraction_failures: extractionFailures,\n  total_pages_loaded: totalPagesLoaded,\n  center_search_pages: centerSearch.pages_loaded,\n  tile_search_count: searches.filter((search) => search.kind === 'coverage_tile').length,\n  planned_tile_count: plannedTiles.length,\n  omitted_tile_count: tilesOmittedByCap,\n  tile_radius_km: Number(tileRadiusKm.toFixed(3)),\n  tile_step_km: Number(tileStepKm.toFixed(3)),\n  max_tiles: MAX_TILES,\n  max_pages_per_query: MAX_PAGES_PER_QUERY,\n  query_failures: queryFailures,\n  query_retries: queryRetries,\n  partial_search_count: partialSearchCount,\n  zoom_mismatch_count: zoomMismatchCount,\n  search_redirect_zoom_mismatch_count: searchRedirectZoomMismatchCount,\n  visible_map_url: visibleMapUrl,\n  visible_map_zoom: visibleMapZoom,\n  visible_map_center: visibleMapCenter,\n  visible_map_center_distance_km: visibleMapCenterDistanceKm,\n  visible_map_verified: visibleMapVerified,\n  visible_map_restore_error: visibleMapRestoreError,\n  maximum_distance_km: records.length ? Math.max(...records.map((record) => record.distance_km)) : null,\n  coverage_page_closed: coveragePageClosed,\n  coverage_page_close_error: coveragePageCloseError,\n  status_note: statusNote,\n  stop_reason: stopReason,\n  collection_persisted: collectionPersisted,\n  collection_save_error: collectionSaveError,\n  content_items_saved: contentItemsSaved,\n  content_persisted: contentPersisted,\n  content_save_failures: contentSaveFailures,\n  content_save_error: contentSaveError,\n  collection,\n  search_url: searchUrls[0] || '',\n  searches,\n  coverage_note: \"Uses Baidu nearby POI search with the requested center and radius. If center results do not meet the target count, overlapping centers are searched in a temporary tab while the visible map stays at the input center and requested zoom. Every saved POI passes a strict distance check from the original center; distance_label is recalculated from that center, while baidu_distance_label preserves Baidu’s per-query label that may refer to a tile center. Results are deduplicated by UID. Rankings and page limits do not prove all indexed businesses were returned; POI coordinates and computed distances are approximate to Baidu’s precision.\",\n  radius_edge_tolerance_km: RADIUS_EDGE_TOLERANCE_KM,\n};\nreturn { ...summary, records };\n",
+    "platform": null,
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "title": "地址或坐标（纬度,经度）",
+          "type": "string"
+        },
+        "coordinateType": {
+          "title": "坐标系",
+          "type": "string",
+          "enum": [
+            "bd09ll",
+            "gcj02",
+            "wgs84"
+          ]
+        },
+        "keyword": {
+          "title": "检索关键词",
+          "type": "string"
+        },
+        "region": {
+          "title": "城市/区域（可选）",
+          "type": "string"
+        },
+        "radiusKm": {
+          "title": "收集半径（公里）",
+          "type": "number"
+        },
+        "zoom": {
+          "title": "地图缩放层级（10–21）",
+          "type": "number"
+        },
+        "limit": {
+          "title": "目标店铺数量",
+          "type": "number"
+        }
+      },
+      "required": [
+        "location",
+        "coordinateType",
+        "keyword",
+        "radiusKm",
+        "zoom",
+        "limit"
+      ],
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "partial",
+            "empty"
+          ]
+        },
+        "location_input": {
+          "type": "string"
+        },
+        "location_mode": {
+          "type": "string",
+          "enum": [
+            "coordinates",
+            "address"
+          ]
+        },
+        "resolved_center": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "lat": {
+              "type": "number"
+            },
+            "lng": {
+              "type": "number"
+            },
+            "coordinate_type": {
+              "const": "bd09ll",
+              "type": "string"
+            }
+          },
+          "required": [
+            "lat",
+            "lng",
+            "coordinate_type"
+          ]
+        },
+        "keyword": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        },
+        "radius_km": {
+          "type": "number"
+        },
+        "requested_limit": {
+          "type": "integer"
+        },
+        "requested_count_met": {
+          "type": "boolean"
+        },
+        "zoom": {
+          "type": "integer"
+        },
+        "collected": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 500
+        },
+        "candidates_seen": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duplicate_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "excluded_outside_radius": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "extraction_failures": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_pages_loaded": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "center_search_pages": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tile_search_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "planned_tile_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 120
+        },
+        "omitted_tile_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tile_radius_km": {
+          "type": "number"
+        },
+        "tile_step_km": {
+          "type": "number"
+        },
+        "max_tiles": {
+          "type": "integer",
+          "const": 120
+        },
+        "max_pages_per_query": {
+          "type": "integer",
+          "const": 8
+        },
+        "query_failures": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stop_reason": {
+          "type": "string",
+          "enum": [
+            "limit_reached",
+            "max_radius_reached",
+            "tile_cap",
+            "page_cap",
+            "query_failed",
+            "no_results",
+            "extraction_failed"
+          ]
+        },
+        "collection_persisted": {
+          "type": "boolean"
+        },
+        "collection_save_error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "collection": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true
+        },
+        "search_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "searches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "index": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "center",
+                  "coverage_tile"
+                ]
+              },
+              "tile_index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "center": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "lat": {
+                    "type": "number"
+                  },
+                  "lng": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "lat",
+                  "lng"
+                ]
+              },
+              "radius_m": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "zoom": {
+                "type": "integer"
+              },
+              "pages_loaded": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "results_seen": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "records_added": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "complete",
+                  "empty",
+                  "partial",
+                  "failed"
+                ]
+              },
+              "stop_reason": {
+                "type": "string",
+                "enum": [
+                  "query_failed",
+                  "no_results",
+                  "no_next_page",
+                  "page_cap",
+                  "limit_reached"
+                ]
+              },
+              "error": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "retry_scheduled": {
+                "type": "boolean"
+              },
+              "page_url": {
+                "type": "string"
+              },
+              "actual_map_zoom": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "zoom_mismatch": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "index",
+              "kind",
+              "tile_index",
+              "center",
+              "radius_m",
+              "zoom",
+              "pages_loaded",
+              "results_seen",
+              "records_added",
+              "status",
+              "stop_reason",
+              "error",
+              "retry_scheduled",
+              "page_url",
+              "actual_map_zoom",
+              "zoom_mismatch"
+            ]
+          }
+        },
+        "coverage_note": {
+          "type": "string"
+        },
+        "radius_edge_tolerance_km": {
+          "type": "number"
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "uid": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "address": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "latitude": {
+                "type": "number"
+              },
+              "longitude": {
+                "type": "number"
+              },
+              "map_x": {
+                "type": "number"
+              },
+              "map_y": {
+                "type": "number"
+              },
+              "distance_km": {
+                "type": "number"
+              },
+              "distance_label": {
+                "type": "string"
+              },
+              "detail_url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "found_in_queries": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "distance_label_center": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "lat": {
+                    "type": "number"
+                  },
+                  "lng": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "lat",
+                  "lng"
+                ]
+              },
+              "baidu_distance_label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "uid",
+              "name",
+              "address",
+              "phone",
+              "latitude",
+              "longitude",
+              "map_x",
+              "map_y",
+              "distance_km",
+              "distance_label",
+              "detail_url",
+              "found_in_queries",
+              "distance_label_center",
+              "baidu_distance_label"
+            ]
+          }
+        },
+        "location_resolution": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "preview": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "url",
+            "title",
+            "preview"
+          ]
+        },
+        "content_items_saved": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 500
+        },
+        "content_persisted": {
+          "type": "boolean"
+        },
+        "content_save_failures": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "content_save_error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "query_retries": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "partial_search_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "zoom_mismatch_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "visible_map_url": {
+          "type": "string"
+        },
+        "visible_map_zoom": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "coverage_page_closed": {
+          "type": "boolean"
+        },
+        "coverage_page_close_error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status_note": {
+          "type": "string"
+        },
+        "visible_map_center": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "lat": {
+              "type": "number"
+            },
+            "lng": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "lat",
+            "lng"
+          ]
+        },
+        "visible_map_center_distance_km": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "visible_map_verified": {
+          "type": "boolean"
+        },
+        "visible_map_restore_error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "maximum_distance_km": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "search_redirect_zoom_mismatch_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "status",
+        "location_input",
+        "location_mode",
+        "resolved_center",
+        "location_resolution",
+        "keyword",
+        "region",
+        "radius_km",
+        "requested_limit",
+        "requested_count_met",
+        "zoom",
+        "collected",
+        "candidates_seen",
+        "duplicate_count",
+        "excluded_outside_radius",
+        "extraction_failures",
+        "total_pages_loaded",
+        "center_search_pages",
+        "tile_search_count",
+        "planned_tile_count",
+        "omitted_tile_count",
+        "tile_radius_km",
+        "tile_step_km",
+        "max_tiles",
+        "max_pages_per_query",
+        "query_failures",
+        "stop_reason",
+        "collection_persisted",
+        "collection_save_error",
+        "collection",
+        "search_url",
+        "searches",
+        "coverage_note",
+        "radius_edge_tolerance_km",
+        "records",
+        "content_items_saved",
+        "content_persisted",
+        "content_save_failures",
+        "content_save_error",
+        "query_retries",
+        "partial_search_count",
+        "zoom_mismatch_count",
+        "visible_map_url",
+        "visible_map_zoom",
+        "coverage_page_closed",
+        "coverage_page_close_error",
+        "status_note",
+        "visible_map_center",
+        "visible_map_center_distance_km",
+        "visible_map_verified",
+        "visible_map_restore_error",
+        "maximum_distance_km",
+        "search_redirect_zoom_mismatch_count"
+      ]
+    },
+    "ui_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "location",
+          "label": "地址或坐标（纬度,经度）",
+          "target": "params.location",
+          "type": "input",
+          "required": true,
+          "default": "28.194,112.982"
+        },
+        {
+          "key": "coordinateType",
+          "label": "坐标系",
+          "target": "params.coordinateType",
+          "type": "select",
+          "required": true,
+          "default": "bd09ll",
+          "options": [
+            {
+              "label": "百度 BD09LL",
+              "value": "bd09ll"
+            },
+            {
+              "label": "GCJ02",
+              "value": "gcj02"
+            },
+            {
+              "label": "WGS84",
+              "value": "wgs84"
+            }
+          ]
+        },
+        {
+          "key": "keyword",
+          "label": "检索关键词",
+          "target": "params.keyword",
+          "type": "input",
+          "required": true,
+          "default": "店铺"
+        },
+        {
+          "key": "region",
+          "label": "城市/区域（可选）",
+          "target": "params.region",
+          "type": "input",
+          "required": false,
+          "default": ""
+        },
+        {
+          "key": "radiusKm",
+          "label": "收集半径（公里）",
+          "target": "params.radiusKm",
+          "type": "number",
+          "required": true,
+          "default": 2
+        },
+        {
+          "key": "zoom",
+          "label": "地图缩放层级（10–21）",
+          "target": "params.zoom",
+          "type": "number",
+          "required": true,
+          "default": 18
+        },
+        {
+          "key": "limit",
+          "label": "目标店铺数量",
+          "target": "params.limit",
+          "type": "number",
+          "required": true,
+          "default": 20
+        }
+      ]
+    },
+    "requirements": {},
+    "defaults": {
+      "params": {
+        "location": "28.194,112.982",
+        "coordinateType": "bd09ll",
+        "keyword": "店铺",
+        "radiusKm": 2,
+        "zoom": 18,
+        "limit": 20
+      },
+      "browser": {
+        "run_mode": "transient",
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "optional"
+      }
+    },
+    "metadata": {
+      "description": "v2.6：补采使用独立临时页，地图主视图保持输入中心与缩放层级；严格按中心半径过滤并重算距离标签，同时保留百度原始距离标签，暴露翻页/缩放质量诊断。",
+      "tags": [
+        "baidu",
+        "maps",
+        "store",
+        "poi",
+        "coordinate",
+        "radius",
+        "multi-screen",
+        "v2"
+      ]
+    }
+  }
+}
