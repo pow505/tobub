@@ -1,73 +1,187 @@
 {
   "created_at": "2026-10-16T02:40:06.162Z",
   "manifest_version": 1,
-  "package_id": "user:local_75045bc4-8816-4aeb-9e19-e0aee108cddc@1",
+  "package_id": "user:local_75045bc4-8816-4aeb-9e19-e0aee108cddc@1.0.3",
   "package_type": "tobub_skill",
-  "package_version": "1",
+  "package_version": "1.0.3",
   "requirements": {
     "platform": "required",
     "rule": "required"
   },
   "skill": {
     "market_skill_id": "local_75045bc4-8816-4aeb-9e19-e0aee108cddc",
-    "release_id": "local_75045bc4-8816-4aeb-9e19-e0aee108cddc",
+    "release_id": "local_75045bc4-8816-4aeb-9e19-e0aee108cddc-1.0.3",
     "name": "抖音自动点赞助手",
-    "skill_version": "1",
+    "skill_version": "1.0.3",
     "source_type": "local",
-    "skill_code": "//注意：不要比例太高，避免被风控\nconst vid = String(tobub.params.vid);\nconst probability = Number(tobub.params.probability) / 100;\n\nif (!Number.isFinite(probability) || probability < 0 || probability > 1) {\n  throw new Error(\"probability 必须是 0 到 100 之间的数字\");\n}\n\nconst commentLikeSelector =\n  'div[data-scroll=\"comment\"] p:has(> svg + span)';\n\nconst records = [];\nlet checkedCount = 0;\nlet likedCount = 0;\n\n// 每次运行使用独立的记录键，避免复用上次运行的抽样结果。\nconst runKey = `${vid}-${Date.now()}-${Math.random()}`;\n\nasync function getVisibleUnlikedIndices() {\n  const result = await tobub.atoms.evaluate({\n    expression: `({ selector, runKey }) => {\n      const store =\n        window.__tobubLikeSeenByRun ??=\n        new Map();\n\n      let seen = store.get(runKey);\n      if (!seen) {\n        seen = new WeakSet();\n        store.set(runKey, seen);\n      }\n\n      const items = [...document.querySelectorAll(selector)];\n      const width = window.innerWidth;\n      const height = window.innerHeight;\n      const indices = [];\n\n      items.forEach((el, index) => {\n        const rect = el.getBoundingClientRect();\n        const path = el.querySelector(\"svg path\");\n\n        const visible =\n          el.getClientRects().length > 0 &&\n          getComputedStyle(el).visibility !== \"hidden\" &&\n          rect.bottom > 0 &&\n          rect.top < height &&\n          rect.right > 0 &&\n          rect.left < width;\n\n        const unliked = path?.getAttribute(\"fill\") === \"#fff\";\n\n        // 同一 DOM 元素只参与一次概率抽样。\n        if (!visible || !unliked || seen.has(el)) return;\n\n        seen.add(el);\n        indices.push(index);\n      });\n\n      return indices;\n    }`,\n    arg: {\n      selector: commentLikeSelector,\n      runKey\n    }\n  });\n\n  return Array.isArray(result.value) ? result.value : [];\n}\n\nasync function likeVisibleComments() {\n  const indices = await getVisibleUnlikedIndices();\n\n  // 倒序处理，降低点击改变 DOM 后索引偏移的影响。\n  for (let i = indices.length - 1; i >= 0; i--) {\n    const nth = indices[i];\n    const shouldLike = tobub.utils.chance(probability);\n\n    const record = {\n      sequence: ++checkedCount,\n      domIndex: nth,\n      decision: shouldLike ? \"like\" : \"skip\",\n      clicked: false\n    };\n    records.push(record);\n\n    if (!shouldLike) continue;\n\n    try {\n      await tobub.atoms.click({\n        selector: commentLikeSelector,\n        nth,\n        visibleOnly: true,\n        where: {\n          selector: \"svg path\",\n          source: \"attr\",\n          attr: \"fill\",\n          equals: \"#fff\"\n        }\n      });\n\n      record.clicked = true;\n      likedCount++;\n      await tobub.atoms.waitFor([100, 250]);\n    } catch (error) {\n      if (String(error).includes(\"No matching clickable element found\")) {\n        // 页面更新导致目标失效时，跳过这项并继续处理其他项。\n        continue;\n      }\n      throw error;\n    }\n  }\n}\n\nawait tobub.adapter.navigate({\n  url: \"https://www.douyin.com/video/\" + vid,\n  waitUntil: \"domcontentloaded\"\n});\n\nawait tobub.atoms.waitFor(\n  {\n    selector: 'div[data-scroll=\"comment\"]',\n    selectorState: \"attached\"\n  },\n  { timeout: 15000 }\n);\n\nawait tobub.adapter.dismissPopups();\nawait tobub.atoms.waitFor([3000, 6000]);\n\nfor (let i = 0; i < 999; i++) {\n  if (tobub.utils.chance(0.5)) {\n    await tobub.atoms.scroll({\n      mode: \"viewport\",\n      distance: tobub.utils.randInt(390, 1200),\n      steps: tobub.utils.randInt(3, 15),\n      stepPauseRange: [10, 25]\n    });\n  } else {\n    await tobub.atoms.scroll({\n      mode: \"viewport\",\n      distance: 500,\n      steps: 1,\n      stepPauseRange: [10, 25]\n    });\n  }\n\n  await tobub.atoms.waitFor([800, 2000]);\n\n  // 每条未点赞评论分别抽样，不再对整屏做一次概率判断。\n  await likeVisibleComments();\n\n  const endCheck = await tobub.atoms.condition(\n    {\n      conditions: [\n        { type: \"visible\", selector: 'text=\"暂时没有更多评论\"' },\n        {\n          type: \"inViewport\",\n          selector: 'text=\"暂时没有更多评论\"',\n          intersection: \"partial\"\n        }\n      ],\n      mode: \"all\",\n      throwOnTimeout: false\n    },\n    { timeout: 2000 }\n  );\n  if (endCheck.satisfied) break;\n}\n\nreturn {\n  videoId: vid,\n  checkedCount,\n  likedCount,\n  records\n};",
+    "skill_code": "const params = tobub.params || {};\nfunction normalizeVideoId(input) {\n  const value = String(input ?? \"\").trim();\n  if (!value) throw new Error(\"vid 不能为空\");\n  let candidate = value;\n  if (/^https?:\\/\\//i.test(value)) {\n    let parsed;\n    try { parsed = new URL(value); } catch { throw new Error(\"vid 不是有效的视频 ID 或 URL\"); }\n    if (!/(^|\\.)douyin\\.com$/i.test(parsed.hostname)) throw new Error(\"视频 URL 必须来自 douyin.com\");\n    const match = parsed.pathname.match(/\\/video\\/(\\d+)/);\n    if (!match) throw new Error(\"视频 URL 中没有有效的视频 ID\");\n    candidate = match[1];\n  }\n  if (!/^\\d{8,30}$/.test(candidate)) throw new Error(\"视频 ID 必须是 8 到 30 位数字\");\n  return candidate;\n}\nconst vid = normalizeVideoId(params.vid);\nconst probabilityPercent = Number(params.probability ?? 10);\nconst dryRun = params.dryRun !== false;\nconst maxLikes = Number(params.maxLikes ?? 1);\nconst maxScrollTimes = Number(params.maxScrollTimes ?? 10);\nif (!Number.isFinite(probabilityPercent) || probabilityPercent < 0 || probabilityPercent > 100) throw new Error(\"probability 必须是 0 到 100 之间的数字\");\nif (!Number.isInteger(maxLikes) || maxLikes < 0 || maxLikes > 20) throw new Error(\"maxLikes 必须是 0 到 20 的整数\");\nif (!Number.isInteger(maxScrollTimes) || maxScrollTimes < 1 || maxScrollTimes > 50) throw new Error(\"maxScrollTimes 必须是 1 到 50 的整数\");\nconst probability = probabilityPercent / 100;\nconst commentLikeSelector = 'div[data-scroll=\"comment\"] p:has(> svg + span)';\nconst records = [];\nlet checkedCount = 0;\nlet selectedCount = 0;\nlet likedCount = 0;\nlet verifiedCount = 0;\nlet visitedScrolls = 0;\nlet stopReason = \"maxScrollTimes\";\nconst runKey = \"douyin-like-\" + vid + \"-\" + Date.now() + \"-\" + Math.random();\nconst expression = [\n\"({ selector, runKey }) => {\",\n\" const store = window.__tobubLikeSeenByRun ||= new Map();\",\n\" let seen = store.get(runKey);\",\n\" if (!seen) { seen = new WeakSet(); store.set(runKey, seen); }\",\n\" const items = [...document.querySelectorAll(selector)];\",\n\" const width = window.innerWidth, height = window.innerHeight, indices = [];\",\n\" items.forEach((el, index) => {\",\n\"  const rect = el.getBoundingClientRect(), path = el.querySelector('svg path');\",\n\"  const visible = el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden' && rect.bottom > 0 && rect.top < height && rect.right > 0 && rect.left < width;\",\n\"  const unliked = path?.getAttribute('fill') === '#fff';\",\n\"  if (!visible || !unliked || seen.has(el)) return;\",\n\"  seen.add(el); indices.push(index);\",\n\" });\",\n\" return indices;\",\n\"}\"\n].join(\"\\n\");\nasync function getVisibleUnlikedIndices() {\n  const result = await tobub.atoms.evaluate({ expression, arg: { selector: commentLikeSelector, runKey } });\n  return Array.isArray(result.value) ? result.value : [];\n}\nasync function getLikedState(index) {\n  const verifyExpression = [\n  \"({ selector, index }) => {\",\n  \" const el = document.querySelectorAll(selector)[index];\",\n  \" const path = el?.querySelector('svg path');\",\n  \" return !!path && path.getAttribute('fill') !== '#fff';\",\n  \"}\"\n  ].join(\"\\n\");\n  const result = await tobub.atoms.evaluate({ expression: verifyExpression, arg: { selector: commentLikeSelector, index } });\n  return result.value === true;\n}\nawait tobub.adapter.navigate({ url: \"https://www.douyin.com/video/\" + vid, waitUntil: \"domcontentloaded\" });\nawait tobub.atoms.waitFor({ selector: 'div[data-scroll=\"comment\"]', selectorState: \"attached\" }, { timeout: 20_000 });\nawait tobub.adapter.dismissPopups();\nawait tobub.atoms.waitFor([1500, 2500]);\nfor (let i = 0; i < maxScrollTimes; i++) {\n  if (selectedCount >= maxLikes) { stopReason = \"maxLikes\"; break; }\n  const indices = await getVisibleUnlikedIndices();\n  for (let j = indices.length - 1; j >= 0; j--) {\n    if (selectedCount >= maxLikes) { stopReason = \"maxLikes\"; break; }\n    const index = indices[j];\n    checkedCount++;\n    const selected = tobub.utils.chance(probability);\n    const record = { sequence: checkedCount, domIndex: index, selected, dryRun, clicked: false, verified: false };\n    records.push(record);\n    if (!selected) continue;\n    selectedCount++;\n    if (dryRun) continue;\n    try {\n      await tobub.atoms.click({ selector: commentLikeSelector, nth: index, visibleOnly: true, where: { selector: \"svg path\", source: \"attr\", attr: \"fill\", equals: \"#fff\" } });\n      record.clicked = true;\n      likedCount++;\n      await tobub.atoms.waitFor([150, 300]);\n      record.verified = await getLikedState(index);\n      if (record.verified) verifiedCount++;\n    } catch (error) {\n      record.error = String(error?.message ?? error).slice(0, 240);\n    }\n  }\n  if (selectedCount >= maxLikes) { stopReason = \"maxLikes\"; break; }\n  visitedScrolls++;\n  await tobub.atoms.scroll({ mode: \"viewport\", distance: tobub.utils.randInt(450, 950), steps: tobub.utils.randInt(3, 8), stepPauseRange: [20, 45] });\n  await tobub.atoms.waitFor([700, 1500]);\n  const endCheck = await tobub.atoms.condition({ conditions: [{ type: \"visible\", selector: 'text=\"暂时没有更多评论\"' }, { type: \"inViewport\", selector: 'text=\"暂时没有更多评论\"', intersection: \"partial\" }], mode: \"all\", throwOnTimeout: false }, { timeout: 1200 });\n  if (endCheck.satisfied) { stopReason = \"end_of_comments\"; break; }\n}\nreturn { videoId: vid, dryRun, visitedScrolls, checkedCount, selectedCount, likedCount, verifiedCount, records, stopReason };",
     "platform": "douyin",
     "input_schema": {
       "type": "object",
       "properties": {
         "vid": {
-          "title": "视频id",
-          "type": "string"
+          "type": "string",
+          "title": "作品 ID 或抖音视频链接",
+          "minLength": 1,
+          "maxLength": 512
         },
         "probability": {
-          "title": "比例",
-          "type": "number"
+          "type": "number",
+          "title": "每条未点赞评论的抽样概率（%）",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "maxLikes": {
+          "type": "integer",
+          "title": "最多点赞条数",
+          "minimum": 0,
+          "maximum": 20
+        },
+        "maxScrollTimes": {
+          "type": "integer",
+          "title": "最多滚动次数",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "dryRun": {
+          "type": "boolean",
+          "title": "仅预览，不执行点赞"
         }
       },
       "required": [
         "vid"
       ],
-      "additionalProperties": true
+      "additionalProperties": false
     },
-    "output_schema": {},
+    "output_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "videoId",
+        "dryRun",
+        "visitedScrolls",
+        "checkedCount",
+        "selectedCount",
+        "likedCount",
+        "verifiedCount",
+        "records",
+        "stopReason"
+      ],
+      "properties": {
+        "videoId": {
+          "type": "string"
+        },
+        "dryRun": {
+          "type": "boolean"
+        },
+        "visitedScrolls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "checkedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "selectedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "likedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "verifiedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "stopReason": {
+          "type": "string"
+        }
+      }
+    },
     "ui_schema": {
       "version": 1,
       "fields": [
         {
-          "default": "7592786269656174778",
           "key": "vid",
-          "label": "视频id",
+          "label": "作品 ID 或抖音视频链接",
+          "type": "text",
+          "target": "params.vid",
           "required": true,
-          "type": "input"
+          "default": "7653983160925048100"
         },
         {
-          "default": 5,
           "key": "probability",
-          "label": "比例",
+          "label": "每条未点赞评论的抽样概率（%）",
+          "type": "number",
+          "target": "params.probability",
           "required": false,
-          "type": "number"
+          "default": 10
+        },
+        {
+          "key": "maxLikes",
+          "label": "最多点赞条数",
+          "type": "number",
+          "target": "params.maxLikes",
+          "required": false,
+          "default": 1
+        },
+        {
+          "key": "maxScrollTimes",
+          "label": "最多滚动次数",
+          "type": "number",
+          "target": "params.maxScrollTimes",
+          "required": false,
+          "default": 10
+        },
+        {
+          "key": "dryRun",
+          "label": "仅预览，不执行点赞",
+          "type": "switch",
+          "target": "params.dryRun",
+          "required": false,
+          "default": true
         }
       ]
     },
-    "requirements": {},
+    "requirements": {
+      "account": "required",
+      "profile": "required",
+      "domain_rule": "required"
+    },
     "defaults": {
       "params": {
-        "Vid": 7653983160925048000,
+        "vid": "7653983160925048100",
         "probability": 10,
-        "vid": 7653983160925048000
+        "maxLikes": 1,
+        "maxScrollTimes": 10,
+        "dryRun": true
       },
       "browser": {
-        "headless": false
+        "headless": false,
+        "run_mode": "profile",
+        "auth_mode": "inherit"
       },
       "execution": {
-        "domain_mode": "optional"
+        "domain_mode": "required"
       }
     },
-    "metadata": {}
+    "metadata": {
+      "description": "对指定作品的评论逐条进行概率抽样；默认 dry-run 只预览，显式关闭后仍受点赞上限和滚动上限约束，并核验点击后的状态。",
+      "tags": [
+        "douyin",
+        "comments",
+        "like",
+        "dry-run",
+        "bounded"
+      ]
+    }
   },
   "source": "user",
   "platform": {

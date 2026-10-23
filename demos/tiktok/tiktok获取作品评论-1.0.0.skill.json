@@ -1,0 +1,362 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:tiktok-get-video-comments@1.0.5",
+  "package_version": "1.0.5",
+  "source": "user",
+  "created_at": "2026-10-22T13:11:33.656Z",
+  "requirements": {
+    "platform": "required",
+    "rule": "optional"
+  },
+  "platform": {
+    "code": "tiktok",
+    "name": "tiktok",
+    "version": "1",
+    "base_url": "https://www.tiktok.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "tiktok.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "0a7991bc848ef034e54ff614fb0b6eb7a5f03ca960cee2a7bb5c6afda69edb88"
+  },
+  "skill": {
+    "market_skill_id": "tiktok-get-video-comments",
+    "release_id": "local-tiktok-20261022",
+    "name": "tiktok获取作品评论",
+    "skill_version": "1.0.5",
+    "source_type": "local",
+    "skill_code": "const vidInput = String(tobub.params.vid || '').trim();\nconst count = Number(tobub.params.count ?? 15);\nconst maxScrollTimes = Number(tobub.params.maxScrollTimes ?? 6);\nconst sortBy = String(tobub.params.sortBy ?? 'platform');\nconst pageLoadWaitSeconds = Number(tobub.params.pageLoadWaitSeconds ?? 4);\nconst tabWaitSeconds = Number(tobub.params.tabWaitSeconds ?? 2);\nconst scrollWaitSeconds = Number(tobub.params.scrollWaitSeconds ?? 1.2);\nconst saveResults = tobub.params.saveResults !== false;\nif (!vidInput || vidInput.length > 2048) throw new Error('Enter a TikTok video ID or URL.');\nif (!Number.isInteger(count) || count < 1 || count > 100) throw new Error('count must be an integer from 1 to 100.');\nif (!Number.isInteger(maxScrollTimes) || maxScrollTimes < 1 || maxScrollTimes > 10) throw new Error('maxScrollTimes must be an integer from 1 to 10.');\nif (!['platform', 'newest', 'mostLiked'].includes(sortBy)) throw new Error('Invalid sortBy value.');\nif (!Number.isInteger(pageLoadWaitSeconds) || pageLoadWaitSeconds < 2 || pageLoadWaitSeconds > 15) throw new Error('pageLoadWaitSeconds must be from 2 to 15 seconds.');\nif (!Number.isInteger(tabWaitSeconds) || tabWaitSeconds < 1 || tabWaitSeconds > 10) throw new Error('tabWaitSeconds must be from 1 to 10 seconds.');\nif (!Number.isFinite(scrollWaitSeconds) || scrollWaitSeconds < 0.5 || scrollWaitSeconds > 5) throw new Error('scrollWaitSeconds must be from 0.5 to 5 seconds.');\nconst allowedHosts = new Set(['tiktok.com', 'www.tiktok.com', 'm.tiktok.com']);\nlet videoId = vidInput;\nlet videoUrl;\nif (/^\\d{8,24}$/.test(vidInput)) {\n  videoUrl = 'https://www.tiktok.com/video/' + vidInput;\n} else {\n  let parsed;\n  try { parsed = new URL(/^[a-z][a-z0-9+.-]*:\\/\\//i.test(vidInput) ? vidInput : 'https://' + vidInput); }\n  catch { throw new Error('Invalid TikTok video URL.'); }\n  if (!allowedHosts.has(parsed.hostname.toLowerCase()) || !['http:', 'https:'].includes(parsed.protocol)) throw new Error('Use an official TikTok video URL or video ID.');\n  const match = parsed.pathname.match(/\\/video\\/(\\d{8,24})(?:\\/|$)/);\n  if (!match) throw new Error('The video URL must contain a numeric video ID after /video/.');\n  videoId = match[1];\n  videoUrl = 'https://www.tiktok.com' + parsed.pathname;\n}\nconst watch = await tobub.browser.network.watch({\n  id: 'tiktok-video-comments',\n  urlPattern: { pattern: 'api/comment/list' },\n  resourceTypes: ['xhr', 'fetch'],\n  captureResponseBody: true,\n  maxBodyBytes: 2000000,\n  maxRecords: 80\n});\nlet videoContentItemId = null;\nif (saveResults) {\n  const videoContent = await tobub.db.saveContent({\n    platform: 'tiktok',\n    contentType: 'video',\n    externalId: videoId,\n    title: 'TikTok video ' + videoId,\n    url: videoUrl,\n    rawData: { videoId, videoUrl }\n  });\n  if (!videoContent || !Number.isFinite(Number(videoContent.contentItemId))) throw new Error('Failed to save the video association.');\n  videoContentItemId = Number(videoContent.contentItemId);\n}\nawait tobub.atoms.navigate({ url: videoUrl, waitUntil: 'domcontentloaded' });\nawait tobub.atoms.waitFor({ delay: pageLoadWaitSeconds * 1000 });\nlet commentsTabClicked = false;\nconst tabReady = await tobub.atoms.condition({\n  type: 'count',\n  selector: 'button[data-testid=\"tux-web-tab-bar\"]',\n  comparison: 'gte',\n  value: 1,\n  pollInterval: 100,\n  throwOnTimeout: false\n}, { timeout: 1500 });\nif (tabReady && tabReady.satisfied) {\n  try {\n    await tobub.atoms.click({ selector: 'button[data-testid=\"tux-web-tab-bar\"]', nth: 0, visibleOnly: true });\n    commentsTabClicked = true;\n  } catch {}\n}\nawait tobub.atoms.waitFor({ delay: tabWaitSeconds * 1000 });\nfor (let i = 0; i < maxScrollTimes; i++) {\n  const stateResult = await tobub.atoms.evaluate({\n    mode: 'expression',\n    expression: '(()=>{const marker=document.querySelector(\"[data-e2e=\\\\\"comment-level-1\\\\\"]\");let el=marker;for(let i=0;i<8&&el;i++,el=el.parentElement){const s=getComputedStyle(el);if(el.scrollHeight>el.clientHeight+40&&/(auto|scroll)/.test(s.overflowY)){const before=el.scrollTop;el.scrollTop=Math.min(el.scrollHeight,el.scrollTop+Math.max(300,el.clientHeight*0.8));return{found:true,before,after:el.scrollTop,height:el.scrollHeight}}}return{found:false,count:document.querySelectorAll(\"[data-e2e^=\\\\\"comment-level-\\\\\"]\").length}})()'\n  });\n  const state = stateResult && stateResult.value !== undefined ? stateResult.value : stateResult;\n  if (!state || !state.found || (state.after <= state.before && state.before > 0)) break;\n  await tobub.atoms.waitFor({ delay: scrollWaitSeconds * 1000 });\n}\nconst networkRecords = await tobub.browser.network.collect(watch, { stop: true });\nconst pages = [];\nfor (const record of networkRecords) {\n  const body = record?.response?.body;\n  if (typeof body !== 'string' || record.response.bodyEncoding === 'base64') continue;\n  if (record.response.status && (record.response.status < 200 || record.response.status >= 300)) continue;\n  let requestUrl, payload;\n  try { requestUrl = new URL(record.request.url); payload = JSON.parse(body); } catch { continue; }\n  if (!requestUrl.pathname.includes('/api/comment/list/')) continue;\n  if (requestUrl.searchParams.get('aweme_id') && requestUrl.searchParams.get('aweme_id') !== videoId) continue;\n  const rows = Array.isArray(payload?.comments) ? payload.comments : [];\n  if (rows.length) pages.push({ rows, cursor: String(payload.cursor ?? ''), hasMore: payload.has_more === true || payload.has_more === 1 });\n}\nconst byId = new Map();\nfor (const page of pages) {\n  for (const comment of page.rows) {\n    if (!comment || typeof comment !== 'object') continue;\n    const commentId = String(comment.cid ?? comment.comment_id ?? '');\n    const text = String(comment.text ?? comment.comment ?? '').trim();\n    if (!commentId || byId.has(commentId) || !text) continue;\n    const user = comment.user && typeof comment.user === 'object' ? comment.user : {};\n    byId.set(commentId, {\n      commentId,\n      videoId,\n      text,\n      username: String(user.unique_id ?? user.uniqueId ?? ''),\n      nickname: String(user.nickname ?? user.nick_name ?? ''),\n      avatarUrl: String(user.avatar_thumb?.url_list?.[0] ?? user.avatar_thumb ?? ''),\n      createTime: Number.isFinite(Number(comment.create_time)) ? Math.trunc(Number(comment.create_time)) : null,\n      likeCount: Number.isFinite(Number(comment.digg_count)) ? Math.trunc(Number(comment.digg_count)) : null,\n      replyCount: Number.isFinite(Number(comment.reply_comment_total)) ? Math.trunc(Number(comment.reply_comment_total)) : null,\n      isAuthor: comment.is_author_digged === true,\n      dataSource: 'api_comment_list'\n    });\n  }\n}\nlet fallbackUsed = false;\nif (byId.size === 0) {\n  const domResult = await tobub.atoms.evaluate({\n    mode: 'expression',\n    expression: '(()=>Array.from(document.querySelectorAll(\"[data-e2e^=\\\\\"comment-level-\\\\\"]\")).map((el,i)=>{const u=el.querySelector(\"[data-e2e^=\\\\\"comment-username-\\\\\"]\");const text=(el.innerText||\"\").trim();return{commentId:\"dom-\"+i,text,username:u?(u.innerText||\"\").trim():\"\",nickname:u?(u.innerText||\"\").trim():\"\"}}).filter(x=>x.text))()'\n  });\n  const rows = domResult && domResult.value !== undefined ? domResult.value : (domResult && domResult.result !== undefined ? domResult.result : domResult);\n  if (Array.isArray(rows)) {\n    for (const row of rows) {\n      if (!byId.has(row.commentId)) byId.set(row.commentId, { ...row, videoId, avatarUrl: '', createTime: null, likeCount: null, replyCount: null, isAuthor: false, dataSource: 'comment_dom_fallback' });\n    }\n    fallbackUsed = byId.size > 0;\n  }\n}\nconst orderedComments = Array.from(byId.values());\nif (sortBy === 'newest') orderedComments.sort((a, b) => (b.createTime ?? -1) - (a.createTime ?? -1));\nif (sortBy === 'mostLiked') orderedComments.sort((a, b) => (b.likeCount ?? -1) - (a.likeCount ?? -1));\nconst comments = [];\nfor (const comment of orderedComments.slice(0, count)) {\n  let contentItemId = null;\n  if (saveResults) {\n    const saved = await tobub.db.saveContent({\n      platform: 'tiktok',\n      contentType: 'comment',\n      externalId: videoId + ':' + comment.commentId,\n      ...(videoContentItemId ? { parentId: videoContentItemId } : {}),\n      title: comment.text || 'TikTok comments',\n      summary: comment.nickname || comment.username,\n      url: videoUrl,\n      metadata: { ...comment, sortBy },\n      rawData: { ...comment, sortBy }\n    });\n    if (!saved || !Number.isFinite(Number(saved.contentItemId))) throw new Error('Failed to save comments: ' + comment.commentId);\n    contentItemId = Number(saved.contentItemId);\n  }\n  comments.push({ ...comment, contentItemId });\n}\nconst lastPage = pages.length ? pages[pages.length - 1] : null;\nconst complete = comments.length >= count || Boolean(lastPage && !lastPage.hasMore);\nreturn {\n  videoId,\n  videoUrl,\n  requestedCount: count,\n  returnedCount: comments.length,\n  pagesRead: pages.length,\n  commentsTabClicked,\n  sortBy,\n  saved: saveResults,\n  savedCount: saveResults ? comments.length : 0,\n  complete,\n  warning: comments.length === 0 ? 'No comments were read from the page. TikTok may require login, comments may be disabled, or the page may still be loading. If prompted to log in, retry with a verified TikTok Profile.' : (complete ? '' : (fallbackUsed ? 'Some comments were read from the currently rendered DOM, so the result may not include every comment.' : 'Available comments were returned. Increase maxScrollTimes and retry to load more.')),\n  comments\n};",
+    "platform": "tiktok",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "vid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "title": "Video ID or URL",
+          "description": "Required target. Use the full video URL to avoid ambiguity when entering a numeric ID."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "title": "Maximum comments to return",
+          "description": "Maximum number of comments. The actual count depends on login state, comment availability, and page access."
+        },
+        "maxScrollTimes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "title": "Maximum scrolls",
+          "description": "Upper limit for loading more comments. Stops early when the target count is reached."
+        },
+        "sortBy": {
+          "type": "string",
+          "enum": [
+            "platform",
+            "newest",
+            "mostLiked"
+          ],
+          "title": "Comment sort order",
+          "description": "platform keeps TikTok’s returned order; other options sort by fields available on the page."
+        },
+        "pageLoadWaitSeconds": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 15,
+          "title": "Video page wait (seconds)",
+          "description": "Wait for video details and the comments entry point to load."
+        },
+        "tabWaitSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "title": "Additional comments wait (seconds)",
+          "description": "Wait for comment data after the comments entry appears or a tab switch is attempted."
+        },
+        "scrollWaitSeconds": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 5,
+          "title": "Wait after each scroll (seconds)",
+          "description": "Increase this on slower pages. A short wait may miss newly loaded comments."
+        },
+        "saveResults": {
+          "type": "boolean",
+          "title": "Save comments and video to Tobub",
+          "description": "When enabled, save results and link them to the video. When disabled, return results only."
+        }
+      },
+      "required": [
+        "vid"
+      ]
+    },
+    "output_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "videoId": {
+          "type": "string"
+        },
+        "videoUrl": {
+          "type": "string"
+        },
+        "requestedCount": {
+          "type": "integer"
+        },
+        "returnedCount": {
+          "type": "integer"
+        },
+        "pagesRead": {
+          "type": "integer"
+        },
+        "commentsTabClicked": {
+          "type": "boolean"
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "warning": {
+          "type": "string"
+        },
+        "comments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "commentId": {
+                "type": "string"
+              },
+              "videoId": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "username": {
+                "type": "string"
+              },
+              "nickname": {
+                "type": "string"
+              },
+              "avatarUrl": {
+                "type": "string"
+              },
+              "createTime": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "likeCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "replyCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "isAuthor": {
+                "type": "boolean"
+              },
+              "dataSource": {
+                "type": "string",
+                "enum": [
+                  "api_comment_list",
+                  "comment_dom_fallback"
+                ]
+              },
+              "contentItemId": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "commentId",
+              "videoId",
+              "text",
+              "username",
+              "nickname",
+              "avatarUrl",
+              "createTime",
+              "likeCount",
+              "replyCount",
+              "isAuthor",
+              "dataSource",
+              "contentItemId"
+            ]
+          }
+        },
+        "sortBy": {
+          "type": "string",
+          "enum": [
+            "platform",
+            "newest",
+            "mostLiked"
+          ]
+        },
+        "saved": {
+          "type": "boolean"
+        },
+        "savedCount": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "videoId",
+        "videoUrl",
+        "requestedCount",
+        "returnedCount",
+        "pagesRead",
+        "commentsTabClicked",
+        "complete",
+        "warning",
+        "comments",
+        "sortBy",
+        "saved",
+        "savedCount"
+      ]
+    },
+    "ui_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "vid",
+          "label": "Video ID or URL",
+          "required": true,
+          "target": "params.vid",
+          "type": "text",
+          "description": "Enter a TikTok video ID or full video URL."
+        },
+        {
+          "key": "count",
+          "label": "Maximum comments to return",
+          "required": false,
+          "target": "params.count",
+          "type": "number",
+          "default": 15,
+          "description": "Maximum comments to return; fewer may be available."
+        },
+        {
+          "key": "sortBy",
+          "label": "Comment sort order",
+          "required": false,
+          "target": "params.sortBy",
+          "type": "select",
+          "default": "platform",
+          "options": [
+            {
+              "label": "Platform order",
+              "value": "platform"
+            },
+            {
+              "label": "Newest",
+              "value": "newest"
+            },
+            {
+              "label": "Most liked",
+              "value": "mostLiked"
+            }
+          ],
+          "description": "Choose platform order, newest, or most liked."
+        },
+        {
+          "key": "maxScrollTimes",
+          "label": "Maximum scrolls",
+          "required": false,
+          "target": "params.maxScrollTimes",
+          "type": "number",
+          "default": 6,
+          "description": "Loading limit; stops early when the target count is reached."
+        },
+        {
+          "key": "pageLoadWaitSeconds",
+          "label": "Video page wait (seconds)",
+          "required": false,
+          "target": "params.pageLoadWaitSeconds",
+          "type": "number",
+          "default": 4,
+          "description": "Wait for video details and the comments entry point."
+        },
+        {
+          "key": "tabWaitSeconds",
+          "label": "Additional comments wait (seconds)",
+          "required": false,
+          "target": "params.tabWaitSeconds",
+          "type": "number",
+          "default": 2,
+          "description": "Additional wait after opening the comments panel."
+        },
+        {
+          "key": "scrollWaitSeconds",
+          "label": "Wait after each scroll (seconds)",
+          "required": false,
+          "target": "params.scrollWaitSeconds",
+          "type": "number",
+          "default": 1.2,
+          "description": "Increase this on slower pages; a short wait may miss comments."
+        },
+        {
+          "key": "saveResults",
+          "label": "Save comments and video to Tobub",
+          "required": false,
+          "target": "params.saveResults",
+          "type": "switch",
+          "default": true,
+          "description": "When enabled, save and link results; otherwise return results only."
+        }
+      ]
+    },
+    "requirements": {
+      "account": "required",
+      "profile": "required",
+      "domain_rule": "optional"
+    },
+    "defaults": {
+      "params": {
+        "count": 15,
+        "maxScrollTimes": 6,
+        "sortBy": "platform",
+        "pageLoadWaitSeconds": 4,
+        "tabWaitSeconds": 2,
+        "scrollWaitSeconds": 1.2,
+        "saveResults": true
+      },
+      "browser": {
+        "run_mode": "profile",
+        "auth_mode": "inherit",
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "optional"
+      }
+    },
+    "metadata": {
+      "category": "user",
+      "source": "local",
+      "description": "读取指定 TikTok 作品的评论，可控制数量、排序和加载等待；支持预览或保存，并自动去重、关联作品。",
+      "tags": [
+        "TikTok",
+        "评论",
+        "作品",
+        "排序",
+        "采集"
+      ],
+      "market_skill_id": "tiktok-get-video-comments"
+    }
+  }
+}

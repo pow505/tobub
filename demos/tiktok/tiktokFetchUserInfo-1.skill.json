@@ -1,0 +1,228 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:tiktok-fetch-user-info@1.0.3",
+  "package_version": "1.0.3",
+  "source": "user",
+  "created_at": "2026-10-22T08:34:29.569Z",
+  "requirements": {
+    "platform": "required",
+    "rule": "optional"
+  },
+  "platform": {
+    "code": "tiktok",
+    "name": "tiktok",
+    "version": "1",
+    "base_url": "https://www.tiktok.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "tiktok.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "0a7991bc848ef034e54ff614fb0b6eb7a5f03ca960cee2a7bb5c6afda69edb88"
+  },
+  "skill": {
+    "market_skill_id": "tiktok-fetch-user-info",
+    "release_id": "local-20261022",
+    "name": "TikTok 获取用户信息",
+    "skill_version": "1.0.3",
+    "source_type": "local",
+    "skill_code": "const input = String(tobub.params.profile ?? '').trim();\nconst waitSeconds = Number(tobub.params.waitSeconds ?? 6);\nconst saveResults = tobub.params.saveResults !== false;\nif (!input) throw new Error('Enter a TikTok username or profile URL.');\nif (!Number.isInteger(waitSeconds) || waitSeconds < 1 || waitSeconds > 30) throw new Error('waitSeconds must be an integer from 1 to 30.');\n\nconst allowedHosts = new Set(['tiktok.com', 'www.tiktok.com', 'm.tiktok.com']);\nconst looksLikeUrl = /^[a-z][a-z0-9+.-]*:\\/\\//i.test(input) || /^(?:www\\.|m\\.)?tiktok\\.com\\//i.test(input);\nlet requestedUsername = '';\nif (looksLikeUrl) {\n  let parsed;\n  try {\n    parsed = new URL(/^[a-z][a-z0-9+.-]*:\\/\\//i.test(input) ? input : 'https://' + input);\n  } catch {\n    throw new Error('Invalid profile URL.');\n  }\n  if (!allowedHosts.has(parsed.hostname.toLowerCase())) {\n    throw new Error('Use an official TikTok profile URL or enter a username directly.');\n  }\n  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {\n    throw new Error('Profile URLs must use HTTP or HTTPS.');\n  }\n  let decodedPath = parsed.pathname;\n  try { decodedPath = decodeURIComponent(decodedPath); } catch {}\n  const match = decodedPath.match(/^\\/@([^/]+)\\/?$/);\n  if (!match) throw new Error('Use a TikTok profile URL such as https://www.tiktok.com/@username.');\n  requestedUsername = match[1];\n} else {\n  requestedUsername = input.replace(/^@/, '');\n}\nif (!/^[A-Za-z0-9._]{1,64}$/.test(requestedUsername)) {\n  throw new Error('Invalid TikTok username.');\n}\n\nconst requestedKey = requestedUsername.toLowerCase();\nconst requestedProfileUrl = 'https://www.tiktok.com/@' + encodeURIComponent(requestedUsername);\nawait tobub.atoms.navigate({ url: requestedProfileUrl, waitUntil: 'domcontentloaded' });\nawait tobub.atoms.waitFor({ delay: waitSeconds * 1000 });\n\nconst pageResult = await tobub.atoms.evaluate({\n  mode: 'expression',\n  expression: '(()=>{let root={};try{const el=document.getElementById(\"__UNIVERSAL_DATA_FOR_REHYDRATION__\");root=el?JSON.parse(el.textContent):window.__UNIVERSAL_DATA_FOR_REHYDRATION__||{}}catch(e){}const scopes=root.__DEFAULT_SCOPE__||{};const detail=scopes[\"webapp.user-detail\"]||{};const info=detail.userInfo||detail.user_info||{};const u=info.user||detail.user||{};const stats=info.stats||{};const statsV2=info.statsV2||{};const count=(...values)=>{for(let value of values){if(value&&typeof value===\"object\")value=value.value??value.count??value.displayText;if(value===null||value===undefined||value===\"\")continue;if(typeof value===\"number\"&&Number.isFinite(value))return Math.trunc(value);const text=String(value).replace(/,/g,\"\").trim();if(/^\\\\d+$/.test(text)){const number=Number(text);if(Number.isFinite(number))return number}}return null};const image=(...values)=>{for(const value of values){if(typeof value===\"string\"&&/^https?:\\\\/\\\\//i.test(value))return value;if(Array.isArray(value)){const found=value.find(item=>typeof item===\"string\"&&/^https?:\\\\/\\\\//i.test(item));if(found)return found}}return \"\"};return{href:location.href,statusCode:detail.statusCode??null,user:{userId:String(u.id??u.uid??\"\"),username:String(u.uniqueId??u.unique_id??\"\"),nickname:String(u.nickname??u.nickName??\"\"),bio:String(u.signature??\"\"),avatarThumb:image(u.avatarThumb,u.avatar_thumb),avatarMedium:image(u.avatarMedium,u.avatar_medium),avatarLarge:image(u.avatarLarger,u.avatar_larger),followingCount:count(stats.followingCount,stats.following_count,statsV2.followingCount,statsV2.following_count),followerCount:count(stats.followerCount,stats.follower_count,statsV2.followerCount,statsV2.follower_count),likesCount:count(stats.heartCount,stats.heart_count,stats.heart,statsV2.heartCount,statsV2.heart_count,statsV2.heart),videoCount:count(stats.videoCount,stats.video_count,statsV2.videoCount,statsV2.video_count),isVerified:typeof u.verified===\"boolean\"?u.verified:(u.verified===0||u.verified===1?Boolean(u.verified):null),isPrivateAccount:typeof u.privateAccount===\"boolean\"?u.privateAccount:(u.privateAccount===0||u.privateAccount===1?Boolean(u.privateAccount):null)}}})()'\n});\nconst page = pageResult && pageResult.value !== undefined\n  ? pageResult.value\n  : (pageResult && pageResult.result !== undefined ? pageResult.result : pageResult);\nconst user = page && page.user;\nif (!user || !user.userId || !user.username) {\n  throw new Error('Could not read profile data from TikTok. The page may not exist, require login, or be restricted in your network region.');\n}\nif (String(user.username).toLowerCase() !== requestedKey) {\n  throw new Error('The username returned by TikTok does not match the requested username. Saving was stopped to avoid recording the wrong user.');\n}\n\nconst profileUrl = 'https://www.tiktok.com/@' + encodeURIComponent(user.username);\nconst avatarUrl = user.avatarLarge || user.avatarMedium || user.avatarThumb || '';\nconst normalizedUser = {\n  userId: String(user.userId),\n  username: String(user.username),\n  nickname: String(user.nickname || user.username),\n  profileUrl,\n  avatarUrl,\n  avatarMediumUrl: String(user.avatarMedium || ''),\n  avatarThumbUrl: String(user.avatarThumb || ''),\n  bio: String(user.bio || ''),\n  followingCount: user.followingCount ?? null,\n  followerCount: user.followerCount ?? null,\n  likesCount: user.likesCount ?? null,\n  videoCount: user.videoCount ?? null,\n  isVerified: user.isVerified ?? null,\n  isPrivateAccount: user.isPrivateAccount ?? null\n};\nif (saveResults) {\n  const saved = await tobub.db.saveContent({\n    platform: 'tiktok',\n    contentType: 'user',\n    externalId: normalizedUser.userId,\n    title: normalizedUser.nickname,\n    url: profileUrl,\n    metadata: { ...normalizedUser, dataSource: 'page_hydration' },\n    rawData: { ...normalizedUser, dataSource: 'page_hydration' }\n  });\n  if (!saved || !Number.isFinite(Number(saved.contentItemId))) throw new Error('Profile data was read, but saving the record failed.');\n}\nreturn { user: normalizedUser, dataSource: 'page_hydration', saved: saveResults };\n",
+    "platform": "tiktok",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "title": "TikTok username or profile URL",
+          "description": "Enter a username, @username, or official TikTok profile URL."
+        },
+        "waitSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30,
+          "title": "Page wait time (seconds)",
+          "description": "Wait for profile data to load. Increase this value on slower networks."
+        },
+        "saveResults": {
+          "type": "boolean",
+          "title": "Save user record to Tobub",
+          "description": "When enabled, save the user record. When disabled, return results without saving."
+        }
+      },
+      "required": [
+        "profile"
+      ]
+    },
+    "output_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "user": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "userId": {
+              "type": "string"
+            },
+            "username": {
+              "type": "string"
+            },
+            "nickname": {
+              "type": "string"
+            },
+            "profileUrl": {
+              "type": "string"
+            },
+            "avatarUrl": {
+              "type": "string"
+            },
+            "avatarMediumUrl": {
+              "type": "string"
+            },
+            "avatarThumbUrl": {
+              "type": "string"
+            },
+            "bio": {
+              "type": "string"
+            },
+            "followingCount": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "followerCount": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "likesCount": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "videoCount": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "isVerified": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "isPrivateAccount": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "userId",
+            "username",
+            "nickname",
+            "profileUrl",
+            "avatarUrl",
+            "avatarMediumUrl",
+            "avatarThumbUrl",
+            "bio",
+            "followingCount",
+            "followerCount",
+            "likesCount",
+            "videoCount",
+            "isVerified",
+            "isPrivateAccount"
+          ]
+        },
+        "dataSource": {
+          "type": "string",
+          "enum": [
+            "page_hydration"
+          ]
+        },
+        "saved": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "user",
+        "dataSource",
+        "saved"
+      ]
+    },
+    "ui_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "profile",
+          "label": "TikTok username or profile URL",
+          "required": true,
+          "target": "params.profile",
+          "type": "text",
+          "description": "For example, scout2015, @scout2015, or an official TikTok profile URL."
+        },
+        {
+          "key": "waitSeconds",
+          "label": "Page wait time (seconds)",
+          "required": false,
+          "target": "params.waitSeconds",
+          "type": "number",
+          "default": 6,
+          "description": "Wait for profile data to load; increase this value on slower networks."
+        },
+        {
+          "key": "saveResults",
+          "label": "Save user record to Tobub",
+          "required": false,
+          "target": "params.saveResults",
+          "type": "switch",
+          "default": true,
+          "description": "When enabled, save to Tobub; otherwise return results only."
+        }
+      ]
+    },
+    "requirements": {
+      "account": "optional",
+      "profile": "optional",
+      "domain_rule": "optional"
+    },
+    "defaults": {
+      "params": {
+        "waitSeconds": 6,
+        "saveResults": true
+      },
+      "browser": {
+        "run_mode": "transient",
+        "auth_mode": "none",
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "optional"
+      }
+    },
+    "metadata": {
+      "category": "user",
+      "description": "读取 TikTok 用户主页资料和互动统计，可调页面等待时间，并选择是否将用户记录保存到 Tobub。",
+      "source": "local",
+      "tags": [
+        "TikTok",
+        "用户",
+        "主页",
+        "资料"
+      ],
+      "market_skill_id": "tiktok-fetch-user-info"
+    }
+  }
+}

@@ -1,0 +1,356 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:tiktok-search-videos@1.0.4",
+  "package_version": "1.0.4",
+  "source": "user",
+  "created_at": "2026-10-22T13:11:33.656Z",
+  "requirements": {
+    "platform": "required",
+    "rule": "optional"
+  },
+  "platform": {
+    "code": "tiktok",
+    "name": "tiktok",
+    "version": "1",
+    "base_url": "https://www.tiktok.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "tiktok.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "0a7991bc848ef034e54ff614fb0b6eb7a5f03ca960cee2a7bb5c6afda69edb88"
+  },
+  "skill": {
+    "market_skill_id": "tiktok-search-videos",
+    "release_id": "local-tiktok-20261022",
+    "name": "tiktok获取搜索结果",
+    "skill_version": "1.0.4",
+    "source_type": "local",
+    "skill_code": "const query = String(tobub.params.searchKey || '').trim();\nconst count = Number(tobub.params.count ?? 10);\nconst maxPages = Number(tobub.params.maxPages ?? 4);\nconst sortBy = String(tobub.params.sortBy ?? 'relevance');\nconst initialWaitSeconds = Number(tobub.params.initialWaitSeconds ?? 5);\nconst pageWaitSeconds = Number(tobub.params.pageWaitSeconds ?? 2);\nconst saveResults = tobub.params.saveResults !== false;\nif (!query || query.length > 120) throw new Error('searchKey must be from 1 to 120 characters.');\nif (!Number.isInteger(count) || count < 1 || count > 50) throw new Error('count must be an integer from 1 to 50.');\nif (!Number.isInteger(maxPages) || maxPages < 1 || maxPages > 8) throw new Error('maxPages must be an integer from 1 to 8.');\nif (!['relevance', 'newest', 'mostLiked', 'mostViewed'].includes(sortBy)) throw new Error('Invalid sortBy value.');\nif (!Number.isInteger(initialWaitSeconds) || initialWaitSeconds < 3 || initialWaitSeconds > 20) throw new Error('initialWaitSeconds must be from 3 to 20 seconds.');\nif (!Number.isInteger(pageWaitSeconds) || pageWaitSeconds < 1 || pageWaitSeconds > 10) throw new Error('pageWaitSeconds must be from 1 to 10 seconds.');\n\nconst watch = await tobub.browser.network.watch({\n  id: 'tiktok-search-results',\n  urlPattern: { pattern: 'api/search/general/full' },\n  resourceTypes: ['xhr', 'fetch'],\n  captureResponseBody: true,\n  maxBodyBytes: 2000000,\n  maxRecords: Math.min(40, maxPages * 6)\n});\nawait tobub.atoms.navigate({\n  url: 'https://www.tiktok.com/search?q=' + encodeURIComponent(query),\n  waitUntil: 'domcontentloaded'\n});\nawait tobub.atoms.waitFor({ delay: initialWaitSeconds * 1000 });\n\nconst observed = new Map();\nlet pagesRead = 0;\nlet lastHasMore = null;\nconst readVisibleCards = async () => {\n  const result = await tobub.atoms.evaluate({\n    mode: 'expression',\n    expression: '(()=>Array.from(document.querySelectorAll(\"a[href*=\\\\\"/video/\\\\\"]\")).filter(a=>{const r=a.getBoundingClientRect();return r.width>0&&r.height>0}).map(a=>{const href=a.href.split(\"?\")[0];const m=href.match(/\\\\/video\\\\/(\\\\d+)/);const authorMatch=href.match(/\\\\/@([^/]+)\\\\/video\\\\/(\\\\d+)/);const img=a.querySelector(\"img\");return{videoId:m?m[1]:\"\",authorUsername:authorMatch?authorMatch[1]:\"\",videoUrl:href,description:String((img&&img.alt)||a.getAttribute(\"aria-label\")||\"\"),coverUrl:String((img&&(img.currentSrc||img.src))||\"\")}}).filter(x=>x.videoId))()'\n  });\n  const value = result && result.value !== undefined ? result.value : (result && result.result !== undefined ? result.result : result);\n  return Array.isArray(value) ? value : [];\n};\nfor (let page = 0; page < maxPages && observed.size < count; page++) {\n  if (page > 0) {\n    await tobub.atoms.scroll({ mode: 'viewport', direction: 'down', distance: 900, steps: 5, stepPauseRange: [35, 80] });\n    await tobub.atoms.waitFor({ delay: pageWaitSeconds * 1000 });\n  }\n  for (const card of await readVisibleCards()) {\n    if (card.videoId && !observed.has(card.videoId)) observed.set(card.videoId, { videoId: card.videoId, description: card.description || '', videoUrl: card.videoUrl, coverUrl: card.coverUrl || '', authorUsername: card.authorUsername || '', authorNickname: '', createTime: null, duration: null, playCount: null, likeCount: null, commentCount: null, shareCount: null, dataSource: 'search_result_dom' });\n  }\n}\nconst networkRecords = await tobub.browser.network.collect(watch, { stop: true });\nconst asCount = (value) => {\n  if (value === null || value === undefined || value === '') return null;\n  if (typeof value === 'object') value = value.value ?? value.count ?? value.displayText;\n  const n = Number(String(value).replace(/,/g, '').trim());\n  return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;\n};\nconst firstUrl = (...values) => {\n  for (const value of values) {\n    if (typeof value === 'string' && /^https?:\\/\\//i.test(value)) return value;\n    if (value && typeof value === 'object') {\n      for (const key of ['urlList', 'url_list', 'urls', 'url', 'src']) {\n        const candidate = value[key];\n        if (typeof candidate === 'string' && /^https?:\\/\\//i.test(candidate)) return candidate;\n        if (Array.isArray(candidate)) {\n          const found = candidate.find(item => typeof item === 'string' && /^https?:\\/\\//i.test(item));\n          if (found) return found;\n        }\n      }\n    }\n  }\n  return '';\n};\nfor (const record of networkRecords) {\n  const body = record?.response?.body;\n  if (typeof body !== 'string' || record.response.bodyEncoding === 'base64') continue;\n  if (record.response.status && (record.response.status < 200 || record.response.status >= 300)) continue;\n  let requestUrl, payload;\n  try { requestUrl = new URL(record.request.url); payload = JSON.parse(body); } catch { continue; }\n  if (!requestUrl.pathname.includes('/api/search/general/full')) continue;\n  pagesRead++;\n  if (payload && typeof payload.has_more === 'number') lastHasMore = payload.has_more !== 0;\n  else if (payload && typeof payload.has_more === 'boolean') lastHasMore = payload.has_more;\n  const rows = Array.isArray(payload?.data) ? payload.data : [];\n  for (const row of rows) {\n    const item = row?.item && typeof row.item === 'object' ? row.item : row;\n    if (!item || typeof item !== 'object') continue;\n    const id = String(item.id ?? item.aweme_id ?? item.item_id ?? '');\n    if (!/^\\d{8,24}$/.test(id)) continue;\n    const author = item.author && typeof item.author === 'object' ? item.author : {};\n    const video = item.video && typeof item.video === 'object' ? item.video : {};\n    const stats = item.stats && typeof item.stats === 'object' ? item.stats : (item.statsV2 || {});\n    const username = String(author.uniqueId ?? author.unique_id ?? '');\n    const normalized = {\n      videoId: id,\n      description: String(item.desc ?? item.description ?? ''),\n      videoUrl: username ? 'https://www.tiktok.com/@' + encodeURIComponent(username) + '/video/' + id : 'https://www.tiktok.com/video/' + id,\n      coverUrl: firstUrl(video.cover, video.originCover, video.dynamicCover, video.coverUrl),\n      authorUsername: username,\n      authorNickname: String(author.nickname ?? ''),\n      createTime: asCount(item.createTime ?? item.create_time),\n      duration: asCount(video.duration ?? item.duration),\n      playCount: asCount(stats.playCount ?? stats.play_count ?? stats.viewCount),\n      likeCount: asCount(stats.diggCount ?? stats.digg_count ?? stats.likeCount),\n      commentCount: asCount(stats.commentCount ?? stats.comment_count),\n      shareCount: asCount(stats.shareCount ?? stats.share_count),\n      dataSource: 'api_search_general_full'\n    };\n    observed.set(id, normalized);\n  }\n}\nconst ordered = Array.from(observed.values());\nconst metricFor = (item) => sortBy === 'newest' ? item.createTime : (sortBy === 'mostLiked' ? item.likeCount : item.playCount);\nif (sortBy !== 'relevance') ordered.sort((a, b) => {\n  const av = metricFor(a), bv = metricFor(b);\n  if (av === null || av === undefined) return bv === null || bv === undefined ? 0 : 1;\n  if (bv === null || bv === undefined) return -1;\n  return Number(bv) - Number(av);\n});\nconst records = [];\nfor (const item of ordered.slice(0, count)) {\n  let contentItemId = null;\n  if (saveResults) {\n    const saved = await tobub.db.saveContent({\n      platform: 'tiktok',\n      contentType: 'video',\n      externalId: item.videoId,\n      title: item.description || ('TikTok video ' + item.videoId),\n      summary: item.authorNickname || (item.authorUsername ? '@' + item.authorUsername : ''),\n      url: item.videoUrl,\n      metadata: { ...item, query, sortBy },\n      rawData: { ...item, query, sortBy }\n    });\n    if (!saved || !Number.isFinite(Number(saved.contentItemId))) throw new Error('Failed to save search results: ' + item.videoId);\n    contentItemId = Number(saved.contentItemId);\n  }\n  records.push({ ...item, contentItemId });\n}\nconst complete = records.length >= count || lastHasMore === false;\nreturn {\n  query,\n  requestedCount: count,\n  returnedCount: records.length,\n  pagesRead,\n  sortBy,\n  saved: saveResults,\n  complete,\n  warning: records.length === 0 ? 'No search videos were extracted. TikTok may require login, show a verification challenge, or have no public results for this query. If prompted to log in, retry with a verified TikTok Profile.' : (complete ? '' : 'Available results were returned. Increase maxPages and retry to load more.'),\n  records\n};",
+    "platform": "tiktok",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "searchKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "title": "Search query",
+          "description": "Required keyword or hashtag. No sample query is inserted automatically."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "title": "Maximum results",
+          "description": "Maximum number of results to return; up to 50."
+        },
+        "maxPages": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8,
+          "title": "Maximum scrolls",
+          "description": "Maximum number of additional loads when more results are needed. Stops early when the target is reached."
+        },
+        "sortBy": {
+          "type": "string",
+          "enum": [
+            "relevance",
+            "newest",
+            "mostLiked",
+            "mostViewed"
+          ],
+          "title": "Sort order",
+          "description": "relevance keeps relevance order; other options sort by metrics available for each video."
+        },
+        "initialWaitSeconds": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 20,
+          "title": "Initial results wait (seconds)",
+          "description": "Wait for TikTok search results and the first video cards to load."
+        },
+        "pageWaitSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "title": "Wait after each load (seconds)",
+          "description": "Wait for the next batch of results to render. Increase this on slower networks."
+        },
+        "saveResults": {
+          "type": "boolean",
+          "title": "Save results to Tobub",
+          "description": "When disabled, results are still returned but are not written to the content library."
+        }
+      },
+      "required": [
+        "searchKey"
+      ]
+    },
+    "output_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "requestedCount": {
+          "type": "integer"
+        },
+        "returnedCount": {
+          "type": "integer"
+        },
+        "pagesRead": {
+          "type": "integer"
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "warning": {
+          "type": "string"
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "videoId": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "videoUrl": {
+                "type": "string"
+              },
+              "coverUrl": {
+                "type": "string"
+              },
+              "authorUsername": {
+                "type": "string"
+              },
+              "authorNickname": {
+                "type": "string"
+              },
+              "createTime": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "duration": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "playCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "likeCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "commentCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "shareCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "dataSource": {
+                "type": "string",
+                "enum": [
+                  "api_search_general_full",
+                  "search_result_dom"
+                ]
+              },
+              "contentItemId": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "videoId",
+              "description",
+              "videoUrl",
+              "coverUrl",
+              "authorUsername",
+              "authorNickname",
+              "createTime",
+              "duration",
+              "playCount",
+              "likeCount",
+              "commentCount",
+              "shareCount",
+              "dataSource",
+              "contentItemId"
+            ]
+          }
+        },
+        "sortBy": {
+          "type": "string",
+          "enum": [
+            "relevance",
+            "newest",
+            "mostLiked",
+            "mostViewed"
+          ]
+        },
+        "saved": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "query",
+        "requestedCount",
+        "returnedCount",
+        "pagesRead",
+        "complete",
+        "warning",
+        "records",
+        "sortBy",
+        "saved"
+      ]
+    },
+    "ui_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "searchKey",
+          "label": "Search query",
+          "required": true,
+          "target": "params.searchKey",
+          "type": "text",
+          "description": "Enter a keyword or hashtag."
+        },
+        {
+          "key": "count",
+          "label": "Maximum results",
+          "required": false,
+          "target": "params.count",
+          "type": "number",
+          "default": 10,
+          "description": "Maximum number of videos to return."
+        },
+        {
+          "key": "sortBy",
+          "label": "Sort order",
+          "required": false,
+          "target": "params.sortBy",
+          "type": "select",
+          "default": "relevance",
+          "options": [
+            {
+              "label": "Relevance",
+              "value": "relevance"
+            },
+            {
+              "label": "Newest",
+              "value": "newest"
+            },
+            {
+              "label": "Most liked",
+              "value": "mostLiked"
+            },
+            {
+              "label": "Most viewed",
+              "value": "mostViewed"
+            }
+          ],
+          "description": "Sort by relevance, recency, likes, or views."
+        },
+        {
+          "key": "maxPages",
+          "label": "Maximum scrolls",
+          "required": false,
+          "target": "params.maxPages",
+          "type": "number",
+          "default": 4,
+          "description": "Loading limit when more results are needed."
+        },
+        {
+          "key": "initialWaitSeconds",
+          "label": "Initial results wait (seconds)",
+          "required": false,
+          "target": "params.initialWaitSeconds",
+          "type": "number",
+          "default": 5,
+          "description": "Wait for the first search results to load."
+        },
+        {
+          "key": "pageWaitSeconds",
+          "label": "Wait after each load (seconds)",
+          "required": false,
+          "target": "params.pageWaitSeconds",
+          "type": "number",
+          "default": 2,
+          "description": "Wait for the next batch of results to render."
+        },
+        {
+          "key": "saveResults",
+          "label": "Save results to Tobub",
+          "required": false,
+          "target": "params.saveResults",
+          "type": "switch",
+          "default": true,
+          "description": "When disabled, return results without saving to Tobub."
+        }
+      ]
+    },
+    "requirements": {
+      "account": "required",
+      "profile": "required",
+      "domain_rule": "optional"
+    },
+    "defaults": {
+      "params": {
+        "count": 10,
+        "maxPages": 4,
+        "sortBy": "relevance",
+        "initialWaitSeconds": 5,
+        "pageWaitSeconds": 2,
+        "saveResults": true
+      },
+      "browser": {
+        "run_mode": "profile",
+        "auth_mode": "inherit",
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "optional"
+      }
+    },
+    "metadata": {
+      "category": "user",
+      "source": "local",
+      "description": "按关键词搜索 TikTok 视频，可配置结果数量、排序和加载等待；支持仅预览或保存到 Tobub。",
+      "tags": [
+        "TikTok",
+        "搜索",
+        "作品",
+        "排序",
+        "采集"
+      ],
+      "market_skill_id": "tiktok-search-videos"
+    }
+  }
+}

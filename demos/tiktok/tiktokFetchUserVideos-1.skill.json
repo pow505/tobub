@@ -1,0 +1,444 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:tiktok-fetch-user-videos@1.0.3",
+  "package_version": "1.0.3",
+  "source": "user",
+  "created_at": "2026-10-22T08:48:57.819Z",
+  "requirements": {
+    "platform": "required",
+    "rule": "optional"
+  },
+  "platform": {
+    "code": "tiktok",
+    "name": "tiktok",
+    "version": "1",
+    "base_url": "https://www.tiktok.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "tiktok.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "0a7991bc848ef034e54ff614fb0b6eb7a5f03ca960cee2a7bb5c6afda69edb88"
+  },
+  "skill": {
+    "market_skill_id": "tiktok-fetch-user-videos",
+    "release_id": "local-20261022",
+    "name": "TikTok 获取用户作品",
+    "skill_version": "1.0.3",
+    "source_type": "local",
+    "skill_code": "const input = String(tobub.params.profile ?? '').trim();\nif (!input) throw new Error('Enter a TikTok username or profile URL.');\nconst requestedCount = Number(tobub.params.count ?? 10);\nconst maxScrollTimes = Number(tobub.params.maxScrollTimes ?? 12);\nconst sortBy = String(tobub.params.sortBy ?? 'newest');\nconst waitSeconds = Number(tobub.params.waitSeconds ?? 6);\nconst scrollWaitSeconds = Number(tobub.params.scrollWaitSeconds ?? 1.5);\nconst saveResults = tobub.params.saveResults !== false;\nif (!Number.isInteger(requestedCount) || requestedCount < 1 || requestedCount > 100) throw new Error('count must be an integer from 1 to 100.');\nif (!Number.isInteger(maxScrollTimes) || maxScrollTimes < 1 || maxScrollTimes > 20) throw new Error('maxScrollTimes must be an integer from 1 to 20.');\nif (!['newest', 'oldest', 'profile'].includes(sortBy)) throw new Error('Invalid sortBy value.');\nif (!Number.isInteger(waitSeconds) || waitSeconds < 2 || waitSeconds > 20) throw new Error('waitSeconds must be from 2 to 20 seconds.');\nif (!Number.isFinite(scrollWaitSeconds) || scrollWaitSeconds < 0.5 || scrollWaitSeconds > 5) throw new Error('scrollWaitSeconds must be from 0.5 to 5 seconds.');\n\nconst allowedHosts = new Set(['tiktok.com', 'www.tiktok.com', 'm.tiktok.com']);\nconst looksLikeUrl = /^[a-z][a-z0-9+.-]*:\\/\\//i.test(input) || /^(?:www\\.|m\\.)?tiktok\\.com\\//i.test(input);\nlet username = '';\nif (looksLikeUrl) {\n  let parsed;\n  try {\n    parsed = new URL(/^[a-z][a-z0-9+.-]*:\\/\\//i.test(input) ? input : 'https://' + input);\n  } catch {\n    throw new Error('Invalid profile URL.');\n  }\n  if (!allowedHosts.has(parsed.hostname.toLowerCase())) {\n    throw new Error('Use an official TikTok profile URL or enter a username directly.');\n  }\n  if (!['http:', 'https:'].includes(parsed.protocol)) {\n    throw new Error('Profile URLs must use HTTP or HTTPS.');\n  }\n  let decodedPath = parsed.pathname;\n  try { decodedPath = decodeURIComponent(decodedPath); } catch {}\n  const match = decodedPath.match(/^\\/@([^/]+)\\/?$/);\n  if (!match) throw new Error('Use a TikTok profile URL such as https://www.tiktok.com/@username.');\n  username = match[1];\n} else {\n  username = input.replace(/^@/, '');\n}\nif (!/^[A-Za-z0-9._]{1,64}$/.test(username)) throw new Error('Invalid TikTok username.');\n\nconst requestedUsername = username.toLowerCase();\nconst profileUrl = 'https://www.tiktok.com/@' + encodeURIComponent(username);\nconst watch = await tobub.browser.network.watch({\n  id: 'tiktok-user-post-list',\n  urlPattern: {pattern: 'item_list'},\n  resourceTypes: ['xhr', 'fetch'],\n  captureResponseBody: true,\n  maxBodyBytes: 2000000,\n  maxRecords: 40\n});\nawait tobub.atoms.navigate({url:profileUrl,waitUntil:'domcontentloaded'});\nawait tobub.atoms.waitFor({delay:waitSeconds*1000});\n\nconst pageResult = await tobub.atoms.evaluate({\n  mode:'expression',\n  expression:'(()=>{let root={};try{const e=document.getElementById(\"__UNIVERSAL_DATA_FOR_REHYDRATION__\");root=e?JSON.parse(e.textContent):window.__UNIVERSAL_DATA_FOR_REHYDRATION__||{}}catch(e){}const scope=(root.__DEFAULT_SCOPE__||{})[\"webapp.user-detail\"]||{};const info=scope.userInfo||{};const u=info.user||{};const s=info.stats||{};const s2=info.statsV2||{};const n=(...xs)=>{for(const x of xs){if(x===null||x===undefined||x===\"\")continue;const v=Number(typeof x===\"object\"?(x.value??x.count??x.displayText):x);if(Number.isFinite(v)&&v>=0)return Math.trunc(v)}return null};const img=(...xs)=>{for(const x of xs){if(typeof x===\"string\"&&x.startsWith(\"http\"))return x;if(Array.isArray(x)){const y=x.find(v=>typeof v===\"string\"&&v.startsWith(\"http\"));if(y)return y}}return \"\"};return{href:location.href,statusCode:scope.statusCode??null,user:{userId:String(u.id??u.uid??\"\"),username:String(u.uniqueId??u.unique_id??\"\"),secUid:String(u.secUid??u.sec_uid??\"\"),nickname:String(u.nickname??u.nickName??\"\"),bio:String(u.signature??\"\"),avatarThumb:img(u.avatarThumb,u.avatar_thumb),avatarMedium:img(u.avatarMedium,u.avatar_medium),avatarLarge:img(u.avatarLarger,u.avatar_larger),followingCount:n(s.followingCount,s.following_count,s2.followingCount,s2.following_count),followerCount:n(s.followerCount,s.follower_count,s2.followerCount,s2.follower_count),likesCount:n(s.heartCount,s.heart_count,s.heart,s2.heartCount,s2.heart_count,s2.heart),videoCount:n(s.videoCount,s.video_count,s2.videoCount,s2.video_count),isVerified:typeof u.verified===\"boolean\"?u.verified:null,isPrivateAccount:typeof u.privateAccount===\"boolean\"?u.privateAccount:null}}})()'\n});\nconst page = pageResult && pageResult.value !== undefined\n  ? pageResult.value\n  : (pageResult && pageResult.result !== undefined ? pageResult.result : pageResult);\nconst user = page && page.user;\nif (!user || !user.userId || !user.username) {\n  throw new Error('Could not read profile data from TikTok. The account may not exist, require login, or be restricted in your network region.');\n}\nif (String(user.username).toLowerCase() !== requestedUsername) {\n  throw new Error('The username returned by TikTok does not match the requested username. Collection was stopped to avoid mixing in another user’s videos.');\n}\n\nconst normalizedUser = {\n  userId:String(user.userId),\n  username:String(user.username),\n  nickname:String(user.nickname || user.username),\n  profileUrl:'https://www.tiktok.com/@' + encodeURIComponent(user.username),\n  avatarUrl:String(user.avatarLarge || user.avatarMedium || user.avatarThumb || ''),\n  bio:String(user.bio || ''),\n  followingCount:user.followingCount ?? null,\n  followerCount:user.followerCount ?? null,\n  likesCount:user.likesCount ?? null,\n  videoCount:user.videoCount ?? null,\n  isVerified:user.isVerified ?? null,\n  isPrivateAccount:user.isPrivateAccount ?? null\n};\nlet userContentItemId = null;\nif (saveResults) {\n  const userContent = await tobub.db.saveContent({\n    platform:'tiktok',\n    contentType:'user',\n    externalId:normalizedUser.userId,\n    title:normalizedUser.nickname,\n    summary:normalizedUser.bio,\n    url:normalizedUser.profileUrl,\n    metadata:{...normalizedUser,dataSource:'page_hydration'},\n    rawData:{...normalizedUser,secUid:String(user.secUid || ''),dataSource:'page_hydration'}\n  });\n  if (!userContent || !Number.isFinite(Number(userContent.contentItemId))) throw new Error('TikTok profile data was read, but saving the user record failed.');\n  userContentItemId = Number(userContent.contentItemId);\n}\n\nconst domPostMap = new Map();\nconst readDomPosts = async () => {\n  const result = await tobub.atoms.evaluate({\n    mode:'expression',\n    expression:'(()=>{const anchors=Array.from(document.querySelectorAll(\"a[href*=\\\\\\\"/video/\\\\\\\"]\"));return anchors.map(a=>{const rest=a.href.split(\"/video/\")[1]||\"\";const id=rest.split(\"?\")[0].split(\"#\")[0].split(\"/\")[0];const img=a.querySelector(\"img\");return{videoId:id,description:String((img&&img.alt)||a.getAttribute(\"title\")||a.getAttribute(\"aria-label\")||\"\"),videoUrl:a.href.split(\"?\")[0],coverUrl:String((img&&(img.currentSrc||img.src))||\"\"),createTime:null,duration:null,playCount:null,likeCount:null,commentCount:null,shareCount:null,collectCount:null}}).filter(x=>/^\\\\d{8,24}$/.test(x.videoId))})()'\n  });\n  const value = result && result.value !== undefined\n    ? result.value\n    : (result && result.result !== undefined ? result.result : result);\n  return Array.isArray(value) ? value : [];\n};\nconst mergeDomPosts = async () => {\n  for (const post of await readDomPosts()) if (post.videoId && !domPostMap.has(String(post.videoId))) domPostMap.set(String(post.videoId), post);\n};\nawait mergeDomPosts();\nlet scrollsPerformed = 0;\nfor (let i=0; i<maxScrollTimes && domPostMap.size<requestedCount; i++) {\n  await tobub.atoms.scroll({mode:'viewport',distance:1100,steps:6,stepPauseRange:[40,100]});\n  scrollsPerformed++;\n  await tobub.atoms.waitFor({delay:scrollWaitSeconds*1000});\n  await mergeDomPosts();\n}\nif (!domPostMap.size) {\n  const retryResult = await tobub.atoms.evaluate({\n    mode:'expression',\n    expression:'(()=>{const text=(document.body&&document.body.innerText||\"\").toLowerCase();if(!text.includes(\"something went wrong\"))return false;const button=Array.from(document.querySelectorAll(\"button,[role=button]\")).find(el=>(el.innerText||\"\").trim().toLowerCase()===\"refresh\");if(!button)return false;button.click();return true})()'\n  });\n  const retry = retryResult && retryResult.value !== undefined\n    ? retryResult.value\n    : (retryResult && retryResult.result !== undefined ? retryResult.result : retryResult);\n  if (retry) {\n    await tobub.atoms.waitFor({delay:4500});\n    const retryScrolls = Math.min(2,Math.max(0,maxScrollTimes-scrollsPerformed));\n    for (let i=0;i<retryScrolls;i++) {\n      await tobub.atoms.scroll({mode:'viewport',distance:1100,steps:6,stepPauseRange:[40,100]});\n      scrollsPerformed++;\n      await tobub.atoms.waitFor({delay:1500});\n      for (const post of await readDomPosts()) {\n        if (post.videoId && !domPostMap.has(String(post.videoId))) domPostMap.set(String(post.videoId),post);\n      }\n    }\n  }\n}\nconst networkRecords = await tobub.browser.network.collect(watch,{stop:true});\nconst pages = [];\nfor (const record of networkRecords) {\n  if (!record || !record.response || record.response.status < 200 || record.response.status >= 300) continue;\n  const body = record.response.body;\n  if (typeof body !== 'string' || record.response.bodyEncoding === 'base64') continue;\n  let requestUrl;\n  try { requestUrl = new URL(record.request.url); } catch { continue; }\n  if (!requestUrl.pathname.includes('/api/post/item_list/')) continue;\n  const requestSecUid = requestUrl.searchParams.get('secUid') || '';\n  if (user.secUid && requestSecUid && requestSecUid !== String(user.secUid)) continue;\n  let payload;\n  try { payload = JSON.parse(body); } catch { continue; }\n  if (!payload || !Array.isArray(payload.itemList)) continue;\n  pages.push({\n    items:payload.itemList,\n    hasMore:typeof payload.hasMore === 'boolean' ? payload.hasMore : null,\n    cursor:String(payload.cursor ?? ''),\n    requestCursor:String(requestUrl.searchParams.get('cursor') || '')\n  });\n}\n\nconst asCount = (value) => {\n  if (value === null || value === undefined || value === '') return null;\n  if (typeof value === 'object') value = value.value ?? value.count ?? value.displayText;\n  if (typeof value === 'number' && Number.isFinite(value) && value >= 0) return Math.trunc(value);\n  const normalized = String(value).replace(/,/g,'').trim();\n  if (!/^\\d+$/.test(normalized)) return null;\n  const number = Number(normalized);\n  return Number.isFinite(number) ? number : null;\n};\nconst firstUrl = (...values) => {\n  for (let value of values) {\n    if (typeof value === 'string' && /^https?:\\/\\//i.test(value)) return value;\n    if (Array.isArray(value)) {\n      const match = value.find(item => typeof item === 'string' && /^https?:\\/\\//i.test(item));\n      if (match) return match;\n    }\n    if (value && typeof value === 'object') {\n      for (const key of ['urlList','url_list','urls','url','UrlList','src']) {\n        const candidate = value[key];\n        if (typeof candidate === 'string' && /^https?:\\/\\//i.test(candidate)) return candidate;\n        if (Array.isArray(candidate)) {\n          const match = candidate.find(item => typeof item === 'string' && /^https?:\\/\\//i.test(item));\n          if (match) return match;\n        }\n      }\n    }\n  }\n  return '';\n};\nconst unique = new Map();\nfor (const pageData of pages) {\n  for (const post of pageData.items) {\n    if (!post || typeof post !== 'object') continue;\n    const postAuthor = String(post.author?.uniqueId ?? post.author?.unique_id ?? '');\n    if (postAuthor && postAuthor.toLowerCase() !== requestedUsername) continue;\n    const video = post.video && typeof post.video === 'object' ? post.video : {};\n    const videoId = String(post.id ?? post.aweme_id ?? post.videoId ?? video.id ?? '');\n    if (!videoId || unique.has(videoId)) continue;\n    const stats = post.stats && typeof post.stats === 'object' ? post.stats : {};\n    const createTime = asCount(post.createTime ?? post.create_time);\n    unique.set(videoId,{\n      videoId,\n      description:String(post.desc ?? post.description ?? ''),\n      videoUrl:'https://www.tiktok.com/@' + encodeURIComponent(user.username) + '/video/' + encodeURIComponent(videoId),\n      coverUrl:firstUrl(video.cover,video.dynamicCover,video.originCover,video.coverUrl),\n      createTime,\n      duration:asCount(video.duration ?? post.duration),\n      playCount:asCount(stats.playCount ?? stats.play_count),\n      likeCount:asCount(stats.diggCount ?? stats.digg_count),\n      commentCount:asCount(stats.commentCount ?? stats.comment_count),\n      shareCount:asCount(stats.shareCount ?? stats.share_count),\n      collectCount:asCount(stats.collectCount ?? stats.collect_count),\n      authorUsername:postAuthor || String(user.username),\n      dataSource:'api_post_item_list'\n    });\n  }\n}\nconst apiVideoCount = unique.size;\nlet domFallbackCount = 0;\nfor (const [videoId,post] of domPostMap) {\n  if (unique.has(videoId)) continue;\n  unique.set(videoId,{...post,videoId,authorUsername:String(user.username),dataSource:'profile_video_cards'});\n  domFallbackCount++;\n}\nconst allVideos = Array.from(unique.values());\nif (sortBy !== 'profile') allVideos.sort((a,b) => {\n  const av = a.createTime, bv = b.createTime;\n  if (av === null || av === undefined) return bv === null || bv === undefined ? 0 : 1;\n  if (bv === null || bv === undefined) return -1;\n  return sortBy === 'newest' ? Number(bv)-Number(av) : Number(av)-Number(bv);\n});\nconst selectedVideos = allVideos.slice(0,requestedCount);\nfor (const video of selectedVideos) {\n  video.contentItemId = null;\n  if (saveResults) {\n    const saved = await tobub.db.saveContent({\n      platform:'tiktok',\n      contentType:'video',\n      externalId:video.videoId,\n      ...(userContentItemId ? {parentId:userContentItemId} : {}),\n      title:video.description || ('TikTok video ' + video.videoId),\n      summary:video.description,\n      url:video.videoUrl,\n      metadata:{...video,userId:normalizedUser.userId,dataSource:video.dataSource,sortBy},\n      rawData:{...video,userId:normalizedUser.userId,dataSource:video.dataSource,sortBy}\n    });\n    if (!saved || !Number.isFinite(Number(saved.contentItemId))) throw new Error('Failed to save TikTok videos: ' + video.videoId);\n    video.contentItemId = Number(saved.contentItemId);\n  }\n}\nconst lastPage = pages.length ? pages[pages.length-1] : null;\nconst reachedRequestedCount = selectedVideos.length >= requestedCount;\nconst reachedEnd = Boolean(lastPage && lastPage.hasMore === false);\nconst complete = reachedRequestedCount || reachedEnd;\nconst warning = complete ? '' :\n  (selectedVideos.length === 0\n    ? 'No public videos were read. The account may have no public videos, or TikTok may restrict access to its video list.'\n    : 'Available videos were returned, but the requested count was not reached. Increase maxScrollTimes and retry.');\nreturn {\n  user:normalizedUser,\n  requestedCount,\n  returnedCount:selectedVideos.length,\n  scrolls:scrollsPerformed,\n  complete,\n  warning,\n  dataSource:apiVideoCount && domFallbackCount ? 'mixed' : (apiVideoCount ? 'api_post_item_list' : 'profile_video_cards'),\n  sortBy,\n  saved:saveResults,\n  savedCount:saveResults?selectedVideos.length:0,\n  userContentItemId:userContentItemId,\n  items:selectedVideos\n};\n",
+    "platform": "tiktok",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "title": "TikTok username or profile URL",
+          "description": "Enter a username, @username, or official TikTok profile URL."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "title": "Maximum videos to return",
+          "description": "Maximum number of results. Returns all currently accessible videos if fewer are available."
+        },
+        "maxScrollTimes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "title": "Maximum scrolls",
+          "description": "Upper limit for loading more videos. Stops early when the target count is reached."
+        },
+        "sortBy": {
+          "type": "string",
+          "enum": [
+            "newest",
+            "oldest",
+            "profile"
+          ],
+          "title": "Video sort order",
+          "description": "newest and oldest sort by time; profile keeps TikTok’s page order."
+        },
+        "waitSeconds": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 20,
+          "title": "Profile load wait (seconds)",
+          "description": "Wait for the profile and its first videos to load."
+        },
+        "scrollWaitSeconds": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 5,
+          "title": "Wait after each scroll (seconds)",
+          "description": "Increase this on slower pages. A value that is too low may miss later videos."
+        },
+        "saveResults": {
+          "type": "boolean",
+          "title": "Save user and videos to Tobub",
+          "description": "Results are returned either way. When disabled, nothing is written to the Tobub library."
+        }
+      },
+      "required": [
+        "profile"
+      ]
+    },
+    "output_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "user": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "userId": {
+              "type": "string"
+            },
+            "username": {
+              "type": "string"
+            },
+            "nickname": {
+              "type": "string"
+            },
+            "profileUrl": {
+              "type": "string"
+            },
+            "avatarUrl": {
+              "type": "string"
+            },
+            "bio": {
+              "type": "string"
+            },
+            "followingCount": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "followerCount": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "likesCount": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "videoCount": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "isVerified": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "isPrivateAccount": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "userId",
+            "username",
+            "nickname",
+            "profileUrl",
+            "avatarUrl",
+            "bio",
+            "followingCount",
+            "followerCount",
+            "likesCount",
+            "videoCount",
+            "isVerified",
+            "isPrivateAccount"
+          ]
+        },
+        "requestedCount": {
+          "type": "integer"
+        },
+        "returnedCount": {
+          "type": "integer"
+        },
+        "scrolls": {
+          "type": "integer"
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "warning": {
+          "type": "string"
+        },
+        "dataSource": {
+          "type": "string",
+          "enum": [
+            "api_post_item_list",
+            "profile_video_cards",
+            "mixed"
+          ]
+        },
+        "savedCount": {
+          "type": "integer"
+        },
+        "userContentItemId": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "videoId": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "videoUrl": {
+                "type": "string"
+              },
+              "coverUrl": {
+                "type": "string"
+              },
+              "createTime": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "duration": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "playCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "likeCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "commentCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "shareCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "collectCount": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "authorUsername": {
+                "type": "string"
+              },
+              "contentItemId": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "dataSource": {
+                "type": "string",
+                "enum": [
+                  "api_post_item_list",
+                  "profile_video_cards"
+                ]
+              }
+            },
+            "required": [
+              "videoId",
+              "description",
+              "videoUrl",
+              "coverUrl",
+              "createTime",
+              "duration",
+              "playCount",
+              "likeCount",
+              "commentCount",
+              "shareCount",
+              "collectCount",
+              "authorUsername",
+              "contentItemId",
+              "dataSource"
+            ]
+          }
+        },
+        "sortBy": {
+          "type": "string",
+          "enum": [
+            "newest",
+            "oldest",
+            "profile"
+          ]
+        },
+        "saved": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "user",
+        "requestedCount",
+        "returnedCount",
+        "scrolls",
+        "complete",
+        "warning",
+        "dataSource",
+        "savedCount",
+        "userContentItemId",
+        "items",
+        "sortBy",
+        "saved"
+      ]
+    },
+    "ui_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "profile",
+          "label": "TikTok username or profile URL",
+          "required": true,
+          "target": "params.profile",
+          "type": "text",
+          "description": "For example, scout2015, @scout2015, or an official TikTok profile URL."
+        },
+        {
+          "key": "count",
+          "label": "Maximum videos to return",
+          "required": false,
+          "target": "params.count",
+          "type": "number",
+          "default": 10,
+          "description": "Maximum number of videos to return; fewer may be available."
+        },
+        {
+          "key": "sortBy",
+          "label": "Video sort order",
+          "required": false,
+          "target": "params.sortBy",
+          "type": "select",
+          "default": "newest",
+          "options": [
+            {
+              "label": "Newest",
+              "value": "newest"
+            },
+            {
+              "label": "Oldest",
+              "value": "oldest"
+            },
+            {
+              "label": "TikTok page order",
+              "value": "profile"
+            }
+          ],
+          "description": "Choose newest, oldest, or TikTok page order."
+        },
+        {
+          "key": "maxScrollTimes",
+          "label": "Maximum scrolls",
+          "required": false,
+          "target": "params.maxScrollTimes",
+          "type": "number",
+          "default": 12,
+          "description": "Loading limit; stops early when the target count is reached."
+        },
+        {
+          "key": "waitSeconds",
+          "label": "Profile load wait (seconds)",
+          "required": false,
+          "target": "params.waitSeconds",
+          "type": "number",
+          "default": 6,
+          "description": "Wait for the profile and first videos to load."
+        },
+        {
+          "key": "scrollWaitSeconds",
+          "label": "Wait after each scroll (seconds)",
+          "required": false,
+          "target": "params.scrollWaitSeconds",
+          "type": "number",
+          "default": 1.5,
+          "description": "Increase this on slower pages; a value that is too low may miss videos."
+        },
+        {
+          "key": "saveResults",
+          "label": "Save user and videos to Tobub",
+          "required": false,
+          "target": "params.saveResults",
+          "type": "switch",
+          "default": true,
+          "description": "When disabled, return results without writing to the Tobub library."
+        }
+      ]
+    },
+    "requirements": {
+      "account": "optional",
+      "profile": "optional",
+      "domain_rule": "optional"
+    },
+    "defaults": {
+      "params": {
+        "count": 10,
+        "maxScrollTimes": 12,
+        "sortBy": "newest",
+        "waitSeconds": 6,
+        "scrollWaitSeconds": 1.5,
+        "saveResults": true
+      },
+      "browser": {
+        "run_mode": "transient",
+        "auth_mode": "none",
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "optional"
+      }
+    },
+    "metadata": {
+      "category": "user",
+      "description": "读取指定 TikTok 用户公开作品，可配置数量、排序和加载节奏；支持仅预览或保存用户及作品记录。",
+      "source": "local",
+      "tags": [
+        "TikTok",
+        "用户",
+        "作品",
+        "排序",
+        "采集"
+      ],
+      "market_skill_id": "tiktok-fetch-user-videos"
+    }
+  }
+}

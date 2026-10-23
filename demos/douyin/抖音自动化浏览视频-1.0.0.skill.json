@@ -1,74 +1,149 @@
 {
   "created_at": "2026-09-06T00:00:00+08:00",
   "manifest_version": 1,
-  "package_id": "user:douyin-browse-videos@1.0.0",
+  "package_id": "user:douyin-browse-videos@1.0.4",
   "package_type": "tobub_skill",
-  "package_version": "1.0.0",
+  "package_version": "1.0.4",
   "requirements": {
     "platform": "required",
     "rule": "required"
   },
   "skill": {
     "market_skill_id": "douyin-browse-videos",
-    "release_id": "local-tests-20260906",
+    "release_id": "douyin-browse-videos-1.0.4",
     "name": "抖音自动化浏览视频",
-    "skill_version": "1.0.0",
+    "skill_version": "1.0.4",
     "source_type": "local",
-    "skill_code": "const durationMinutes = tobub.params.minutes ?? 5;\nconst deadline = Date.now() + durationMinutes * 60 * 1000;\nconst records = [];\nawait tobub.adapter.bootstrap();\nawait tobub.atoms.waitFor({ text: \"登录后免费畅享高清视频\" },{timeout:30000});\nawait tobub.adapter.dismissPopups();\nawait tobub.adapter.navigate({ name: \"recommend\" });\nwhile (Date.now() < deadline) {\n  try{\n    const reloadFlag = tobub.utils.chance(1 / 20);\n    if (reloadFlag) await tobub.atoms.refresh({ waitUntil: \"domcontentloaded\" });\n    await tobub.adapter.dismissPopups();\n    if (reloadFlag) await tobub.adapter.navigate({ name: \"recommend\" });\n    const sleepTime = tobub.utils.randInt(30000, 90000);\n    if (tobub.utils.chance(1 / 15)) await tobub.atoms.waitFor({ delay: sleepTime });\n    await tobub.atoms.swipeVideo({ mode: \"wheel\", target: { selector: \".parent-route-container.route-scroll-container\" } });\n    const dataList = await tobub.adapter.extract(\"content_info\");\n    if (dataList.newCount > 0 && dataList.records[0]) {\n      const record = dataList.records[0];\n      records.push(record);\n      const fields = record.fields ?? {};\n      const externalId = String(record.id || fields.vid || \"\");\n      if (externalId) {\n        await tobub.db.saveContent({\n          platform: \"douyin\",\n          contentType: \"video\",\n          externalId,\n          title: fields.intro ?? \"抖音视频 \" + externalId,\n          summary: fields.author ?? \"\",\n          url: \"https://www.douyin.com/video/\" + externalId,\n          metadata: {\n            author: fields.author ?? \"\",\n            time: fields.time ?? \"\",\n            like: fields.like ?? \"\",\n            comment: fields.comment ?? \"\",\n            collect: fields.collect ?? \"\",\n            share: fields.share ?? \"\",\n            uid: fields.uid ?? \"\"\n          },\n          rawData: fields\n        });\n      }\n    }\n  } catch (error) {}\n  await tobub.atoms.waitFor([5000,10000]);\n  if (tobub.utils.chance(1 / 5)) await tobub.atoms.waitFor([5000,10000]);\n}\nreturn { records };",
+    "skill_code": "const params = tobub.params || {};\nconst minutes = Number(params.minutes ?? 5);\nconst maxScrollTimes = Number(params.maxScrollTimes ?? 100);\nconst maxRecords = Number(params.maxRecords ?? 100);\nconst saveResults = params.saveResults !== false;\nif (!Number.isFinite(minutes) || minutes < 0.1 || minutes > 60) throw new Error(\"minutes 必须在 0.1 到 60 之间\");\nif (!Number.isInteger(maxScrollTimes) || maxScrollTimes < 1 || maxScrollTimes > 500) throw new Error(\"maxScrollTimes 必须是 1 到 500 的整数\");\nif (!Number.isInteger(maxRecords) || maxRecords < 1 || maxRecords > 500) throw new Error(\"maxRecords 必须是 1 到 500 的整数\");\nconst records = [];\nconst seen = new Set();\nconst errors = [];\nlet visitedCount = 0;\nlet savedCount = 0;\nlet errorCount = 0;\nlet consecutiveErrors = 0;\nlet stopReason = \"duration_elapsed\";\nawait tobub.adapter.bootstrap();\nawait tobub.adapter.dismissPopups();\nawait tobub.adapter.navigate({ name: \"recommend\" });\nconst deadline = Date.now() + Math.round(minutes * 60_000);\nfor (let i = 0; i < maxScrollTimes && Date.now() < deadline && records.length < maxRecords; i++) {\n  try {\n    await tobub.adapter.dismissPopups();\n    if (tobub.utils.chance(0.05)) {\n      await tobub.atoms.refresh({ waitUntil: \"domcontentloaded\" });\n      await tobub.adapter.navigate({ name: \"recommend\" });\n    }\n    await tobub.atoms.swipeVideo({ mode: \"wheel\", target: { selector: \".parent-route-container.route-scroll-container\" } });\n    visitedCount++;\n    const dataList = await tobub.adapter.extract(\"content_info\");\n    const record = dataList?.records?.find((item) => item && (item.id || item.fields?.vid));\n    if (record) {\n      const fields = record.fields ?? {};\n      const externalId = String(record.id || fields.vid || \"\");\n      if (externalId && !seen.has(externalId)) {\n        seen.add(externalId);\n        records.push(record);\n        if (saveResults) {\n          await tobub.db.saveContent({\n            platform: \"douyin\",\n            contentType: \"video\",\n            externalId,\n            title: fields.intro ?? \"抖音视频 \" + externalId,\n            summary: fields.author ?? \"\",\n            url: \"https://www.douyin.com/video/\" + externalId,\n            metadata: { author: fields.author ?? \"\", time: fields.time ?? \"\", like: fields.like ?? \"\", comment: fields.comment ?? \"\", collect: fields.collect ?? \"\", share: fields.share ?? \"\", uid: fields.uid ?? \"\" },\n            rawData: fields\n          });\n          savedCount++;\n        }\n      }\n    }\n    consecutiveErrors = 0;\n  } catch (error) {\n    consecutiveErrors++;\n    errorCount++;\n    if (errors.length < 10) errors.push(String(error?.message ?? error).slice(0, 300));\n    if (consecutiveErrors >= 3) { stopReason = \"repeated_errors\"; break; }\n  }\n  const remainingMs = deadline - Date.now();\n  if (remainingMs > 0) {\n    const high = Math.min(10_000, remainingMs);\n    const low = Math.min(5_000, high);\n    await tobub.atoms.waitFor([low, high]);\n  }\n}\nif (records.length >= maxRecords) stopReason = \"maxRecords\";\nelse if (visitedCount >= maxScrollTimes && Date.now() < deadline) stopReason = \"maxScrollTimes\";\nelse if (Date.now() >= deadline) stopReason = \"duration_elapsed\";\nreturn { records, visitedCount, savedCount, errorCount, errors, complete: errorCount === 0 && (stopReason === \"duration_elapsed\" || stopReason === \"maxRecords\"), stopReason };",
     "platform": "douyin",
     "input_schema": {
       "type": "object",
       "properties": {
         "minutes": {
-          "title": "浏览时间(分)",
-          "type": "number"
+          "type": "number",
+          "title": "浏览时长（分钟）",
+          "minimum": 0.1,
+          "maximum": 60
+        },
+        "maxScrollTimes": {
+          "type": "integer",
+          "title": "最多切换视频数",
+          "minimum": 1,
+          "maximum": 500
+        },
+        "maxRecords": {
+          "type": "integer",
+          "title": "最多收集作品数",
+          "minimum": 1,
+          "maximum": 500
+        },
+        "saveResults": {
+          "type": "boolean",
+          "title": "保存到 Tobub 数据库"
         }
       },
       "required": [
         "minutes"
       ],
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "output_schema": {
+      "type": "object",
       "additionalProperties": false,
+      "required": [
+        "records",
+        "visitedCount",
+        "savedCount",
+        "errorCount",
+        "errors",
+        "complete",
+        "stopReason"
+      ],
       "properties": {
         "records": {
+          "type": "array",
           "items": {
             "type": "object"
-          },
-          "type": "array"
+          }
+        },
+        "visitedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "savedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "errorCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "stopReason": {
+          "type": "string"
         }
-      },
-      "required": [
-        "records"
-      ],
-      "type": "object"
+      }
     },
     "ui_schema": {
       "version": 1,
       "fields": [
         {
-          "default": 5,
           "key": "minutes",
-          "label": "浏览时间(分)",
+          "label": "浏览时长（分钟）",
+          "type": "number",
+          "target": "params.minutes",
           "required": true,
+          "default": 5
+        },
+        {
+          "key": "maxScrollTimes",
+          "label": "最多切换视频数",
+          "type": "number",
           "target": "params.maxScrollTimes",
-          "type": "number"
+          "required": false,
+          "default": 100
+        },
+        {
+          "key": "maxRecords",
+          "label": "最多收集作品数",
+          "type": "number",
+          "target": "params.maxRecords",
+          "required": false,
+          "default": 100
+        },
+        {
+          "key": "saveResults",
+          "label": "保存到 Tobub 数据库",
+          "type": "switch",
+          "target": "params.saveResults",
+          "required": false,
+          "default": true
         }
       ]
     },
     "requirements": {
-      "account": "optional",
-      "profile": "optional",
+      "account": "required",
+      "profile": "required",
       "domain_rule": "required"
     },
     "defaults": {
       "params": {
-        "maxScrollTimes": 500,
-        "minutes": 5
+        "minutes": 5,
+        "maxScrollTimes": 100,
+        "maxRecords": 100,
+        "saveResults": true
       },
       "browser": {
-        "run_mode": "transient",
+        "run_mode": "profile",
+        "auth_mode": "inherit",
         "headless": false
       },
       "execution": {
@@ -78,13 +153,16 @@
     "metadata": {
       "category": "user",
       "converted_from": "tests/抖音",
-      "description": "在抖音推荐流中按拟人化节奏浏览视频并提取当前视频信息。",
+      "description": "在登录态下浏览抖音推荐流，按时长、切换次数和采集数量三重上限收集当前作品；支持关闭数据落库，并返回错误与停止原因。",
       "source": "community",
       "tags": [
         "抖音",
         "浏览",
         "视频",
-        "采集"
+        "采集",
+        "bounded",
+        "saveResults",
+        "diagnostics"
       ],
       "market_skill_id": "douyin-browse-videos"
     }

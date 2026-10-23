@@ -1,39 +1,71 @@
 {
   "created_at": "2026-09-06T00:00:00+08:00",
   "manifest_version": 1,
-  "package_id": "user:douyin-get-download-address@1.0.0",
+  "package_id": "user:douyin-get-download-address@1.0.2",
   "package_type": "tobub_skill",
-  "package_version": "1.0.0",
+  "package_version": "1.0.2",
   "requirements": {
     "platform": "required",
     "rule": "required"
   },
   "skill": {
     "market_skill_id": "douyin-get-download-address",
-    "release_id": "local-tests-20260906",
+    "release_id": "douyin-get-download-address-1.0.2",
     "name": "获取抖音视频下载地址",
-    "skill_version": "1.0.0",
+    "skill_version": "1.0.2",
     "source_type": "local",
-    "skill_code": "const awemeId = String(tobub.params.awemeId)\n\nconst watch = await tobub.browser.network.watch({\n  id: 'douyin-aweme-detail',\n  urlPattern: 'aweme/v1/web/aweme/detail',\n  methods: ['GET'],\n  captureResponseBody: true,\n  maxRecords: 10,\n})\nawait tobub.atoms.navigate({\n  url: 'https://www.douyin.com/video/' + awemeId,\n  waitUntil: 'domcontentloaded',\n})\n\nawait tobub.atoms.waitFor(3000)\nconst networkRecords = await tobub.browser.network.collect(watch)\nconst captured = networkRecords.find(\n  (item) => item.response && typeof item.response.body === 'string',\n)\nif (\n  !captured ||\n  !captured.response ||\n  typeof captured.response.body !== 'string'\n) throw new Error('未捕获到抖音 aweme 详情响应')\n\nconst payload = JSON.parse(captured.response.body)\nconst rawData = { ...payload }\ndelete rawData.aweme_detail\nconst awemeDetail = payload.aweme_detail ?? {}\nconst video = awemeDetail.video ?? {}\nconst playAddr = video.play_addr ?? {}\nconst downloadUrls = Array.isArray(playAddr.url_list) ? playAddr.url_list : []\nconst download1 = typeof downloadUrls[0] === 'string' ? downloadUrls[0] : ''\nconst download2 = typeof downloadUrls[1] === 'string' ? downloadUrls[1] : ''\nconst download3 = typeof downloadUrls[2] === 'string' ? downloadUrls[2] : ''\nconst title =\n  typeof awemeDetail.desc === 'string' && awemeDetail.desc\n    ? awemeDetail.desc\n    : '抖音视频 ' + awemeId\nawait tobub.db.saveContent({\n  platform: 'douyin',\n  contentType: 'video',\n  externalId: awemeId,\n  title,\n  url: 'https://www.douyin.com/video/' + awemeId,\n  metadata: {\n    downloadUrls,\n    download1,\n    download2,\n    download3,\n    responseUrl: captured.request.url,\n  },\n  rawData,\n})\nreturn {\n  awemeId,\n  downloadUrls,\n  download1,\n  download2,\n  download3,\n  responseUrl: captured.request.url,\n}\n",
+    "skill_code": "const params = tobub.params || {};\nfunction normalizeVideoId(input) {\n  const value = String(input ?? \"\").trim();\n  if (!value) throw new Error(\"awemeId 不能为空\");\n  let candidate = value;\n  if (/^https?:\\/\\//i.test(value)) {\n    let parsed;\n    try { parsed = new URL(value); } catch { throw new Error(\"awemeId 不是有效的视频 ID 或 URL\"); }\n    if (!/(^|\\.)douyin\\.com$/i.test(parsed.hostname)) throw new Error(\"视频 URL 必须来自 douyin.com\");\n    const match = parsed.pathname.match(/\\/video\\/(\\d+)/);\n    if (!match) throw new Error(\"视频 URL 中没有有效的视频 ID\");\n    candidate = match[1];\n  }\n  if (!/^\\d{8,30}$/.test(candidate)) throw new Error(\"视频 ID 必须是 8 到 30 位数字\");\n  return candidate;\n}\nconst awemeId = normalizeVideoId(params.awemeId);\nconst responseWaitMs = Number(params.responseWaitMs ?? 15_000);\nconst saveResults = params.saveResults !== false;\nif (!Number.isInteger(responseWaitMs) || responseWaitMs < 1_000 || responseWaitMs > 30_000) throw new Error(\"responseWaitMs 必须是 1000 到 30000 的整数\");\nconst watch = await tobub.browser.network.watch({ id: \"douyin-aweme-detail\", urlPattern: \"aweme/v1/web/aweme/detail\", methods: [\"GET\"], captureResponseBody: true, maxBodyBytes: 4_000_000, maxRecords: 20 });\nlet watchActive = true;\ntry {\n  const videoUrl = \"https://www.douyin.com/video/\" + awemeId;\n  await tobub.atoms.navigate({ url: videoUrl, waitUntil: \"domcontentloaded\" });\n  await tobub.atoms.waitFor({ delay: responseWaitMs });\n  const networkRecords = await tobub.browser.network.collect(watch, { stop: true });\n  watchActive = false;\n  let captured = null;\n  let payload = null;\n  for (const item of networkRecords ?? []) {\n    const body = item?.response?.body;\n    if (typeof body !== \"string\") continue;\n    let candidate;\n    try { candidate = JSON.parse(body); } catch { continue; }\n    const detail = candidate?.aweme_detail;\n    const returnedId = String(detail?.aweme_id ?? detail?.awemeId ?? \"\");\n    if (returnedId && returnedId !== awemeId) continue;\n    if (!detail) continue;\n    captured = item;\n    payload = candidate;\n    break;\n  }\n  if (!captured || !payload) throw new Error(\"在等待时间内未捕获到与该视频 ID 匹配的 aweme 详情响应\");\n  const rawData = { ...payload };\n  delete rawData.aweme_detail;\n  const awemeDetail = payload.aweme_detail ?? {};\n  const video = awemeDetail.video ?? {};\n  const playAddr = video.play_addr ?? video.play_addr_h264 ?? {};\n  const downloadUrls = Array.isArray(playAddr.url_list) ? playAddr.url_list.filter((url) => typeof url === \"string\" && /^https?:\\/\\//i.test(url)) : [];\n  if (downloadUrls.length === 0) throw new Error(\"已捕获详情响应，但其中没有可用的播放地址\");\n  const download1 = downloadUrls[0] ?? \"\";\n  const download2 = downloadUrls[1] ?? \"\";\n  const download3 = downloadUrls[2] ?? \"\";\n  const title = typeof awemeDetail.desc === \"string\" && awemeDetail.desc.trim() ? awemeDetail.desc.trim() : \"抖音视频 \" + awemeId;\n  if (saveResults) {\n    await tobub.db.saveContent({ platform: \"douyin\", contentType: \"video\", externalId: awemeId, title, url: \"https://www.douyin.com/video/\" + awemeId, metadata: { downloadUrls, download1, download2, download3, responseUrl: captured.request?.url ?? \"\" }, rawData });\n  }\n  return { awemeId, title, downloadUrls, download1, download2, download3, responseUrl: captured.request?.url ?? \"\", saved: saveResults };\n} finally {\n  if (watchActive) await tobub.browser.network.stop(watch).catch(() => undefined);\n}",
     "platform": "douyin",
     "input_schema": {
       "type": "object",
       "properties": {
         "awemeId": {
-          "title": "视频 ID",
-          "type": "string"
+          "type": "string",
+          "title": "作品 ID 或抖音视频链接",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "responseWaitMs": {
+          "type": "integer",
+          "title": "等待详情响应时间（毫秒）",
+          "minimum": 1000,
+          "maximum": 30000
+        },
+        "saveResults": {
+          "type": "boolean",
+          "title": "保存到 Tobub 数据库"
         }
       },
       "required": [
         "awemeId"
       ],
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "output_schema": {
+      "type": "object",
       "additionalProperties": false,
+      "required": [
+        "awemeId",
+        "title",
+        "downloadUrls",
+        "download1",
+        "download2",
+        "download3",
+        "responseUrl",
+        "saved"
+      ],
       "properties": {
         "awemeId": {
           "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "downloadUrls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "download1": {
           "type": "string"
@@ -44,35 +76,39 @@
         "download3": {
           "type": "string"
         },
-        "downloadUrls": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
         "responseUrl": {
           "type": "string"
+        },
+        "saved": {
+          "type": "boolean"
         }
-      },
-      "required": [
-        "awemeId",
-        "downloadUrls",
-        "download1",
-        "download2",
-        "download3",
-        "responseUrl"
-      ],
-      "type": "object"
+      }
     },
     "ui_schema": {
       "version": 1,
       "fields": [
         {
           "key": "awemeId",
-          "label": "视频 ID",
-          "required": true,
+          "label": "作品 ID 或抖音视频链接",
+          "type": "text",
           "target": "params.awemeId",
-          "type": "text"
+          "required": true
+        },
+        {
+          "key": "responseWaitMs",
+          "label": "等待详情响应时间（毫秒）",
+          "type": "number",
+          "target": "params.responseWaitMs",
+          "required": false,
+          "default": 15000
+        },
+        {
+          "key": "saveResults",
+          "label": "保存到 Tobub 数据库",
+          "type": "switch",
+          "target": "params.saveResults",
+          "required": false,
+          "default": true
         }
       ]
     },
@@ -85,7 +121,7 @@
       "params": {
         "awemeId": "7647874169316658442",
         "responseWaitMs": 15000,
-        "times": 15000
+        "saveResults": true
       },
       "browser": {
         "run_mode": "transient",
@@ -101,13 +137,16 @@
     "metadata": {
       "category": "user",
       "converted_from": "tests/抖音",
-      "description": "打开指定抖音视频并捕获 aweme 详情接口中的 play_addr.url_list。",
+      "description": "打开指定抖音视频并在有限等待时间内捕获与目标 ID 匹配的详情接口，提取可用播放地址；支持视频链接、等待时长和可选落库，并保证网络监听清理。",
       "source": "community",
       "tags": [
         "抖音",
         "视频",
         "下载地址",
-        "网络"
+        "网络",
+        "bounded-wait",
+        "response-match",
+        "saveResults"
       ],
       "market_skill_id": "douyin-get-download-address"
     }

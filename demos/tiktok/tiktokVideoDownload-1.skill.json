@@ -1,0 +1,245 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:tiktok-video-download@1.0.3",
+  "package_version": "1.0.3",
+  "source": "user",
+  "created_at": "2026-10-22T00:00:00+08:00",
+  "requirements": {
+    "platform": "required",
+    "rule": "optional"
+  },
+  "platform": {
+    "code": "tiktok",
+    "name": "tiktok",
+    "version": "1",
+    "base_url": "https://www.tiktok.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "tiktok.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "0a7991bc848ef034e54ff614fb0b6eb7a5f03ca960cee2a7bb5c6afda69edb88"
+  },
+  "skill": {
+    "market_skill_id": "tiktok-video-download",
+    "release_id": "local-tests-20261022",
+    "name": "TikTok 视频下载地址获取",
+    "skill_version": "1.0.3",
+    "source_type": "local",
+    "skill_code": "const inputUrl = String(tobub.params.videoUrl ?? '').trim();\nconst addressPreference = String(tobub.params.addressPreference ?? 'download');\nconst allowFallback = tobub.params.allowFallback !== false;\nconst waitSeconds = Number(tobub.params.waitSeconds ?? 6);\nconst saveResults = tobub.params.saveResults !== false;\nif (!inputUrl || inputUrl.length > 2048) throw new Error('Enter a TikTok video URL (up to 2,048 characters).');\nif (!['download','playback'].includes(addressPreference)) throw new Error('addressPreference must be download or playback.');\nif (typeof allowFallback !== 'boolean') throw new Error('allowFallback must be a boolean.');\nif (!Number.isInteger(waitSeconds) || waitSeconds < 2 || waitSeconds > 20) throw new Error('waitSeconds must be from 2 to 20 seconds.');\nlet parsedUrl;\ntry { parsedUrl = new URL(/^https?:\\/\\//i.test(inputUrl) ? inputUrl : 'https://' + inputUrl); } catch { throw new Error('Invalid video URL. Provide an official TikTok video URL or short link.'); }\nconst allowedHosts = ['tiktok.com', 'www.tiktok.com', 'm.tiktok.com', 'vm.tiktok.com', 'vt.tiktok.com'];\nif (!allowedHosts.includes(parsedUrl.hostname.toLowerCase())) throw new Error('Only official TikTok video domains are supported.');\nif (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') throw new Error('Video URLs must use HTTP or HTTPS.');\nconst idFromUrl = (url) => {\n  const match = String(url).match(/\\/video\\/(\\d+)/);\n  return match ? match[1] : '';\n};\nlet videoId = idFromUrl(parsedUrl.href);\nconst watch = await tobub.browser.network.watch({\n  id: 'tiktok-video-detail-fallback',\n  urlPattern: { pattern: '/api/(?:item/detail|post/item_list|related/item_list)/' },\n  resourceTypes: ['xhr', 'fetch'],\n  captureResponseBody: true,\n  maxBodyBytes: 750000,\n  maxRecords: 30,\n});\nawait tobub.atoms.navigate({ url: parsedUrl.href, waitUntil: 'domcontentloaded' });\nawait tobub.atoms.waitFor({ delay: waitSeconds * 1000 });\nconst pageResult = await tobub.atoms.evaluate({\n  mode: 'expression',\n  expression: '(()=>{const href=location.href;const title=document.title;let root={};try{const el=document.getElementById(\"__UNIVERSAL_DATA_FOR_REHYDRATION__\");root=el?JSON.parse(el.textContent):window.__UNIVERSAL_DATA_FOR_REHYDRATION__||{}}catch(e){}const scopes=root.__DEFAULT_SCOPE__||{};const detail=scopes[\"webapp.video-detail\"]||{};const item=detail.itemInfo?.itemStruct||detail.itemStruct||null;const video=item?.video||{};const list=x=>Array.isArray(x)?x.filter(v=>typeof v===\"string\"&&/^https?:\\\\/\\\\//i.test(v)):[];const bitrateUrls=Array.isArray(video.bitrateInfo)?video.bitrateInfo.flatMap(b=>list(b?.PlayAddr?.UrlList||b?.playAddr?.urlList)):[];return{href,title,itemId:item?String(item.id||\"\"):\"\",description:item?String(item.desc||item.description||\"\"):\"\",author:item?.author?String(item.author.nickname||item.author.uniqueId||item.author.unique_id||\"\"):\"\",downloadAddr:typeof video.downloadAddr===\"string\"?video.downloadAddr:\"\",downloadUrlList:list(video.DownloadAddr?.UrlList||video.downloadAddr?.urlList),playAddr:typeof video.playAddr===\"string\"?video.playAddr:\"\",playUrlList:[...list(video.PlayAddrStruct?.UrlList||video.playAddrStruct?.urlList),...bitrateUrls]}})()',\n});\nconst evaluated = pageResult && pageResult.value !== undefined ? pageResult.value : (pageResult && pageResult.result !== undefined ? pageResult.result : pageResult);\nconst pageInfo = evaluated && typeof evaluated === 'object' ? evaluated : {};\nconst pageUrl = typeof pageInfo.href === 'string' && pageInfo.href ? pageInfo.href : parsedUrl.href;\nif (!videoId) videoId = String(pageInfo.itemId || idFromUrl(pageUrl));\nconst uniqueUrls = (values) => Array.from(new Set((values || []).filter((value) => typeof value === 'string' && /^https?:\\/\\//i.test(value))));\nlet candidate = null;\nif (videoId && String(pageInfo.itemId || '') === videoId) {\n  candidate = {\n    id: videoId,\n    title: String(pageInfo.description || ''),\n    author: String(pageInfo.author || ''),\n    downloadUrls: uniqueUrls([pageInfo.downloadAddr, ...(pageInfo.downloadUrlList || [])]),\n    playUrls: uniqueUrls([pageInfo.playAddr, ...(pageInfo.playUrlList || [])]),\n    responseUrl: pageUrl,\n    dataSource: 'page_hydration',\n  };\n}\nconst collectUrls = (value) => {\n  if (typeof value === 'string') return /^https?:\\/\\//i.test(value) ? [value] : [];\n  if (Array.isArray(value)) return value.flatMap(collectUrls);\n  if (!value || typeof value !== 'object') return [];\n  const found = [];\n  for (const key of ['UrlList', 'urlList', 'url_list', 'urls', 'url', 'Url']) {\n    if (Object.prototype.hasOwnProperty.call(value, key)) found.push(...collectUrls(value[key]));\n  }\n  return found;\n};\nconst objectOf = (value) => value && typeof value === 'object' && !Array.isArray(value) ? value : null;\nconst urlsFor = (video, kind) => {\n  if (!video) return [];\n  const address = kind === 'download'\n    ? (video.downloadAddr ?? video.download_addr ?? video.DownloadAddr)\n    : (video.playAddr ?? video.play_addr ?? video.PlayAddr);\n  const urls = collectUrls(address);\n  const bitrateInfo = video.bitrateInfo ?? video.bit_rate ?? video.bitRate;\n  if (kind === 'play' && Array.isArray(bitrateInfo)) {\n    for (const item of bitrateInfo) urls.push(...collectUrls(item && (item.PlayAddr ?? item.playAddr ?? item.play_addr)));\n  }\n  return urls;\n};\nconst requestHasVideoId = (record) => {\n  try {\n    const requestUrl = new URL(record.request.url);\n    if (requestUrl.pathname.includes('/video/' + videoId)) return true;\n    for (const key of ['itemId', 'item_id', 'videoId', 'video_id', 'aweme_id']) {\n      if (requestUrl.searchParams.get(key) === videoId) return true;\n    }\n  } catch {}\n  return false;\n};\nlet visits = 0;\nconst findInPayload = (root, record) => {\n  let found = null;\n  const walk = (node, depth) => {\n    if (!node || typeof node !== 'object' || depth > 16 || visits >= 50000 || found) return;\n    visits++;\n    if (!Array.isArray(node)) {\n      const video = objectOf(node.video || node.Video);\n      if (video) {\n        const nodeId = String(node.id ?? node.videoId ?? node.video_id ?? node.aweme_id ?? '');\n        const exact = nodeId === videoId || (!nodeId && requestHasVideoId(record));\n        if (exact) {\n          found = {\n            id: nodeId || videoId,\n            title: String(node.desc ?? node.description ?? ''),\n            author: String((node.author && (node.author.nickname || node.author.uniqueId || node.author.unique_id)) ?? ''),\n            downloadUrls: uniqueUrls(urlsFor(video, 'download')),\n            playUrls: uniqueUrls(urlsFor(video, 'play')),\n            responseUrl: record.request.url,\n            dataSource: 'api_response',\n          };\n          return;\n        }\n      }\n    }\n    const values = Array.isArray(node) ? node : Object.values(node);\n    for (const value of values) walk(value, depth + 1);\n  };\n  walk(root, 0);\n  return found;\n};\nconst records = await tobub.browser.network.collect(watch, { stop: true });\nif (!candidate && videoId) {\n  for (const record of records) {\n    if (!record.response || record.response.status < 200 || record.response.status >= 300) continue;\n    if (typeof record.response.body !== 'string' || record.response.bodyEncoding === 'base64') continue;\n    try {\n      const parsed = JSON.parse(record.response.body);\n      if (record.response.body.includes(videoId)) candidate = findInPayload(parsed, record);\n    } catch {}\n    if (candidate) break;\n  }\n}\nif (!videoId) throw new Error('Could not identify a video ID from the TikTok URL or redirect page.');\nif (!candidate) throw new Error('Could not find a video matching the input ID in TikTok page data or the detail endpoint. The page may require login or be restricted.');\nconst downloadUrls = uniqueUrls(candidate.downloadUrls);\nconst playUrls = uniqueUrls(candidate.playUrls);\nconst preferredUrls = addressPreference === 'download' ? downloadUrls : playUrls;\nconst fallbackUrls = addressPreference === 'download' ? playUrls : downloadUrls;\nif (!preferredUrls.length && !allowFallback) throw new Error('The requested URL type is unavailable for this video and fallback is disabled.');\nconst usedFallback = preferredUrls.length === 0;\nconst selectedUrls = usedFallback ? fallbackUrls : preferredUrls;\nif (!selectedUrls.length) throw new Error('Video details were found, but no downloadAddr or playAddr is available.');\nconst selectedKind = usedFallback ? (addressPreference === 'download' ? 'playback' : 'download') : addressPreference;\nconst addressType = selectedKind + (usedFallback ? '_fallback' : '');\nconst downloadUrl = selectedUrls[0];\nconst title = candidate.title || String(pageInfo.title || '') || ('TikTok video ' + videoId);\nconst author = candidate.author || '';\nif (saveResults) {\n  const saved = await tobub.db.saveContent({\n    platform: 'tiktok',\n    contentType: 'video',\n    externalId: videoId,\n    title,\n    url: pageUrl,\n    metadata: { downloadUrl, addressPreference, usedFallback, downloadUrls, playUrls, author, responseUrl: candidate.responseUrl, dataSource: candidate.dataSource },\n    rawData: { videoId, title, author, addressPreference, usedFallback, downloadUrls, playUrls, responseUrl: candidate.responseUrl, dataSource: candidate.dataSource },\n  });\n  if (!saved || !Number.isFinite(Number(saved.contentItemId))) throw new Error('Video URLs were read, but saving the record failed.');\n}\nreturn { videoId, pageUrl, title, author, downloadUrl, downloadUrls, playUrls, responseUrl: candidate.responseUrl, dataSource: candidate.dataSource, addressPreference, addressType, usedFallback, saved: saveResults };\n",
+    "platform": "tiktok",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "videoUrl": {
+          "type": "string",
+          "minLength": 1,
+          "title": "TikTok video URL",
+          "description": "Supports official TikTok video URLs and official vm.tiktok.com / vt.tiktok.com short links."
+        },
+        "addressPreference": {
+          "type": "string",
+          "enum": [
+            "download",
+            "playback"
+          ],
+          "title": "Preferred URL type",
+          "description": "download prefers the original download URL; playback prefers the playback URL."
+        },
+        "allowFallback": {
+          "type": "boolean",
+          "title": "Use fallback URL if preferred URL is unavailable",
+          "description": "When disabled, report an error if the preferred URL is unavailable instead of returning the other type."
+        },
+        "waitSeconds": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 20,
+          "title": "Page wait time (seconds)",
+          "description": "Wait for video details and URLs to load. Increase this value on slower networks."
+        },
+        "saveResults": {
+          "type": "boolean",
+          "title": "Save video record to Tobub",
+          "description": "When enabled, save the video and URL metadata. When disabled, return this run’s result only."
+        }
+      },
+      "required": [
+        "videoUrl"
+      ]
+    },
+    "output_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "videoId": {
+          "type": "string"
+        },
+        "pageUrl": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "downloadUrl": {
+          "type": "string"
+        },
+        "downloadUrls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "playUrls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "responseUrl": {
+          "type": "string"
+        },
+        "dataSource": {
+          "type": "string"
+        },
+        "addressType": {
+          "type": "string",
+          "enum": [
+            "download",
+            "playback",
+            "download_fallback",
+            "playback_fallback"
+          ]
+        },
+        "addressPreference": {
+          "type": "string",
+          "enum": [
+            "download",
+            "playback"
+          ]
+        },
+        "usedFallback": {
+          "type": "boolean"
+        },
+        "saved": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "videoId",
+        "pageUrl",
+        "title",
+        "author",
+        "downloadUrl",
+        "downloadUrls",
+        "playUrls",
+        "responseUrl",
+        "dataSource",
+        "addressType",
+        "addressPreference",
+        "usedFallback",
+        "saved"
+      ]
+    },
+    "ui_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "videoUrl",
+          "label": "TikTok video URL",
+          "required": true,
+          "target": "params.videoUrl",
+          "type": "text",
+          "description": "Enter an official TikTok video URL or short link."
+        },
+        {
+          "key": "addressPreference",
+          "label": "Preferred URL type",
+          "required": false,
+          "target": "params.addressPreference",
+          "type": "select",
+          "default": "download",
+          "options": [
+            {
+              "label": "Download URL",
+              "value": "download"
+            },
+            {
+              "label": "Playback URL",
+              "value": "playback"
+            }
+          ],
+          "description": "Choose whether to prefer the download URL or playback URL."
+        },
+        {
+          "key": "allowFallback",
+          "label": "Use fallback URL if preferred URL is unavailable",
+          "required": false,
+          "target": "params.allowFallback",
+          "type": "switch",
+          "default": true,
+          "description": "When disabled, the Skill will not fall back to the other URL type."
+        },
+        {
+          "key": "waitSeconds",
+          "label": "Page wait time (seconds)",
+          "required": false,
+          "target": "params.waitSeconds",
+          "type": "number",
+          "default": 4,
+          "description": "Wait for video details to load; increase this value on slower networks."
+        },
+        {
+          "key": "saveResults",
+          "label": "Save video record to Tobub",
+          "required": false,
+          "target": "params.saveResults",
+          "type": "switch",
+          "default": true,
+          "description": "When enabled, save the record; otherwise return results only."
+        }
+      ]
+    },
+    "requirements": {
+      "account": "optional",
+      "profile": "optional",
+      "domain_rule": "optional"
+    },
+    "defaults": {
+      "params": {
+        "addressPreference": "download",
+        "allowFallback": true,
+        "waitSeconds": 4,
+        "saveResults": true
+      },
+      "browser": {
+        "run_mode": "transient",
+        "auth_mode": "none",
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "optional"
+      }
+    },
+    "metadata": {
+      "category": "user",
+      "description": "提取 TikTok 视频首屏提供的下载或播放地址，可选择优先类型、备用回退和等待时间；支持关闭记录保存。",
+      "source": "local",
+      "tags": [
+        "TikTok",
+        "视频",
+        "下载地址",
+        "播放地址"
+      ],
+      "market_skill_id": "tiktok-video-download"
+    }
+  }
+}

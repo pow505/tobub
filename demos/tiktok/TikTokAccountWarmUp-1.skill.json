@@ -1,9 +1,9 @@
 {
   "created_at": "2026-08-02T04:22:26.305Z",
   "manifest_version": 1,
-  "package_id": "user:user_1785644546305_gad5yp@1",
+  "package_id": "user:user_1785644546305_gad5yp@1.0.3",
   "package_type": "tobub_skill",
-  "package_version": "1",
+  "package_version": "1.0.3",
   "requirements": {
     "platform": "required",
     "rule": "required"
@@ -12,47 +12,139 @@
     "market_skill_id": "user_1785644546305_gad5yp",
     "release_id": "user_1785644546305_gad5yp",
     "name": "TikTokAccountWarmUp",
-    "skill_version": "1",
+    "skill_version": "1.0.3",
     "source_type": "local",
-    "skill_code": "const durationMinutes = tobub.params.minutes ?? 5;\nconst deadline = Date.now() + durationMinutes * 60 * 1000;\n\nawait tobub.adapter.bootstrap()\nawait tobub.adapter.action('pageReady')\n\nwhile (Date.now() < deadline) {\n  const roll = Math.random()\n\n  if (roll < 0.1) {\n    await tobub.adapter.navigate({ name: 'discover' })\n    await tobub.adapter.action('discoverWarmup')\n  } else {\n    await tobub.adapter.navigate({ name: 'home' })\n    await tobub.atoms.refresh()\n    const shortTimes = tobub.utils.randInt(1,10) \n    for (let i = 0; i < shortTimes; i++) {\n      await tobub.adapter.action('watchReady')\n      await tobub.adapter.action('watchShort')\n    }\n  }\n}\n",
+    "skill_code": "const minutes = Number(tobub.params.minutes ?? 5);\nconst times = Number(tobub.params.times ?? 5);\nconst discoverProbability = Number(tobub.params.discoverProbability ?? 0);\nif (!Number.isInteger(minutes) || minutes < 1 || minutes > 30) throw new Error('minutes must be an integer from 1 to 30.');\nif (!Number.isInteger(times) || times < 1 || times > 30) throw new Error('times must be an integer from 1 to 30.');\nif (!Number.isFinite(discoverProbability) || discoverProbability < 0 || discoverProbability > 100) throw new Error('discoverProbability must be between 0 and 100.');\n\nconst startedAt = Date.now();\nconst deadline = startedAt + minutes * 60 * 1000;\nlet cycles = 0;\nlet watchedCycles = 0;\nlet discoverCycles = 0;\nawait tobub.adapter.bootstrap();\nawait tobub.adapter.action('pageReady');\n\nwhile (Date.now() < deadline && cycles < times) {\n  const useDiscover = discoverProbability > 0 && Math.random() * 100 < discoverProbability;\n  if (useDiscover) {\n    await tobub.adapter.navigate({ name: 'discover' });\n    await tobub.adapter.action('discoverWarmup');\n    discoverCycles++;\n  } else {\n    await tobub.adapter.navigate({ name: 'home' });\n    await tobub.adapter.action('watchReady');\n    if (Date.now() < deadline) {\n      await tobub.adapter.action('watchShort');\n      watchedCycles++;\n    }\n  }\n  cycles++;\n}\nconst durationSeconds = Math.round((Date.now() - startedAt) / 1000);\nconst timeLimitReached = Date.now() >= deadline;\nreturn {\n  requestedMinutes: minutes,\n  maxCycles: times,\n  cycles,\n  watchedCycles,\n  discoverCycles,\n  durationSeconds,\n  timeLimitReached,\n  warning: durationSeconds > minutes * 60 + 60 ? 'Browsing stops after the current page action completes, so the run may exceed the time limit slightly.' : ''\n};",
     "platform": "tiktok",
     "input_schema": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "minutes": {
-          "title": "minutes",
-          "type": "number"
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30,
+          "title": "Runtime limit (minutes)",
+          "description": "Maximum runtime. The current browsing action finishes before the Skill stops."
+        },
+        "times": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30,
+          "title": "Maximum browsing rounds",
+          "description": "The Skill stops when either the runtime or round limit is reached."
+        },
+        "discoverProbability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "title": "Discovery page probability (%)",
+          "description": "0 browses only the For You feed; 100 switches to the Discover page every round."
         }
       },
-      "additionalProperties": true
+      "required": []
     },
-    "output_schema": {},
+    "output_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requestedMinutes": {
+          "type": "integer"
+        },
+        "maxCycles": {
+          "type": "integer"
+        },
+        "cycles": {
+          "type": "integer"
+        },
+        "watchedCycles": {
+          "type": "integer"
+        },
+        "discoverCycles": {
+          "type": "integer"
+        },
+        "durationSeconds": {
+          "type": "integer"
+        },
+        "timeLimitReached": {
+          "type": "boolean"
+        },
+        "warning": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "requestedMinutes",
+        "maxCycles",
+        "cycles",
+        "watchedCycles",
+        "discoverCycles",
+        "durationSeconds",
+        "timeLimitReached",
+        "warning"
+      ]
+    },
     "ui_schema": {
       "version": 1,
       "fields": [
         {
-          "default": 5,
           "key": "minutes",
-          "label": "minutes",
+          "label": "Runtime limit (minutes)",
           "required": false,
-          "type": "number"
+          "target": "params.minutes",
+          "type": "number",
+          "default": 5,
+          "description": "Maximum runtime; the Skill stops after the current browsing action when this limit is reached."
+        },
+        {
+          "key": "times",
+          "label": "Maximum browsing rounds",
+          "required": false,
+          "target": "params.times",
+          "type": "number",
+          "default": 5,
+          "description": "Maximum rounds; this limit works together with the runtime limit."
+        },
+        {
+          "key": "discoverProbability",
+          "label": "Discovery page probability (%)",
+          "required": false,
+          "target": "params.discoverProbability",
+          "type": "number",
+          "default": 0,
+          "description": "0 browses only the For You feed; 100 switches to Discover every round."
         }
       ]
     },
-    "requirements": {},
+    "requirements": {
+      "account": "required",
+      "profile": "required",
+      "domain_rule": "optional"
+    },
     "defaults": {
       "params": {
         "minutes": 5,
-        "times": 5
+        "times": 5,
+        "discoverProbability": 0
       },
       "browser": {
+        "run_mode": "profile",
+        "auth_mode": "inherit",
         "headless": false
       },
       "execution": {
         "domain_mode": "optional"
       }
     },
-    "metadata": {}
+    "metadata": {
+      "description": "通过 TikTok 首页和可选发现页进行有限时长的自然浏览；可设置运行上限、浏览轮数和发现页概率。",
+      "tags": [
+        "TikTok",
+        "账号预热",
+        "浏览",
+        "时长控制"
+      ]
+    }
   },
   "source": "user",
   "platform": {

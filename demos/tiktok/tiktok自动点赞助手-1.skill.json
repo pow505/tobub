@@ -1,0 +1,306 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:tiktok-auto-like-helper@1.0.3",
+  "package_version": "1.0.3",
+  "source": "user",
+  "created_at": "2026-10-22T13:11:33.656Z",
+  "requirements": {
+    "platform": "required",
+    "rule": "optional"
+  },
+  "platform": {
+    "code": "tiktok",
+    "name": "tiktok",
+    "version": "1",
+    "base_url": "https://www.tiktok.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "tiktok.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "0a7991bc848ef034e54ff614fb0b6eb7a5f03ca960cee2a7bb5c6afda69edb88"
+  },
+  "skill": {
+    "market_skill_id": "tiktok-auto-like-helper",
+    "release_id": "local-tiktok-20261022",
+    "name": "tiktok自动点赞助手",
+    "skill_version": "1.0.3",
+    "source_type": "local",
+    "skill_code": "const vidInput = String(tobub.params.vid || '').trim();\nconst probabilityPercent = Number(tobub.params.probability ?? 20);\nconst maxLikes = Number(tobub.params.maxLikes ?? 3);\nconst commentContains = String(tobub.params.commentContains ?? '').trim().toLocaleLowerCase();\nconst minCommentLength = Number(tobub.params.minCommentLength ?? 0);\nconst maxPages = Number(tobub.params.maxPages ?? 6);\nconst dryRun = tobub.params.dryRun === true;\nif (!vidInput || vidInput.length > 2048) throw new Error('Enter a TikTok video ID or URL.');\nif (!Number.isFinite(probabilityPercent) || probabilityPercent < 0 || probabilityPercent > 100) throw new Error('probability must be a number from 0 to 100.');\nif (!Number.isInteger(maxLikes) || maxLikes < 1 || maxLikes > 10) throw new Error('maxLikes must be an integer from 1 to 10.');\nif (commentContains.length > 100) throw new Error('commentContains must be at most 100 characters.');\nif (!Number.isInteger(minCommentLength) || minCommentLength < 0 || minCommentLength > 500) throw new Error('minCommentLength must be an integer from 0 to 500.');\nif (!Number.isInteger(maxPages) || maxPages < 1 || maxPages > 20) throw new Error('maxPages must be an integer from 1 to 20.');\nconst allowedHosts = new Set(['tiktok.com', 'www.tiktok.com', 'm.tiktok.com']);\nlet videoId = vidInput;\nlet videoUrl;\nif (/^\\d{8,24}$/.test(vidInput)) videoUrl = 'https://www.tiktok.com/video/' + vidInput;\nelse {\n  let parsed;\n  try { parsed = new URL(/^[a-z][a-z0-9+.-]*:\\/\\//i.test(vidInput) ? vidInput : 'https://' + vidInput); }\n  catch { throw new Error('Invalid TikTok video URL.'); }\n  if (!allowedHosts.has(parsed.hostname.toLowerCase()) || !['http:', 'https:'].includes(parsed.protocol)) throw new Error('Use an official TikTok video URL or video ID.');\n  const match = parsed.pathname.match(/\\/video\\/(\\d{8,24})(?:\\/|$)/);\n  if (!match) throw new Error('The video URL must contain a numeric video ID after /video/.');\n  videoId = match[1];\n  videoUrl = 'https://www.tiktok.com' + parsed.pathname;\n}\nconst likeSelector = '[data-key-interaction=\"comment_like\"]';\nconst probability = probabilityPercent / 100;\nconst records = [];\nlet checkedCount = 0;\nlet filteredCount = 0;\nlet likedCount = 0;\nlet verifiedCount = 0;\nlet wouldLikeCount = 0;\nawait tobub.atoms.navigate({ url: videoUrl, waitUntil: 'domcontentloaded' });\nawait tobub.atoms.waitFor({ selector: 'button[data-testid=\"tux-web-tab-bar\"]', selectorState: 'attached' }, { timeout: 20000 });\nawait tobub.atoms.waitFor({ delay: 4000 });\ntry { await tobub.atoms.click({ selector: 'button[data-testid=\"tux-web-tab-bar\"]', nth: 0, visibleOnly: true }); } catch {}\nawait tobub.atoms.waitFor({ delay: 1800 });\nfor (let page = 0; page < maxPages && (dryRun ? wouldLikeCount : likedCount) < maxLikes; page++) {\n  const result = await tobub.atoms.evaluate({\n    mode: 'expression',\n    expression: '(()=>{const all=Array.from(document.querySelectorAll(\"[data-key-interaction=\\\\\"comment_like\\\\\"]\"));const vw=innerWidth,vh=innerHeight;return all.map((control,index)=>{const r=control.getBoundingClientRect();let root=control;for(let depth=0;depth<8&&root;depth++,root=root.parentElement){if(root.querySelector(\"[data-e2e=\\\\\"comment-level-1\\\\\"]\"))break}const comment=root&&root.querySelector(\"[data-e2e=\\\\\"comment-level-1\\\\\"]\");const username=root&&root.querySelector(\"[data-e2e^=\\\\\"comment-username-\\\\\"]\");const aria=control.getAttribute(\"aria-label\")||\"\";return{controlIndex:index,visible:r.width>0&&r.height>0&&r.bottom>0&&r.top<vh&&r.right>0&&r.left<vw&&getComputedStyle(control).visibility!==\"hidden\",text:comment?(comment.innerText||\"\").trim().slice(0,280):\"\",username:username?(username.innerText||\"\").trim().slice(0,100):\"\",likeLabel:aria,unliked:control.getAttribute(\"aria-pressed\")!==\"true\"&&/^Like video/i.test(aria)}}).filter(x=>x.visible&&x.likeLabel)})()'\n  });\n  const items = result && result.value !== undefined ? result.value : (result && result.result !== undefined ? result.result : result);\n  if (Array.isArray(items)) {\n    const filteredItems = items.filter(item => {\n      const normalizedText = String(item.text || '').toLocaleLowerCase();\n      const length = Array.from(String(item.text || '')).length;\n      const keep = length >= minCommentLength && (!commentContains || normalizedText.includes(commentContains));\n      if (!keep) filteredCount++;\n      return keep;\n    });\n    for (let itemIndex = filteredItems.length - 1; itemIndex >= 0; itemIndex--) {\n      const item = filteredItems[itemIndex];\n      if ((dryRun ? wouldLikeCount : likedCount) >= maxLikes) break;\n      checkedCount++;\n      const decision = tobub.utils.chance(probability);\n      const record = { sequence: checkedCount, commentIndex: item.controlIndex, comment: item.text, before: item.likeLabel, decision: decision ? 'like' : 'skip', clicked: false, verified: false };\n      records.push(record);\n      if (!item.unliked || !decision) continue;\n      if (dryRun) {\n        record.decision = 'preview';\n        wouldLikeCount++;\n        continue;\n      }\n      try {\n        await tobub.atoms.click({ selector: likeSelector, nth: item.controlIndex, visibleOnly: true });\n        record.clicked = true;\n        likedCount++;\n        await tobub.atoms.waitFor({ delay: 450 });\n        const verify = await tobub.atoms.evaluate({\n          mode: 'expression',\n          expression: '(()=>{const e=document.querySelectorAll(\"[data-key-interaction=\\\\\"comment_like\\\\\"]\")[INDEX];return!!e&&(e.getAttribute(\"aria-pressed\")===\"true\"||/^Unlike video/i.test(e.getAttribute(\"aria-label\")||\"\"))})()'.replace('INDEX', String(item.controlIndex))\n        });\n        const value = verify && verify.value !== undefined ? verify.value : verify;\n        record.verified = value === true;\n        if (record.verified) verifiedCount++;\n      } catch (error) {\n        record.error = String(error).slice(0, 180);\n      }\n    }\n  }\n  if ((dryRun ? wouldLikeCount : likedCount) >= maxLikes) break;\n  const scroll = await tobub.atoms.evaluate({\n    mode: 'expression',\n    expression: '(()=>{const marker=document.querySelector(\"[data-e2e=\\\\\"comment-level-1\\\\\"]\");let el=marker;for(let i=0;i<8&&el;i++,el=el.parentElement){const s=getComputedStyle(el);if(el.scrollHeight>el.clientHeight+40&&/(auto|scroll)/.test(s.overflowY)){const before=el.scrollTop;el.scrollTop=Math.min(el.scrollHeight,el.scrollTop+Math.max(300,el.clientHeight*.8));return{found:true,before,after:el.scrollTop}}}return{found:false}})()'\n  });\n  const state = scroll && scroll.value !== undefined ? scroll.value : scroll;\n  if (!state || !state.found || (state.after <= state.before && state.before > 0)) break;\n  await tobub.atoms.waitFor({ delay: 900 });\n}\nreturn {\n  videoId,\n  videoUrl,\n  probabilityPercent,\n  dryRun,\n  commentContains,\n  minCommentLength,\n  maxPages,\n  checkedCount,\n  filteredCount,\n  wouldLikeCount,\n  likedCount,\n  verifiedCount,\n  complete: verifiedCount === likedCount,\n  warning: dryRun ? (wouldLikeCount ? 'Preview mode: matching comments are listed, and no likes were performed.' : 'Preview mode: no comments matched the filters or probability sampling selected none.') : (likedCount === 0 ? 'No likes were attempted. There may be no matching unliked comments, or probability sampling may have skipped them.' : (verifiedCount === likedCount ? '' : 'Like clicks were sent, but the page could not confirm every like state change.')),\n  records\n};",
+    "platform": "tiktok",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "vid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "title": "Video ID or URL",
+          "description": "Required target. Use a TikTok video that you are authorized to interact with."
+        },
+        "probability": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "title": "Like probability per matching comment (%)",
+          "description": "Sampling applies only to matching comments that are not already liked. 0 likes none; 100 attempts all."
+        },
+        "maxLikes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "title": "Maximum likes",
+          "description": "Stop when this limit is reached."
+        },
+        "commentContains": {
+          "type": "string",
+          "maxLength": 100,
+          "title": "Comment text filter (optional)",
+          "description": "Leave blank to skip keyword filtering. Matching is case-insensitive."
+        },
+        "minCommentLength": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 500,
+          "title": "Minimum comment length (characters)",
+          "description": "Only consider comments at least this long. Set to 0 to disable length filtering."
+        },
+        "maxPages": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "title": "Maximum comment pages to scan",
+          "description": "Upper scan limit. Stops early when maxLikes is reached."
+        },
+        "dryRun": {
+          "type": "boolean",
+          "title": "Preview only; do not like",
+          "description": "Enabled by default. Disable it to perform real likes on TikTok."
+        }
+      },
+      "required": [
+        "vid"
+      ]
+    },
+    "output_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "videoId": {
+          "type": "string"
+        },
+        "videoUrl": {
+          "type": "string"
+        },
+        "probabilityPercent": {
+          "type": "number"
+        },
+        "checkedCount": {
+          "type": "integer"
+        },
+        "likedCount": {
+          "type": "integer"
+        },
+        "verifiedCount": {
+          "type": "integer"
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "warning": {
+          "type": "string"
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "sequence": {
+                "type": "integer"
+              },
+              "commentIndex": {
+                "type": "integer"
+              },
+              "comment": {
+                "type": "string"
+              },
+              "before": {
+                "type": "string"
+              },
+              "decision": {
+                "type": "string",
+                "enum": [
+                  "like",
+                  "skip",
+                  "preview"
+                ]
+              },
+              "clicked": {
+                "type": "boolean"
+              },
+              "verified": {
+                "type": "boolean"
+              },
+              "error": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "sequence",
+              "commentIndex",
+              "comment",
+              "before",
+              "decision",
+              "clicked",
+              "verified"
+            ]
+          }
+        },
+        "dryRun": {
+          "type": "boolean"
+        },
+        "commentContains": {
+          "type": "string"
+        },
+        "minCommentLength": {
+          "type": "integer"
+        },
+        "maxPages": {
+          "type": "integer"
+        },
+        "filteredCount": {
+          "type": "integer"
+        },
+        "wouldLikeCount": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "videoId",
+        "videoUrl",
+        "probabilityPercent",
+        "checkedCount",
+        "likedCount",
+        "verifiedCount",
+        "complete",
+        "warning",
+        "records",
+        "dryRun",
+        "commentContains",
+        "minCommentLength",
+        "maxPages",
+        "filteredCount",
+        "wouldLikeCount"
+      ]
+    },
+    "ui_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "vid",
+          "label": "Video ID or URL",
+          "required": true,
+          "target": "params.vid",
+          "type": "text",
+          "description": "Enter the TikTok video ID or URL to inspect."
+        },
+        {
+          "key": "probability",
+          "label": "Like probability per matching comment (%)",
+          "required": false,
+          "target": "params.probability",
+          "type": "number",
+          "default": 20,
+          "description": "Applies only to matching, unliked comments; 0 likes none, 100 attempts all."
+        },
+        {
+          "key": "maxLikes",
+          "label": "Maximum likes",
+          "required": false,
+          "target": "params.maxLikes",
+          "type": "number",
+          "default": 3,
+          "description": "Stop when this limit is reached."
+        },
+        {
+          "key": "commentContains",
+          "label": "Comment text filter (optional)",
+          "required": false,
+          "target": "params.commentContains",
+          "type": "text",
+          "description": "Leave blank to skip filtering; matching is case-insensitive.",
+          "default": ""
+        },
+        {
+          "key": "minCommentLength",
+          "label": "Minimum comment length (characters)",
+          "required": false,
+          "target": "params.minCommentLength",
+          "type": "number",
+          "default": 0,
+          "description": "0 disables length filtering."
+        },
+        {
+          "key": "maxPages",
+          "label": "Maximum comment pages to scan",
+          "required": false,
+          "target": "params.maxPages",
+          "type": "number",
+          "default": 6,
+          "description": "Stops early when the like limit is reached."
+        },
+        {
+          "key": "dryRun",
+          "label": "Preview only; do not like",
+          "required": false,
+          "target": "params.dryRun",
+          "type": "switch",
+          "default": true,
+          "description": "Enabled by default; disable it to perform real likes."
+        }
+      ]
+    },
+    "requirements": {
+      "account": "required",
+      "profile": "required",
+      "domain_rule": "optional"
+    },
+    "defaults": {
+      "params": {
+        "probability": 20,
+        "maxLikes": 3,
+        "commentContains": "",
+        "minCommentLength": 0,
+        "maxPages": 6,
+        "dryRun": true
+      },
+      "browser": {
+        "run_mode": "profile",
+        "auth_mode": "inherit",
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "optional"
+      }
+    },
+    "metadata": {
+      "category": "user",
+      "source": "local",
+      "description": "按概率为符合筛选条件的 TikTok 评论点赞，可限制数量、评论文字和检查页数；支持预览模式，并逐次确认页面点赞状态。",
+      "tags": [
+        "TikTok",
+        "自动点赞",
+        "评论",
+        "筛选",
+        "预览"
+      ],
+      "market_skill_id": "tiktok-auto-like-helper"
+    }
+  }
+}

@@ -1,0 +1,315 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:tiktok-live-room-monitor@1.4.5",
+  "package_version": "1.4.5",
+  "source": "user",
+  "created_at": "2026-10-22T13:11:33.656Z",
+  "requirements": {
+    "platform": "required",
+    "rule": "optional"
+  },
+  "platform": {
+    "code": "tiktok",
+    "name": "tiktok",
+    "version": "1",
+    "base_url": "https://www.tiktok.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "tiktok.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "0a7991bc848ef034e54ff614fb0b6eb7a5f03ca960cee2a7bb5c6afda69edb88"
+  },
+  "skill": {
+    "market_skill_id": "tiktok-live-room-monitor",
+    "release_id": "local-tiktok-20261022",
+    "name": "tiktok直播间持续监控研究器",
+    "skill_version": "1.4.5",
+    "source_type": "local",
+    "skill_code": "const rawUrl = String(tobub.params.url || '').trim();\nconst durationMinutes = tobub.params.durationMinutes !== undefined ? Number(tobub.params.durationMinutes) : null;\nconst legacyDurationMs = tobub.params.durationMs !== undefined ? Number(tobub.params.durationMs) : null;\nconst durationMs = legacyDurationMs !== null ? legacyDurationMs : (durationMinutes !== null ? durationMinutes * 60000 : 60000);\nconst initialWaitSeconds = Number(tobub.params.initialWaitSeconds ?? 10);\nconst pollIntervalSeconds = Number(tobub.params.pollIntervalSeconds ?? 2);\nconst maxEvents = Number(tobub.params.maxEvents ?? 200);\nconst minMessageLength = Number(tobub.params.minMessageLength ?? 1);\nconst deduplicate = tobub.params.deduplicate !== false;\nconst captureSecUid = tobub.params.captureSecUid === true;\nlet targetUrl;\ntry { targetUrl = new URL(rawUrl); } catch { throw new Error('params.url must be a valid URL.'); }\nif (!['tiktok.com', 'www.tiktok.com', 'm.tiktok.com'].includes(targetUrl.hostname.toLowerCase())) throw new Error('Use an official TikTok LIVE URL.');\nif (targetUrl.protocol !== 'http:' && targetUrl.protocol !== 'https:') throw new Error('LIVE URLs must use HTTP or HTTPS.');\nconst roomMatch = targetUrl.pathname.match(/^\\/@([^/]+)\\/live\\/?$/i);\nif (!roomMatch) throw new Error('Use a LIVE URL in this format: https://www.tiktok.com/@username/live.');\nif (!Number.isInteger(durationMs) || durationMs < 1000 || durationMs > 600000) throw new Error('Capture duration must be 1 to 10 minutes. The legacy durationMs parameter accepts 1,000 to 600,000 milliseconds.');\nif (!Number.isInteger(initialWaitSeconds) || initialWaitSeconds < 1 || initialWaitSeconds > 30) throw new Error('initialWaitSeconds must be from 1 to 30 seconds.');\nif (!Number.isInteger(pollIntervalSeconds) || pollIntervalSeconds < 1 || pollIntervalSeconds > 15) throw new Error('pollIntervalSeconds must be from 1 to 15 seconds.');\nif (!Number.isInteger(maxEvents) || maxEvents < 1 || maxEvents > 1000) throw new Error('maxEvents must be an integer from 1 to 1000.');\nif (!Number.isInteger(minMessageLength) || minMessageLength < 0 || minMessageLength > 1000) throw new Error('minMessageLength must be an integer from 0 to 1000.');\n\nconst url = targetUrl.toString();\nlet roomId;\ntry { roomId = decodeURIComponent(roomMatch[1]); } catch { throw new Error('Invalid encoding in the LIVE username.'); }\nif (!/^[A-Za-z0-9._]{1,64}$/.test(roomId)) throw new Error('Invalid username in the LIVE URL.');\nconst startedAt = new Date().toISOString();\nconst executionRunId = typeof tobub.execution?.runId === 'string' && tobub.execution.runId.trim() ? tobub.execution.runId.trim() : startedAt;\nconst page = await tobub.browser.open({ url });\nlet collection;\nlet collectionClosed = false;\nlet metadataSaved;\nlet eventCount = 0;\nlet duplicateCount = 0;\nlet filteredCount = 0;\nlet droppedCount = 0;\nconst seenKeys = new Set();\nconst pendingRecords = [];\n\nconst flush = async () => {\n  if (pendingRecords.length) await collection.append(pendingRecords.splice(0));\n};\nconst readChatRows = async () => {\n  const expression = String.raw`(()=>Array.from(document.querySelectorAll(\"[data-e2e=\\\"chat-message\\\"]\")).slice(-150).map((el,index)=>{const name=el.querySelector(\"[data-e2e=\\\"message-owner-name\\\"]\");return{username:String((name&&name.innerText)||\"\").trim(),rawText:String(el.innerText||\"\").trim(),messageId:String(el.getAttribute(\"data-message-id\")||el.getAttribute(\"data-id\")||el.id||\"\"),domIndex:index}}))()`;\n  const result = await tobub.atoms.evaluate({ mode: 'expression', expression }, { page });\n  const value = result && result.value !== undefined ? result.value : (result && result.result !== undefined ? result.result : result);\n  return Array.isArray(value) ? value : [];\n};\nconst parseMessage = (row) => {\n  const username = String(row.username || '').replace(/\\s+/g, ' ').trim();\n  const lines = String(row.rawText || '').split(/\\r?\\n/).map(line => line.trim()).filter(Boolean);\n  const messageLines = username && lines[0] === username ? lines.slice(1) : lines.filter(line => line !== username);\n  return { username, message: messageLines.join(' ').trim() };\n};\ntry {\n  collection = await tobub.data.open({\n    name: 'tiktok-live-room-events',\n    policy: { maxRecords: maxEvents, batchSize: 100, flushIntervalMs: 5000 },\n    metadata: {\n      schemaVersion: 1,\n      recordType: 'live_comment',\n      roomId,\n      url,\n      startedAt,\n      executionRunId,\n      storageMode: 'metadata_file',\n      durationMs,\n      durationMinutes: durationMs / 60000,\n      initialWaitSeconds,\n      pollIntervalSeconds,\n      minMessageLength,\n      deduplicate,\n      captureSecUid,\n      source: 'tiktok-live-chat-dom'\n    }\n  });\n  metadataSaved = await tobub.db.saveContent({\n    platform: 'tiktok',\n    contentType: 'live_room_monitor',\n    externalId: roomId + ':' + collection.id + ':metadata',\n    title: 'TikTok LIVE monitoring: ' + roomId,\n    summary: 'TikTok LIVE chat DOM capture',\n    url,\n    rawData: { roomId, url, startedAt, executionRunId, durationMs, maxEvents, minMessageLength, deduplicate, captureSecUid, source: 'tiktok-live-chat-dom' },\n    metadata: {\n      tobub_data: { collection_id: collection.id, role: 'detail', mode: 'event', format: 'jsonl', schema_version: 1 },\n      roomId,\n      startedAt,\n      durationMs,\n      durationMinutes: durationMs / 60000,\n      initialWaitSeconds,\n      pollIntervalSeconds,\n      minMessageLength,\n      deduplicate,\n      source: 'tiktok-live-chat-dom'\n    },\n    tags: ['tiktok', 'live', 'monitor', 'chat', 'dom'],\n    observationSource: 'live_room_monitor',\n    observationMeta: { roomId, collectionId: collection.id, role: 'detail', mode: 'event', format: 'jsonl', schemaVersion: 1, source: 'tiktok-live-chat-dom' }\n  });\n\n  await tobub.atoms.waitFor({ delay: initialWaitSeconds * 1000 }, { page });\n  const initialRows = await readChatRows();\n  const processRows = async (rows, capturedAt) => {\n    const occurrences = new Map();\n    for (const row of rows) {\n      if (eventCount >= maxEvents) { droppedCount++; continue; }\n      const parsed = parseMessage(row);\n      if (!parsed.username || !parsed.message) continue;\n      const signature = parsed.username + '\\\\u0000' + parsed.message;\n      const occurrence = (occurrences.get(signature) || 0) + 1;\n      occurrences.set(signature, occurrence);\n      const messageId = row.messageId || '';\n      const rowKey = messageId ? 'id:' + messageId : (deduplicate ? signature : signature + '\\\\u0000' + occurrence);\n      if (occurrences.get('row:' + rowKey)) { duplicateCount++; continue; }\n      occurrences.set('row:' + rowKey, 1);\n      if (seenKeys.has(rowKey)) continue;\n      seenKeys.add(rowKey);\n      if (Array.from(parsed.message).length < minMessageLength) { filteredCount++; continue; }\n      const record = {\n        type: 'live_comment',\n        payload: {\n          roomId,\n          user: { name: parsed.username, avatar: null, id: null, gradeLevel: null, gradeIcon: null, isFansClubMember: false, fansClubBadge: null, secUid: null },\n          message: parsed.message,\n          capturedAt,\n          sequence: eventCount + 1,\n          source: 'dom_live_chat',\n          messageId\n        },\n        meta: { roomId, source: 'dom_live_chat', capturedAt }\n      };\n      pendingRecords.push(record);\n      eventCount++;\n    }\n    await flush();\n  };\n  await processRows(initialRows, new Date().toISOString());\n  const deadline = Date.now() + durationMs;\n  const monitor = tobub.monitor.start(async ({ signal, stop }) => {\n    if (signal?.aborted || Date.now() >= deadline || eventCount >= maxEvents) { stop(); return; }\n    const rows = await readChatRows();\n    await processRows(rows, new Date().toISOString());\n    if (Date.now() >= deadline || eventCount >= maxEvents) stop();\n  }, { intervalMs: pollIntervalSeconds * 1000, immediate: true, schedule: 'fixed-delay' });\n  await monitor.wait();\n\n  await flush();\n  const dataResult = await collection.close();\n  collectionClosed = true;\n  const warning = eventCount === 0\n    ? 'No chat messages were read from the LIVE page. The room may have ended, chat may be unavailable, or the page may still be loading.'\n    : (captureSecUid ? 'The current TikTok chat page does not expose secUid. Only display names and visible messages are captured.' : '');\n  return {\n    url,\n    roomId,\n    durationMinutes: durationMs / 60000,\n    pollIntervalSeconds,\n    startedAt,\n    endedAt: new Date().toISOString(),\n    eventCount,\n    storage: {\n      metadataContentItemId: metadataSaved && Number.isFinite(Number(metadataSaved.contentItemId)) ? Number(metadataSaved.contentItemId) : null,\n      metadataObservationId: metadataSaved && Number.isFinite(Number(metadataSaved.observationId)) ? Number(metadataSaved.observationId) : null,\n      dataCollectionId: dataResult.id,\n      detailFile: dataResult.outputs && dataResult.outputs[0] ? dataResult.outputs[0].relativePath : null\n    },\n    stats: {\n      duplicates: duplicateCount,\n      secUidResolved: 0,\n      decoderErrors: 0,\n      delivered: eventCount,\n      filtered: filteredCount,\n      dropped: droppedCount\n    },\n    warning\n  };\n} finally {\n  if (collection && pendingRecords.length) await flush().catch(() => undefined);\n  if (collection && !collectionClosed) await collection.close().catch(() => undefined);\n  await tobub.browser.close(page).catch(() => undefined);\n}",
+    "platform": "tiktok",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "title": "TikTok LIVE URL",
+          "description": "Only public URLs in this format are supported: https://www.tiktok.com/@username/live."
+        },
+        "durationMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "title": "Capture duration (minutes)",
+          "description": "Capture duration, excluding initialWaitSeconds spent loading the LIVE room."
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 600000,
+          "title": "Legacy parameter: capture duration (milliseconds)",
+          "description": "Kept for older calls. If provided, this takes precedence over durationMinutes. Use durationMinutes for new calls."
+        },
+        "initialWaitSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30,
+          "title": "Initial room wait (seconds)",
+          "description": "Wait for the page and chat to load. This wait is excluded from the capture duration."
+        },
+        "pollIntervalSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 15,
+          "title": "Chat polling interval (seconds)",
+          "description": "Interval between checks for chat messages in the DOM. Shorter intervals capture messages sooner."
+        },
+        "maxEvents": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "title": "Maximum messages to save",
+          "description": "Stop monitoring as soon as this limit is reached to avoid unbounded growth."
+        },
+        "minMessageLength": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "title": "Minimum message length (characters)",
+          "description": "Measured in Unicode characters. Set to 0 to disable length filtering."
+        },
+        "deduplicate": {
+          "type": "boolean",
+          "title": "Skip duplicate chat messages",
+          "description": "Recommended to avoid saving the same visible message on repeated polls."
+        },
+        "captureSecUid": {
+          "type": "boolean",
+          "title": "Legacy parameter: attempt to read secUid (unavailable)",
+          "description": "Kept for older calls. TikTok chat DOM does not expose secUid, so this parameter cannot return it."
+        }
+      },
+      "required": [
+        "url"
+      ]
+    },
+    "output_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "roomId": {
+          "type": "string"
+        },
+        "startedAt": {
+          "type": "string"
+        },
+        "endedAt": {
+          "type": "string"
+        },
+        "eventCount": {
+          "type": "integer"
+        },
+        "storage": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "metadataContentItemId": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "metadataObservationId": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "dataCollectionId": {
+              "type": "string"
+            },
+            "detailFile": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "metadataContentItemId",
+            "metadataObservationId",
+            "dataCollectionId",
+            "detailFile"
+          ]
+        },
+        "stats": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "duplicates": {
+              "type": "integer"
+            },
+            "secUidResolved": {
+              "type": "integer"
+            },
+            "decoderErrors": {
+              "type": "integer"
+            },
+            "delivered": {
+              "type": "integer"
+            },
+            "filtered": {
+              "type": "integer"
+            },
+            "dropped": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "duplicates",
+            "secUidResolved",
+            "decoderErrors",
+            "delivered",
+            "filtered",
+            "dropped"
+          ]
+        },
+        "warning": {
+          "type": "string"
+        },
+        "durationMinutes": {
+          "type": "number"
+        },
+        "pollIntervalSeconds": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "url",
+        "roomId",
+        "startedAt",
+        "endedAt",
+        "eventCount",
+        "storage",
+        "stats",
+        "warning",
+        "durationMinutes",
+        "pollIntervalSeconds"
+      ]
+    },
+    "ui_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "url",
+          "label": "TikTok LIVE URL",
+          "required": true,
+          "target": "params.url",
+          "type": "text",
+          "description": "For example, https://www.tiktok.com/@username/live."
+        },
+        {
+          "key": "durationMinutes",
+          "label": "Capture duration (minutes)",
+          "required": false,
+          "target": "params.durationMinutes",
+          "type": "number",
+          "default": 1,
+          "description": "Capture duration, excluding the initial room wait."
+        },
+        {
+          "key": "maxEvents",
+          "label": "Maximum messages to save",
+          "required": false,
+          "target": "params.maxEvents",
+          "type": "number",
+          "default": 200,
+          "description": "Stop monitoring when this limit is reached."
+        },
+        {
+          "key": "minMessageLength",
+          "label": "Minimum message length (characters)",
+          "required": false,
+          "target": "params.minMessageLength",
+          "type": "number",
+          "default": 1,
+          "description": "Measured in Unicode characters; 0 disables length filtering."
+        },
+        {
+          "key": "pollIntervalSeconds",
+          "label": "Chat polling interval (seconds)",
+          "required": false,
+          "target": "params.pollIntervalSeconds",
+          "type": "number",
+          "default": 2,
+          "description": "Interval between chat checks; shorter intervals are more responsive."
+        },
+        {
+          "key": "initialWaitSeconds",
+          "label": "Initial room wait (seconds)",
+          "required": false,
+          "target": "params.initialWaitSeconds",
+          "type": "number",
+          "default": 10,
+          "description": "Wait for the page and chat to load; excluded from capture duration."
+        },
+        {
+          "key": "deduplicate",
+          "label": "Skip duplicate chat messages",
+          "required": false,
+          "target": "params.deduplicate",
+          "type": "switch",
+          "default": true,
+          "description": "When enabled, skip messages seen in earlier polls."
+        }
+      ]
+    },
+    "requirements": {
+      "account": "required",
+      "profile": "required",
+      "domain_rule": "optional"
+    },
+    "defaults": {
+      "params": {
+        "durationMinutes": 1,
+        "initialWaitSeconds": 10,
+        "pollIntervalSeconds": 2,
+        "maxEvents": 200,
+        "minMessageLength": 1,
+        "deduplicate": true
+      },
+      "browser": {
+        "run_mode": "profile",
+        "auth_mode": "inherit",
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "optional"
+      }
+    },
+    "metadata": {
+      "category": "user",
+      "source": "local",
+      "description": "在 TikTok 直播间轮询可见聊天消息，支持分钟级时长、检查间隔、消息长度和数量限制；数据保存为 JSONL。",
+      "tags": [
+        "TikTok",
+        "直播",
+        "弹幕",
+        "监控",
+        "JSONL"
+      ],
+      "market_skill_id": "tiktok-live-room-monitor"
+    },
+    "description": "在 TikTok 直播间轮询可见聊天消息，支持分钟级时长、检查间隔、消息长度和数量限制；数据保存为 JSONL。"
+  }
+}
