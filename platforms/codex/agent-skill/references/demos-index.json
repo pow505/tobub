@@ -135,11 +135,11 @@
       "side_effects": "not-reviewed; inspect code and called Rules before execution"
     },
     {
-      "package_id": "user:tobub-live-room-monitor@1.4.1",
-      "platform": null,
+      "package_id": "user:tobub-live-room-monitor@1.4.3",
+      "platform": "douyin",
       "source_path": "demos/douyin/抖音直播间持续监控研究器-1.4.1.skill.json",
       "file": "../../../demos/douyin/抖音直播间持续监控研究器-1.4.1.skill.json",
-      "sha256": "4cc66c988c083982666192a8db511911eb33f77d3b30d46265c69e64f1480163",
+      "sha256": "da249ee2efbe9e633607d034c77f883d294c8bb0b398a5a5f6cfa0ea0852b78a",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
@@ -160,34 +160,69 @@
       ],
       "input_schema": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
           "url": {
-            "type": "string"
+            "type": "string",
+            "title": "直播间 URL",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "durationMinutes": {
+            "type": "number",
+            "title": "监听时长（分钟）",
+            "minimum": 0.1,
+            "maximum": 240
           },
           "durationMs": {
-            "type": "number"
+            "type": "integer",
+            "title": "兼容旧参数：监听时长（毫秒）",
+            "minimum": 6000,
+            "maximum": 14400000
           },
           "maxEvents": {
-            "type": "number"
+            "type": "integer",
+            "title": "最多保存事件数",
+            "minimum": 1,
+            "maximum": 5000
           },
           "minMessageLength": {
-            "type": "number"
+            "type": "integer",
+            "title": "消息最小字数",
+            "minimum": 0,
+            "maximum": 1000
           },
           "deduplicate": {
-            "type": "boolean"
+            "type": "boolean",
+            "title": "按消息 ID/内容去重"
           },
           "captureSecUid": {
-            "type": "boolean"
+            "type": "boolean",
+            "title": "采集用户 sec_uid（默认关闭）"
+          },
+          "saveMetadata": {
+            "type": "boolean",
+            "title": "将监控摘要保存到 Tobub 数据库"
           }
         },
         "required": [
           "url",
-          "durationMs",
           "maxEvents",
           "minMessageLength",
           "deduplicate"
         ],
-        "additionalProperties": true
+        "anyOf": [
+          {
+            "required": [
+              "durationMinutes"
+            ]
+          },
+          {
+            "required": [
+              "durationMs"
+            ]
+          }
+        ]
       },
       "output_schema": {
         "type": "object",
@@ -198,7 +233,10 @@
           "endedAt",
           "eventCount",
           "storage",
-          "stats"
+          "stats",
+          "durationMinutes",
+          "durationMs",
+          "savedMetadata"
         ],
         "properties": {
           "url": {
@@ -278,19 +316,28 @@
                 "type": "integer"
               }
             }
+          },
+          "durationMinutes": {
+            "type": "number"
+          },
+          "durationMs": {
+            "type": "integer"
+          },
+          "savedMetadata": {
+            "type": "boolean"
           }
         }
       },
-      "has_platform": false,
+      "has_platform": true,
       "has_rule": false,
       "side_effects": "not-reviewed; inspect code and called Rules before execution"
     },
     {
-      "package_id": "user:douyin-browse-videos@1.0.0",
+      "package_id": "user:douyin-browse-videos@1.0.4",
       "platform": "douyin",
       "source_path": "demos/douyin/抖音自动化浏览视频-1.0.0.skill.json",
       "file": "../../../demos/douyin/抖音自动化浏览视频-1.0.0.skill.json",
-      "sha256": "6ac4b283ffc275bec90be36e7a4c211326333f46ec26e8038cde3e082470b7c4",
+      "sha256": "0cedfa624e7c3d887fef97bba140c80cdb108298386e08ab32e81af3ddd2e90e",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
@@ -307,46 +354,94 @@
         "atoms.swipeVideo",
         "atoms.waitFor",
         "db.saveContent",
-        "utils.chance",
-        "utils.randInt"
+        "utils.chance"
       ],
       "input_schema": {
         "type": "object",
         "properties": {
           "minutes": {
-            "type": "number"
+            "type": "number",
+            "title": "浏览时长（分钟）",
+            "minimum": 0.1,
+            "maximum": 60
+          },
+          "maxScrollTimes": {
+            "type": "integer",
+            "title": "最多切换视频数",
+            "minimum": 1,
+            "maximum": 500
+          },
+          "maxRecords": {
+            "type": "integer",
+            "title": "最多收集作品数",
+            "minimum": 1,
+            "maximum": 500
+          },
+          "saveResults": {
+            "type": "boolean",
+            "title": "保存到 Tobub 数据库"
           }
         },
         "required": [
           "minutes"
         ],
-        "additionalProperties": true
+        "additionalProperties": false
       },
       "output_schema": {
+        "type": "object",
         "additionalProperties": false,
+        "required": [
+          "records",
+          "visitedCount",
+          "savedCount",
+          "errorCount",
+          "errors",
+          "complete",
+          "stopReason"
+        ],
         "properties": {
           "records": {
+            "type": "array",
             "items": {
               "type": "object"
-            },
-            "type": "array"
+            }
+          },
+          "visitedCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "savedCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "errorCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
           }
-        },
-        "required": [
-          "records"
-        ],
-        "type": "object"
+        }
       },
       "has_platform": true,
       "has_rule": true,
       "side_effects": "not-reviewed; inspect code and called Rules before execution"
     },
     {
-      "package_id": "user:local_75045bc4-8816-4aeb-9e19-e0aee108cddc@1",
+      "package_id": "user:local_75045bc4-8816-4aeb-9e19-e0aee108cddc@1.0.3",
       "platform": "douyin",
       "source_path": "demos/douyin/抖音自动点赞助手-1.skill.json",
       "file": "../../../demos/douyin/抖音自动点赞助手-1.skill.json",
-      "sha256": "5b35eac6094098abe727044dfdc7abe4a1fe84904f796f2edff7410de6729b45",
+      "sha256": "1294f2f2505ca2a9a19b085b4ddaaa49303faf3e5f680500160ceb1759dcea61",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
@@ -369,28 +464,101 @@
         "type": "object",
         "properties": {
           "vid": {
-            "type": "string"
+            "type": "string",
+            "title": "作品 ID 或抖音视频链接",
+            "minLength": 1,
+            "maxLength": 512
           },
           "probability": {
-            "type": "number"
+            "type": "number",
+            "title": "每条未点赞评论的抽样概率（%）",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "maxLikes": {
+            "type": "integer",
+            "title": "最多点赞条数",
+            "minimum": 0,
+            "maximum": 20
+          },
+          "maxScrollTimes": {
+            "type": "integer",
+            "title": "最多滚动次数",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "dryRun": {
+            "type": "boolean",
+            "title": "仅预览，不执行点赞"
           }
         },
         "required": [
           "vid"
         ],
-        "additionalProperties": true
+        "additionalProperties": false
       },
-      "output_schema": {},
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "videoId",
+          "dryRun",
+          "visitedScrolls",
+          "checkedCount",
+          "selectedCount",
+          "likedCount",
+          "verifiedCount",
+          "records",
+          "stopReason"
+        ],
+        "properties": {
+          "videoId": {
+            "type": "string"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "visitedScrolls": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "checkedCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "selectedCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "likedCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "verifiedCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "stopReason": {
+            "type": "string"
+          }
+        }
+      },
       "has_platform": true,
       "has_rule": true,
       "side_effects": "not-reviewed; inspect code and called Rules before execution"
     },
     {
-      "package_id": "user:douyin-get-video-comments@1.0.0",
+      "package_id": "user:douyin-get-video-comments@1.0.4",
       "platform": "douyin",
       "source_path": "demos/douyin/抖音获取作品评论-1.0.0.skill.json",
       "file": "../../../demos/douyin/抖音获取作品评论-1.0.0.skill.json",
-      "sha256": "e25a1b4603a9d492fa1acea51d881117dec7a5283bc5ca7c714740b03b0f600f",
+      "sha256": "14a291ca7e7a02805eef2b6b73b9de193ef3ff24753651d08967fbde7cc4d66e",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
@@ -406,54 +574,87 @@
         "atoms.scroll",
         "atoms.waitFor",
         "db.saveContent",
-        "utils.chance",
         "utils.randInt"
       ],
       "input_schema": {
         "type": "object",
         "properties": {
           "vid": {
-            "type": "string"
+            "type": "string",
+            "title": "作品 ID 或抖音视频链接",
+            "minLength": 1,
+            "maxLength": 512
           },
           "count": {
-            "type": "number"
+            "type": "integer",
+            "title": "最多采集评论数",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "maxScrollTimes": {
+            "type": "integer",
+            "title": "最多滚动次数",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "saveResults": {
+            "type": "boolean",
+            "title": "保存到 Tobub 数据库"
           }
         },
         "required": [
           "vid",
           "count"
         ],
-        "additionalProperties": true
+        "additionalProperties": false
       },
       "output_schema": {
+        "type": "object",
         "additionalProperties": false,
-        "properties": {
-          "records": {
-            "items": {
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "videoId": {
-            "type": "string"
-          }
-        },
         "required": [
           "videoId",
-          "records"
+          "records",
+          "savedCount",
+          "complete",
+          "stopReason",
+          "scans"
         ],
-        "type": "object"
+        "properties": {
+          "videoId": {
+            "type": "string"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "savedCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "scans": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
       },
       "has_platform": true,
       "has_rule": true,
       "side_effects": "not-reviewed; inspect code and called Rules before execution"
     },
     {
-      "package_id": "user:douyin-search-videos@1.0.0",
+      "package_id": "user:douyin-search-videos@1.0.4",
       "platform": "douyin",
       "source_path": "demos/douyin/抖音获取搜索结果-1.0.0.skill.json",
       "file": "../../../demos/douyin/抖音获取搜索结果-1.0.0.skill.json",
-      "sha256": "61c35078c0c83af35f050b6a42463c337178b4fa404246a09df3a933ffcaeaec",
+      "sha256": "3bff32ef2ce723aac44ce3fe04d1fe31b679c2849c3960b1ae06e49a9c01ccf4",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
@@ -465,6 +666,7 @@
         "adapter.dismissPopups",
         "adapter.extract",
         "atoms.click",
+        "atoms.condition",
         "atoms.navigate",
         "atoms.scroll",
         "atoms.waitFor",
@@ -475,52 +677,87 @@
         "type": "object",
         "properties": {
           "searchKey": {
-            "type": "string"
+            "type": "string",
+            "title": "搜索关键词",
+            "minLength": 1,
+            "maxLength": 100
           },
           "count": {
-            "type": "number"
+            "type": "integer",
+            "title": "最多返回作品数",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "maxScrollTimes": {
+            "type": "integer",
+            "title": "最多滚动次数",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "saveResults": {
+            "type": "boolean",
+            "title": "保存到 Tobub 数据库"
           }
         },
         "required": [
           "searchKey",
           "count"
         ],
-        "additionalProperties": true
+        "additionalProperties": false
       },
       "output_schema": {
+        "type": "object",
         "additionalProperties": false,
+        "required": [
+          "query",
+          "records",
+          "scans",
+          "savedCount",
+          "complete",
+          "stopReason"
+        ],
         "properties": {
           "query": {
             "type": "string"
           },
           "records": {
+            "type": "array",
             "items": {
               "type": "object"
-            },
-            "type": "array"
+            }
           },
           "scans": {
-            "minimum": 1,
-            "type": "integer"
+            "type": "integer",
+            "minimum": 0
+          },
+          "savedCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
-        },
-        "required": [
-          "query",
-          "records",
-          "scans"
-        ],
-        "type": "object"
+        }
       },
       "has_platform": true,
       "has_rule": true,
       "side_effects": "not-reviewed; inspect code and called Rules before execution"
     },
     {
-      "package_id": "user:douyin-get-user-videos@1.0.0",
+      "package_id": "user:douyin-get-user-videos@1.0.6",
       "platform": "douyin",
       "source_path": "demos/douyin/抖音获取用户作品-1.0.0.skill.json",
       "file": "../../../demos/douyin/抖音获取用户作品-1.0.0.skill.json",
-      "sha256": "600ae0a19f642bea629626b18bd9a76d3a060eb703d3814faba6c5f507727224",
+      "sha256": "ea8e15ccd750341559f21a10c485198a330b56ec97717ea0dd4e844e6f2b93ab",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
@@ -544,47 +781,81 @@
         "type": "object",
         "properties": {
           "uid": {
-            "type": "string"
+            "type": "string",
+            "title": "用户 ID 或抖音主页 URL",
+            "minLength": 1,
+            "maxLength": 512
           },
           "count": {
-            "type": "number"
+            "type": "integer",
+            "title": "最多采集作品数",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "maxScrollTimes": {
+            "type": "integer",
+            "title": "最多滚动次数",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "saveResults": {
+            "type": "boolean",
+            "title": "保存到 Tobub 数据库"
           }
         },
         "required": [
           "uid",
           "count"
         ],
-        "additionalProperties": true
+        "additionalProperties": false
       },
       "output_schema": {
+        "type": "object",
         "additionalProperties": false,
-        "properties": {
-          "records": {
-            "items": {
-              "type": "object"
-            },
-            "type": "array"
-          },
-          "user": {
-            "type": "object"
-          }
-        },
         "required": [
           "user",
-          "records"
+          "records",
+          "savedCount",
+          "complete",
+          "stopReason",
+          "scans"
         ],
-        "type": "object"
+        "properties": {
+          "user": {
+            "type": "object"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "savedCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "stopReason": {
+            "type": "string"
+          },
+          "scans": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
       },
       "has_platform": true,
       "has_rule": true,
       "side_effects": "not-reviewed; inspect code and called Rules before execution"
     },
     {
-      "package_id": "user:douyin-get-user-info@1.0.0",
+      "package_id": "user:douyin-get-user-info@1.0.4",
       "platform": "douyin",
       "source_path": "demos/douyin/抖音获取用户信息-1.0.0.skill.json",
       "file": "../../../demos/douyin/抖音获取用户信息-1.0.0.skill.json",
-      "sha256": "3ed1f251caadfce5f7ba67b8d853d10c49c526b26829dbde1ee63a90e33a7b76",
+      "sha256": "e0ebaa06d3e45c8155c1b8c171874a2a662b74ae69ca18ff20568c4fd73ce0ab",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
@@ -604,36 +875,47 @@
         "type": "object",
         "properties": {
           "uid": {
-            "type": "string"
+            "type": "string",
+            "title": "用户 ID 或抖音主页 URL",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "saveResults": {
+            "type": "boolean",
+            "title": "保存到 Tobub 数据库"
           }
         },
         "required": [
           "uid"
         ],
-        "additionalProperties": true
+        "additionalProperties": false
       },
       "output_schema": {
+        "type": "object",
         "additionalProperties": false,
+        "required": [
+          "user",
+          "saved"
+        ],
         "properties": {
           "user": {
             "type": "object"
+          },
+          "saved": {
+            "type": "boolean"
           }
-        },
-        "required": [
-          "user"
-        ],
-        "type": "object"
+        }
       },
       "has_platform": true,
       "has_rule": true,
       "side_effects": "not-reviewed; inspect code and called Rules before execution"
     },
     {
-      "package_id": "user:douyin-get-download-address@1.0.0",
+      "package_id": "user:douyin-get-download-address@1.0.2",
       "platform": "douyin",
       "source_path": "demos/douyin/获取抖音视频下载地址-1.0.0.skill.json",
       "file": "../../../demos/douyin/获取抖音视频下载地址-1.0.0.skill.json",
-      "sha256": "35bd0eeb0d991a5e895b4f4fbdb748ee4c033864900f8924e0cdafcd81e9206c",
+      "sha256": "9c5776fbeba83129909ec63ced7c987bb41cdc18a3b5008c91843df0abf9bcd1",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
@@ -645,6 +927,7 @@
         "atoms.navigate",
         "atoms.waitFor",
         "browser.network.collect",
+        "browser.network.stop",
         "browser.network.watch",
         "db.saveContent"
       ],
@@ -652,19 +935,52 @@
         "type": "object",
         "properties": {
           "awemeId": {
-            "type": "string"
+            "type": "string",
+            "title": "作品 ID 或抖音视频链接",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "responseWaitMs": {
+            "type": "integer",
+            "title": "等待详情响应时间（毫秒）",
+            "minimum": 1000,
+            "maximum": 30000
+          },
+          "saveResults": {
+            "type": "boolean",
+            "title": "保存到 Tobub 数据库"
           }
         },
         "required": [
           "awemeId"
         ],
-        "additionalProperties": true
+        "additionalProperties": false
       },
       "output_schema": {
+        "type": "object",
         "additionalProperties": false,
+        "required": [
+          "awemeId",
+          "title",
+          "downloadUrls",
+          "download1",
+          "download2",
+          "download3",
+          "responseUrl",
+          "saved"
+        ],
         "properties": {
           "awemeId": {
             "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "downloadUrls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "download1": {
             "type": "string"
@@ -675,25 +991,13 @@
           "download3": {
             "type": "string"
           },
-          "downloadUrls": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
           "responseUrl": {
             "type": "string"
+          },
+          "saved": {
+            "type": "boolean"
           }
-        },
-        "required": [
-          "awemeId",
-          "downloadUrls",
-          "download1",
-          "download2",
-          "download3",
-          "responseUrl"
-        ],
-        "type": "object"
+        }
       },
       "has_platform": true,
       "has_rule": true,
@@ -1828,11 +2132,11 @@
       "side_effects": "not-reviewed; inspect code and called Rules before execution"
     },
     {
-      "package_id": "user:user_1785644546305_gad5yp@1",
+      "package_id": "user:user_1785644546305_gad5yp@1.0.3",
       "platform": "tiktok",
       "source_path": "demos/tiktok/TikTokAccountWarmUp-1.skill.json",
       "file": "../../../demos/tiktok/TikTokAccountWarmUp-1.skill.json",
-      "sha256": "5fe10f2b381433feee0b725aca10b91aca645ec9c45bd6a1ca19c1892074c0a5",
+      "sha256": "4ca9d4788812b5fb59d2b9485fd9bb0ea1a5fcd5e1cc4705d31dc5853d0f5ff8",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
@@ -1843,21 +2147,76 @@
       "capabilities": [
         "adapter.action",
         "adapter.bootstrap",
-        "adapter.navigate",
-        "atoms.refresh",
-        "utils.randInt"
+        "adapter.navigate"
       ],
       "input_schema": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
           "minutes": {
-            "title": "minutes",
-            "type": "number"
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 30,
+            "title": "Runtime limit (minutes)",
+            "description": "Maximum runtime. The current browsing action finishes before the Skill stops."
+          },
+          "times": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 30,
+            "title": "Maximum browsing rounds",
+            "description": "The Skill stops when either the runtime or round limit is reached."
+          },
+          "discoverProbability": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "title": "Discovery page probability (%)",
+            "description": "0 browses only the For You feed; 100 switches to the Discover page every round."
           }
         },
-        "additionalProperties": true
+        "required": []
       },
-      "output_schema": {},
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "requestedMinutes": {
+            "type": "integer"
+          },
+          "maxCycles": {
+            "type": "integer"
+          },
+          "cycles": {
+            "type": "integer"
+          },
+          "watchedCycles": {
+            "type": "integer"
+          },
+          "discoverCycles": {
+            "type": "integer"
+          },
+          "durationSeconds": {
+            "type": "integer"
+          },
+          "timeLimitReached": {
+            "type": "boolean"
+          },
+          "warning": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestedMinutes",
+          "maxCycles",
+          "cycles",
+          "watchedCycles",
+          "discoverCycles",
+          "durationSeconds",
+          "timeLimitReached",
+          "warning"
+        ]
+      },
       "has_platform": true,
       "has_rule": true,
       "side_effects": "not-reviewed; inspect code and called Rules before execution"
