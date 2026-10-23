@@ -1,0 +1,241 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:local_d851c2f0-cb2e-461b-90be-449ee9c78c91@3",
+  "package_version": "3",
+  "source": "user",
+  "created_at": "2026-10-23T04:11:37.000Z",
+  "runtime_compatibility": {
+    "min_version": "1.8.2"
+  },
+  "requirements": {
+    "platform": "required",
+    "rule": "none"
+  },
+  "skill": {
+    "market_skill_id": "local_d851c2f0-cb2e-461b-90be-449ee9c78c91",
+    "release_id": "local_d851c2f0-cb2e-461b-90be-449ee9c78c91@3",
+    "name": "B站全站热门榜采集",
+    "skill_version": "3",
+    "source_type": "local",
+    "skill_code": "const sourceUrl = 'https://www.bilibili.com/v/popular/rank/all';\nconst biliAccountId = 10;\nlet accountKey = '';\nconst requestedCount = Number(tobub.params.maxItems ?? 100);\nconst collectedAt = new Date().toISOString();\n\nconst emptyResult = (status, page, message, verificationEncountered, verificationWaitSeconds) => ({\n  status, sourceUrl, pageTitle: page?.pageTitle || '', accountKey, collectedAt,\n  requestedCount: Number.isInteger(requestedCount) ? requestedCount : 100,\n  listItemCount: page?.cardCount || 0, extractedCount: 0, persistedCount: 0,\n  databaseReadbackCount: 0, invalidRecordCount: 0, duplicateCount: 0,\n  failureCount: 0, extractionFailedCount: 0, extractionNotReadyCount: 0, extractionErrorSample: [],\n  challengeDetected: Boolean(page?.challengeDetected), verificationEncountered, verificationWaitSeconds, message, records: []\n});\n\nif (!Number.isInteger(requestedCount) || requestedCount < 1 || requestedCount > 100) {\n  return emptyResult('blocked', null, '采集条数必须是 1–100 的整数，未访问页面或写入数据库。', false, 0);\n}\nlet biliAccount;\ntry {\n  biliAccount = await tobub.db.getAccountById(biliAccountId);\n} catch {\n  return emptyResult('blocked', null, '无法读取 Tobub 的 bili 账号配置，未访问页面或写入数据库。', false, 0);\n}\naccountKey = String(biliAccount?.account_key ?? '');\nif (accountKey !== 'bili' || Number(biliAccount?.is_active) !== 1) {\n  return emptyResult('blocked', null, 'Tobub 账号配置不匹配或已停用；请在当前环境选择有效的 bili 账号/Profile。', false, 0);\n}\n\nlet page = { pageTitle: '', pageUrl: sourceUrl, cardCount: 0, challengeDetected: false };\nlet verificationEncountered = false;\nconst waitStartedAt = Date.now();\nconst waitDeadline = waitStartedAt + 90000;\nconst snapshotExpression = [\n  '() => {',\n  \"  const bodyText = (document.body?.innerText || '').replace(/\\\\s+/g, ' ').trim();\",\n  \"  const challengeDetected = /请在下图依次点击|安全验证|验证码|人机验证|访问异常/.test(bodyText);\",\n  \"  return { pageTitle: document.title || '', pageUrl: location.href, cardCount: document.querySelectorAll('.rank-list > li.rank-item').length, challengeDetected };\",\n  '}'\n].join('\\n');\n\ntry {\n  await tobub.atoms.navigate({ url: sourceUrl, waitUntil: 'domcontentloaded' });\n} catch {\n  return emptyResult('blocked', page, '打开 Bilibili 榜单失败，未写入数据库。', false, 0);\n}\n\nwhile (Date.now() < waitDeadline) {\n  try {\n    const evaluated = await tobub.atoms.evaluate({ mode: 'function', expression: snapshotExpression });\n    page = evaluated?.value ?? evaluated;\n  } catch {\n    return emptyResult('blocked', page, '读取榜单页面状态失败，未写入数据库。', verificationEncountered, Math.round((Date.now() - waitStartedAt) / 1000));\n  }\n  if (page.challengeDetected) verificationEncountered = true;\n  if (!page.challengeDetected && page.cardCount > 0) break;\n  await tobub.atoms.waitFor({ delay: 1500 });\n}\n\nconst verificationWaitSeconds = Math.round((Date.now() - waitStartedAt) / 1000);\nif (page.challengeDetected) {\n  return emptyResult('blocked', page, 'Bilibili 安全验证尚未完成。可在当前可见浏览器中人工完成后重新运行；本次未写入数据库。', verificationEncountered, verificationWaitSeconds);\n}\nif (!page.cardCount) {\n  return emptyResult('blocked', page, '等待 90 秒后仍未加载全站热门榜单，未写入数据库；请检查网络或页面结构。', verificationEncountered, verificationWaitSeconds);\n}\nif (!page.pageUrl.startsWith('https://www.bilibili.com/')) {\n  return emptyResult('blocked', page, '页面跳转到非 Bilibili 地址，已停止采集且未写入数据库。', verificationEncountered, verificationWaitSeconds);\n}\n\nlet extraction;\ntry {\n  extraction = await tobub.atoms.extractList({\n    itemSelector: '.rank-list > li.rank-item',\n    readinessSelector: '.info > a.title',\n    maxItems: requestedCount,\n    idField: 'bvid',\n    dedupe: 'field',\n    dedupeFields: ['bvid'],\n    includeErrors: true,\n    errorPolicy: 'skip',\n    fields: [\n      { name: 'rank', selector: '.img .num', source: 'text', parse: 'number', required: true },\n      { name: 'bvid', selector: '.info > a.title', source: 'href', transforms: [{ type: 'match', pattern: { pattern: '/video/(BV[a-zA-Z0-9]+)', flags: 'i' }, groupIndex: 1 }], required: true },\n      { name: 'title', selector: '.info > a.title', source: 'text', transforms: [{ type: 'normalizeWhitespace' }, { type: 'trim' }], required: true },\n      { name: 'url', selector: '.info > a.title', source: 'href', transforms: [{ type: 'absoluteUrl', baseUrl: sourceUrl }], required: true },\n      { name: 'coverUrl', selector: '.img img.cover', source: { attr: 'src' }, transforms: [{ type: 'absoluteUrl', baseUrl: sourceUrl }], fallback: '' },\n      { name: 'author', selector: '.detail .up-name', source: 'text', transforms: [{ type: 'normalizeWhitespace' }, { type: 'trim' }], fallback: '' },\n      { name: 'authorUrl', selector: '.detail a[href*=\"space.bilibili.com\"]', source: 'href', transforms: [{ type: 'absoluteUrl', baseUrl: sourceUrl }], fallback: '' },\n      { name: 'playCount', selector: '.detail-state > .data-box', nth: 0, source: 'text', transforms: [{ type: 'normalizeWhitespace' }, { type: 'trim' }], fallback: '' },\n      { name: 'danmakuCount', selector: '.detail-state > .data-box', nth: 1, source: 'text', transforms: [{ type: 'normalizeWhitespace' }, { type: 'trim' }], fallback: '' }\n    ]\n  });\n} catch {\n  return emptyResult('blocked', page, 'Tobub 结构化提取失败，未写入数据库。页面结构可能已变化。', verificationEncountered, verificationWaitSeconds);\n}\n\nconst extractedRows = extraction.records || [];\nconst records = extractedRows\n  .map(record => {\n    const fields = { ...(record.fields || {}), ...(record.jsonFields || {}) };\n    return {\n      rank: Number(fields.rank),\n      bvid: String(fields.bvid || ''),\n      title: String(fields.title || '').slice(0, 300),\n      url: String(fields.url || ''),\n      coverUrl: String(fields.coverUrl || ''),\n      author: String(fields.author || '').slice(0, 120),\n      authorUrl: String(fields.authorUrl || ''),\n      playCount: String(fields.playCount || ''),\n      danmakuCount: String(fields.danmakuCount || '')\n    };\n  })\n  .filter(item => Number.isInteger(item.rank) && item.rank > 0 && /^BV[a-zA-Z0-9]+$/.test(item.bvid) && item.title && item.url)\n  .sort((a, b) => a.rank - b.rank);\n\nconst extractionFailedCount = extraction.failedCount || 0;\nconst extractionNotReadyCount = extraction.notReadyCount || 0;\nconst extractionErrorSample = (extraction.errors || []).slice(0, 5).map(error => String(error.field || 'record') + '@' + String(error.index ?? '?') + ': ' + String(error.message || '提取失败'));\nconst invalidRecordCount = extractionFailedCount + extractionNotReadyCount + (extractedRows.length - records.length);\nconst duplicateCount = extraction.duplicateCount || 0;\nif (!records.length) {\n  const result = emptyResult('blocked', page, '未提取到包含有效排名、BVID 和标题的记录，未写入数据库。', verificationEncountered, verificationWaitSeconds);\n  result.invalidRecordCount = invalidRecordCount;\n  result.duplicateCount = duplicateCount;\n  result.extractionFailedCount = extractionFailedCount;\n  result.extractionNotReadyCount = extractionNotReadyCount;\n  result.extractionErrorSample = extractionErrorSample;\n  return result;\n}\n\nlet persistedCount = 0;\nlet databaseReadbackCount = 0;\nlet failureCount = 0;\nconst savedRecords = [];\n\nfor (const item of records) {\n  let persisted = false;\n  try {\n    const saved = await tobub.db.saveContent({\n      platform: 'bilibili',\n      contentType: 'video',\n      externalId: item.bvid,\n      title: item.title,\n      summary: item.author,\n      url: item.url,\n      metadata: {\n        source: 'popular_rank_all', rank: item.rank, bvid: item.bvid,\n        author: item.author, authorUrl: item.authorUrl,\n        playCount: item.playCount, danmakuCount: item.danmakuCount,\n        coverUrl: item.coverUrl, collectedAt\n      },\n      rawData: { ...item, sourceUrl, collectedAt },\n      tags: ['热门榜', '全站'],\n      observationSource: 'bilibili_popular_rank_all',\n      observationMeta: { sourceUrl, scope: '全站热门榜', rank: item.rank, collectedAt },\n      displayPath: '全站热门榜/第' + item.rank + '名',\n      sortOrder: item.rank\n    });\n    if (!saved?.contentItemId || !saved?.observationId) throw new Error('数据库未返回记录 ID');\n\n    const stored = await tobub.db.getContentItemByExternalId('bilibili', 'video', item.bvid);\n    if (stored?.platform === 'bilibili' && stored?.content_type === 'video' && stored?.external_id === item.bvid && stored?.title === item.title) {\n      persisted = true;\n      persistedCount++;\n      databaseReadbackCount++;\n    } else {\n      failureCount++;\n    }\n  } catch {\n    failureCount++;\n  }\n  savedRecords.push({ ...item, persisted });\n}\n\nconst complete =\n  page.cardCount >= requestedCount &&\n  records.length === requestedCount &&\n  invalidRecordCount === 0 &&\n  duplicateCount === 0 &&\n  persistedCount === records.length &&\n  failureCount === 0;\n\nreturn {\n  status: complete ? 'complete' : 'partial',\n  sourceUrl,\n  pageTitle: page.pageTitle || '',\n  accountKey,\n  collectedAt,\n  requestedCount,\n  listItemCount: page.cardCount,\n  extractedCount: records.length,\n  persistedCount,\n  databaseReadbackCount,\n  invalidRecordCount,\n  duplicateCount,\n  failureCount,\n  extractionFailedCount,\n  extractionNotReadyCount,\n  extractionErrorSample,\n  challengeDetected: Boolean(page.challengeDetected),\n  verificationEncountered,\n  verificationWaitSeconds,\n  message: complete\n    ? '已使用 bili 账号/Profile 采集并逐条回读确认 ' + persistedCount + ' 条全站热门榜记录。'\n    : '采集不完整：榜单 ' + page.cardCount + ' 条，提取 ' + records.length + ' 条，数据库确认 ' + persistedCount + ' 条。',\n  records: savedRecords\n};",
+    "platform": "bilibili",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "maxItems": {
+          "title": "采集条数（1–100）",
+          "type": "number"
+        }
+      },
+      "required": [
+        "maxItems"
+      ],
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "complete",
+            "partial",
+            "blocked"
+          ]
+        },
+        "sourceUrl": {
+          "type": "string"
+        },
+        "pageTitle": {
+          "type": "string"
+        },
+        "collectedAt": {
+          "type": "string"
+        },
+        "requestedCount": {
+          "type": "integer"
+        },
+        "listItemCount": {
+          "type": "integer"
+        },
+        "extractedCount": {
+          "type": "integer"
+        },
+        "persistedCount": {
+          "type": "integer"
+        },
+        "databaseReadbackCount": {
+          "type": "integer"
+        },
+        "invalidRecordCount": {
+          "type": "integer"
+        },
+        "duplicateCount": {
+          "type": "integer"
+        },
+        "failureCount": {
+          "type": "integer"
+        },
+        "challengeDetected": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rank": {
+                "type": "integer"
+              },
+              "bvid": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "coverUrl": {
+                "type": "string"
+              },
+              "author": {
+                "type": "string"
+              },
+              "authorUrl": {
+                "type": "string"
+              },
+              "playCount": {
+                "type": "string"
+              },
+              "danmakuCount": {
+                "type": "string"
+              },
+              "persisted": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "rank",
+              "bvid",
+              "title",
+              "url",
+              "coverUrl",
+              "author",
+              "authorUrl",
+              "playCount",
+              "danmakuCount",
+              "persisted"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "accountKey": {
+          "type": "string"
+        },
+        "verificationEncountered": {
+          "type": "boolean"
+        },
+        "verificationWaitSeconds": {
+          "type": "number"
+        },
+        "extractionFailedCount": {
+          "type": "integer"
+        },
+        "extractionNotReadyCount": {
+          "type": "integer"
+        },
+        "extractionErrorSample": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "status",
+        "sourceUrl",
+        "pageTitle",
+        "collectedAt",
+        "requestedCount",
+        "listItemCount",
+        "extractedCount",
+        "persistedCount",
+        "databaseReadbackCount",
+        "invalidRecordCount",
+        "duplicateCount",
+        "failureCount",
+        "challengeDetected",
+        "message",
+        "records",
+        "accountKey",
+        "verificationEncountered",
+        "verificationWaitSeconds",
+        "extractionFailedCount",
+        "extractionNotReadyCount",
+        "extractionErrorSample"
+      ],
+      "additionalProperties": false
+    },
+    "ui_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "maxItems",
+          "label": "采集条数（1–100）",
+          "type": "number",
+          "required": true,
+          "default": 100,
+          "description": "使用 Tobub 中认证有效的 bili 账号/Profile。"
+        }
+      ]
+    },
+    "requirements": {
+      "account": "required",
+      "profile": "required"
+    },
+    "defaults": {
+      "params": {
+        "maxItems": 100
+      },
+      "browser": {
+        "run_mode": "transient",
+        "headless": false
+      },
+      "execution": {
+        "account_id": 10,
+        "domain_mode": "optional"
+      }
+    },
+    "metadata": {
+      "category": "data-collection",
+      "source": "community",
+      "tags": [
+        "bilibili",
+        "热门榜",
+        "全站榜",
+        "数据采集"
+      ],
+      "description": "使用 Tobub 已保存的 bili 账号 Profile 登录态采集 Bilibili 全站热门榜并保存到数据库；安全验证留给可见浏览器中的人工处理。"
+    }
+  },
+  "platform": {
+    "code": "bilibili",
+    "name": "bilibili",
+    "version": "1",
+    "base_url": "https://www.bilibili.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "bilibili.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "cd88c464b0323a394bf5dd105a5c0bbd306e12a8eba2a8b45ccabaa73b51d319"
+  }
+}
