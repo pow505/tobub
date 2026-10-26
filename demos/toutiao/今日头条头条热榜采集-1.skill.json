@@ -1,0 +1,185 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:local_d4816ba4-aa05-427b-818c-850ae6eac4dd@1",
+  "package_version": "1",
+  "source": "user",
+  "created_at": "2026-10-26T02:56:27.751Z",
+  "requirements": {
+    "platform": "required",
+    "rule": "none"
+  },
+  "skill": {
+    "market_skill_id": "local_d4816ba4-aa05-427b-818c-850ae6eac4dd",
+    "release_id": "local_d4816ba4-aa05-427b-818c-850ae6eac4dd",
+    "name": "今日头条头条热榜采集",
+    "skill_version": "1",
+    "source_type": "local",
+    "skill_code": "const TARGET_COUNT = 50;\nconst MAX_BATCHES = 20;\nconst MAX_NO_PROGRESS_BATCHES = 3;\n\nawait tobub.atoms.navigate({ url: 'https://www.toutiao.com', waitUntil: 'domcontentloaded' });\nawait tobub.atoms.waitFor({ delay: [1800, 2800] });\n\nfunction readHotBatchInBrowser() {\n  const normalize = value => String(value || '').replace(/\\s+/g, ' ').trim();\n  const isVisible = element => {\n    const rect = element.getBoundingClientRect();\n    const style = getComputedStyle(element);\n    return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';\n  };\n  const buttons = Array.from(document.querySelectorAll('button,[role=\"button\"]'))\n    .filter(button => isVisible(button) && normalize(button.innerText || button.textContent) === '换一换');\n  const headings = Array.from(document.querySelectorAll('h1,h2,h3,h4,[role=\"heading\"],div,span'))\n    .filter(element => isVisible(element)\n      && element.children.length === 0\n      && normalize(element.innerText || element.textContent) === '头条热榜');\n\n  const candidates = [];\n  for (const heading of headings) {\n    let root = heading;\n    for (let depth = 0; depth < 10 && root; depth++, root = root.parentElement) {\n      const refreshButton = buttons.find(button => root.contains(button));\n      if (!refreshButton) continue;\n      const links = Array.from(root.querySelectorAll('a[href]'))\n        .filter(link => isVisible(link)\n          && normalize(link.innerText || link.textContent)\n          && /\\/(?:trending|article)\\/\\d+|\\/a\\d+\\/|\\/w\\/\\d+/i.test(link.href));\n      if (links.length < 5 || links.length > 20) continue;\n\n      const rect = heading.getBoundingClientRect();\n      candidates.push({\n        heading,\n        root,\n        refreshButton,\n        links,\n        rightSide: rect.left + rect.width / 2 >= window.innerWidth * 0.5,\n        inViewport: rect.top >= 0 && rect.top < window.innerHeight,\n        top: rect.top\n      });\n      break;\n    }\n  }\n\n  candidates.sort((left, right) => {\n    if (left.rightSide !== right.rightSide) return left.rightSide ? -1 : 1;\n    if (left.inViewport !== right.inViewport) return left.inViewport ? -1 : 1;\n    return left.top - right.top;\n  });\n  const chosen = candidates[0];\n  if (!chosen) {\n    return {\n      found: false,\n      headingCount: headings.length,\n      refreshButtonCount: buttons.length\n    };\n  }\n\n  const itemsById = new Map();\n  for (const link of chosen.links) {\n    const url = link.href;\n    const match = url.match(/\\/(?:trending|article)\\/(\\d+)/i)\n      || url.match(/\\/a(\\d+)/i)\n      || url.match(/\\/w\\/(\\d+)/i);\n    const id = match ? String(match[1]) : '';\n    if (!id) continue;\n\n    const card = link.closest('li') || link.parentElement?.parentElement || link.parentElement;\n    const hotText = normalize(card?.innerText || link.innerText || link.textContent);\n    let rank = null;\n    try {\n      const parsed = new URL(url);\n      const rankFromUrl = Number(parsed.searchParams.get('rank'));\n      if (Number.isInteger(rankFromUrl) && rankFromUrl > 0) rank = rankFromUrl;\n    } catch {}\n    if (rank === null) {\n      const rankMatch = hotText.match(/(?:^|\\s)(\\d{1,2})(?=\\s|$)/);\n      if (rankMatch) rank = rankMatch ? Number(rankMatch[1]) : null;\n    }\n    if (rank === null || rank < 1 || rank > 50) continue;\n\n    const rawTitle = normalize(link.innerText || link.textContent);\n    const title = rawTitle.replace(/^\\s*\\d{1,2}\\s+/, '').trim();\n    if (!title) continue;\n    const previous = itemsById.get(id);\n    if (!previous || title.length > previous.title.length) {\n      itemsById.set(id, {\n        id,\n        title,\n        url,\n        rank,\n        hot_text: hotText.slice(0, 240)\n      });\n    }\n  }\n\n  return {\n    found: true,\n    headingText: normalize(chosen.heading.innerText || chosen.heading.textContent),\n    rightSide: chosen.rightSide,\n    items: Array.from(itemsById.values()).sort((left, right) => left.rank - right.rank)\n  };\n}\n\nasync function readHotBatch() {\n  const result = await tobub.atoms.evaluate({\n    expression: '(' + readHotBatchInBrowser.toString() + ')()'\n  });\n  return result.value ?? { found: false, items: [] };\n}\n\nconst records = [];\nconst databaseObservationIds = [];\nconst seenIds = new Set();\nlet duplicateCount = 0;\nlet failedCount = 0;\nlet failedSaveCount = 0;\nlet refreshClicks = 0;\nlet rounds = 0;\nlet noProgressBatches = 0;\nlet completionReason = 'no_progress';\nlet batch = await readHotBatch();\n\nif (!batch.found || !Array.isArray(batch.items) || batch.items.length === 0) {\n  throw new Error('首页没有找到右侧“头条热榜”的有效排名链接：' + JSON.stringify({\n    headingCount: batch.headingCount,\n    refreshButtonCount: batch.refreshButtonCount\n  }));\n}\n\nfor (let batchNumber = 1; batchNumber <= MAX_BATCHES && records.length < TARGET_COUNT; batchNumber++) {\n  if (!batch.found || !Array.isArray(batch.items) || batch.items.length === 0) {\n    completionReason = 'page_error';\n    break;\n  }\n  rounds++;\n  let newRecordsThisBatch = 0;\n\n  for (let position = 0; position < batch.items.length && records.length < TARGET_COUNT; position++) {\n    const item = batch.items[position];\n    const id = String(item.id || '').trim();\n    const title = String(item.title || '').trim();\n    const url = String(item.url || '').trim();\n    const rank = Number(item.rank);\n    if (!id || !title || !/^https?:\\/\\//i.test(url) || !Number.isInteger(rank) || rank < 1 || rank > 50) {\n      failedCount++;\n      continue;\n    }\n    if (seenIds.has(id)) {\n      duplicateCount++;\n      continue;\n    }\n    seenIds.add(id);\n\n    const record = {\n      id,\n      title,\n      url,\n      rank,\n      batch_number: batchNumber,\n      batch_position: position + 1,\n      hot_text: String(item.hot_text || '').slice(0, 240)\n    };\n    try {\n      const saved = await tobub.db.saveContent({\n        platform: 'toutiao',\n        contentType: 'article',\n        externalId: record.id,\n        title: record.title,\n        summary: record.hot_text,\n        url: record.url,\n        metadata: {\n          source: 'toutiao-hot-rank',\n          rank: record.rank,\n          batchNumber: record.batch_number,\n          batchPosition: record.batch_position,\n          hotText: record.hot_text\n        },\n        rawData: record,\n        observationSource: 'toutiao-hot-rank',\n        observationMeta: {\n          batchNumber: record.batch_number,\n          batchPosition: record.batch_position,\n          rank: record.rank\n        }\n      });\n      if (!saved || !saved.observationId || !saved.contentItemId) {\n        throw new Error('tobub.db.saveContent did not return a content observation.');\n      }\n      records.push({\n        ...record,\n        content_item_id: saved.contentItemId,\n        observation_id: saved.observationId\n      });\n      databaseObservationIds.push(saved.observationId);\n      newRecordsThisBatch++;\n    } catch {\n      failedCount++;\n      failedSaveCount++;\n    }\n  }\n\n  if (records.length >= TARGET_COUNT) {\n    completionReason = 'target_reached';\n    break;\n  }\n  noProgressBatches = newRecordsThisBatch > 0 ? 0 : noProgressBatches + 1;\n  if (noProgressBatches >= MAX_NO_PROGRESS_BATCHES) {\n    completionReason = 'no_progress';\n    break;\n  }\n\n  const previousFingerprint = batch.items.map(item => String(item.id || '')).join('|');\n  try {\n    await tobub.atoms.click(\n      { role: 'button', name: '换一换', exact: true },\n      { timeout: 10000 }\n    );\n  } catch {\n    completionReason = 'page_error';\n    break;\n  }\n  refreshClicks++;\n\n  let nextBatch = null;\n  for (let attempt = 0; attempt < 18; attempt++) {\n    await tobub.atoms.waitFor({ delay: [500, 800] });\n    const candidate = await readHotBatch();\n    const fingerprint = Array.isArray(candidate.items)\n      ? candidate.items.map(item => String(item.id || '')).join('|')\n      : '';\n    if (candidate.found && fingerprint && fingerprint !== previousFingerprint) {\n      nextBatch = candidate;\n      break;\n    }\n  }\n  if (!nextBatch) {\n    completionReason = 'no_progress';\n    break;\n  }\n  batch = nextBatch;\n}\n\nif (records.length >= TARGET_COUNT && failedSaveCount === 0) completionReason = 'target_reached';\nelse if (failedSaveCount > 0) completionReason = 'database_error';\nelse if (rounds >= MAX_BATCHES) completionReason = 'round_limit';\n\nconst status = records.length === TARGET_COUNT && failedCount === 0 ? 'ok' : records.length > 0 ? 'partial' : 'empty';\nreturn {\n  status,\n  target: TARGET_COUNT,\n  collected: records.length,\n  persisted: databaseObservationIds.length,\n  database_observations: databaseObservationIds,\n  rounds,\n  refresh_clicks: refreshClicks,\n  duplicates: duplicateCount,\n  failed: failedCount,\n  failed_saves: failedSaveCount,\n  completion_reason: completionReason,\n  source_url: 'https://www.toutiao.com',\n  records\n};",
+    "platform": "toutiao",
+    "input_schema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": true
+    },
+    "output_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "target",
+        "collected",
+        "persisted",
+        "database_observations",
+        "rounds",
+        "refresh_clicks",
+        "duplicates",
+        "failed",
+        "failed_saves",
+        "completion_reason",
+        "source_url",
+        "records"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "partial",
+            "empty"
+          ]
+        },
+        "target": {
+          "type": "integer"
+        },
+        "collected": {
+          "type": "integer"
+        },
+        "persisted": {
+          "type": "integer"
+        },
+        "database_observations": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "rounds": {
+          "type": "integer"
+        },
+        "refresh_clicks": {
+          "type": "integer"
+        },
+        "duplicates": {
+          "type": "integer"
+        },
+        "failed": {
+          "type": "integer"
+        },
+        "failed_saves": {
+          "type": "integer"
+        },
+        "completion_reason": {
+          "type": "string",
+          "enum": [
+            "target_reached",
+            "no_progress",
+            "round_limit",
+            "page_error",
+            "database_error"
+          ]
+        },
+        "source_url": {
+          "type": "string"
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "title",
+              "url",
+              "rank",
+              "batch_number",
+              "batch_position",
+              "hot_text",
+              "content_item_id",
+              "observation_id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "rank": {
+                "type": "integer"
+              },
+              "batch_number": {
+                "type": "integer"
+              },
+              "batch_position": {
+                "type": "integer"
+              },
+              "hot_text": {
+                "type": "string"
+              },
+              "content_item_id": {
+                "type": "integer"
+              },
+              "observation_id": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      }
+    },
+    "ui_schema": {
+      "version": 1,
+      "fields": []
+    },
+    "requirements": {},
+    "defaults": {
+      "params": {},
+      "browser": {
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "atoms-only"
+      }
+    },
+    "metadata": {
+      "category": "data-collection",
+      "source": "local",
+      "tags": [
+        "toutiao",
+        "hot-rank",
+        "ranking",
+        "collection",
+        "core-database"
+      ]
+    }
+  },
+  "platform": {
+    "code": "toutiao",
+    "name": "toutiao",
+    "version": "1",
+    "base_url": "https://www.toutiao.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "toutiao.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "b48cddf3d3303b9e84c20113c3c7ec4678fe0b22f1fd074fac4e1ffeef59bbf9"
+  }
+}
