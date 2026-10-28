@@ -1,0 +1,316 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:local_bilibili_get_comments_20261023@2",
+  "package_version": "2",
+  "source": "user",
+  "created_at": "2026-10-23T08:08:32.388Z",
+  "runtime_compatibility": {
+    "min_version": "1.8.2"
+  },
+  "requirements": {
+    "platform": "required",
+    "rule": "none"
+  },
+  "skill": {
+    "market_skill_id": "local_bilibili_get_comments_20261023",
+    "release_id": "local_bilibili_get_comments_20261023@2",
+    "name": "B站单视频评论采集",
+    "skill_version": "2",
+    "source_type": "local",
+    "skill_code": "\nconst platform = 'bilibili';\nconst accountId = 10;\nconst inputVideo = String(tobub.params.video || '').trim();\nconst requestedCount = Number(tobub.params.maxComments ?? 50);\nconst maxScrolls = Number(tobub.params.maxScrolls ?? 18);\nconst collectedAt = new Date().toISOString();\nlet accountKey = '';\nlet bvid = '';\nlet sourceUrl = '';\nlet pageTitle = '';\nlet page = null;\nlet scrollCount = 0;\nlet invalidRecordCount = 0;\nlet duplicateCount = 0;\nlet failureCount = 0;\nlet persistedCount = 0;\nlet databaseReadbackCount = 0;\nlet videoAnchorVerified = false;\nlet challengeDetected = false;\nlet verificationEncountered = false;\nlet verificationWaitSeconds = 0;\nconst errorSample = [];\nconst commentsById = new Map();\nconst scope = '一级评论';\nlet sort = 'unknown';\nconst pageScanExpression = \"() => {\\n  const bodyText = document.body?.innerText || '';\\n  const challengeDetected = /请在下图依次点击|安全验证|验证码|人机验证|访问异常/.test(bodyText);\\n  const host = document.querySelector('bili-comments');\\n  const root = host?.shadowRoot;\\n  const header = root?.querySelector('bili-comments-header-renderer')?.shadowRoot;\\n  const feed = root?.querySelector('#feed');\\n  const threads = Array.from(feed?.querySelectorAll('bili-comment-thread-renderer') || []);\\n  const comments = threads.map((thread, index) => {\\n    const data = thread.data || {};\\n    const commentRoot = thread.shadowRoot?.querySelector('bili-comment-renderer')?.shadowRoot;\\n    const actionRoot = commentRoot?.querySelector('bili-comment-action-buttons-renderer')?.shadowRoot;\\n    const userRoot = commentRoot?.querySelector('bili-comment-user-info')?.shadowRoot;\\n    const richRoot = commentRoot?.querySelector('bili-rich-text')?.shadowRoot;\\n    const message = typeof data.content?.message === 'string'\\n      ? data.content.message\\n      : String(richRoot?.querySelector('#contents')?.textContent || '');\\n    const ctime = Number(data.ctime);\\n    const rawLike = Number(data.like);\\n    const rawReplyCount = Number(data.rcount);\\n    let createdAt = '';\\n    if (Number.isFinite(ctime) && ctime > 0) {\\n      try { createdAt = new Date(ctime * 1000).toISOString(); } catch {}\\n    }\\n    const rootValue = data.root ?? data.root_str;\\n    if (rootValue !== undefined && rootValue !== null && Number(rootValue) !== 0) return null;\\n    return {\\n      rpid: String(data.rpid_str || data.rpid || thread.commonTrackData?.rpid || ''),\\n      text: String(message || '').replace(/\\\\r\\\\n?/g, '\\\\n').trim().slice(0, 5000),\\n      author: String(userRoot?.querySelector('#user-name a')?.textContent || data.member?.uname || '').trim().slice(0, 160),\\n      authorId: String(commentRoot?.querySelector('#user-avatar')?.getAttribute('data-user-profile-id') || data.mid_str || data.mid || ''),\\n      likeCount: Number.isFinite(rawLike) && rawLike >= 0 ? rawLike : Number(actionRoot?.querySelector('#like #count')?.textContent || 0),\\n      replyCount: Number.isFinite(rawReplyCount) && rawReplyCount >= 0 ? rawReplyCount : 0,\\n      createdAt,\\n      displayedTime: String(actionRoot?.querySelector('#pubdate')?.textContent || '').trim().slice(0, 80),\\n      isPinned: Boolean(commentRoot?.querySelector('#top')),\\n      position: index + 1,\\n      textTruncated: String(message || '').length > 5000\\n    };\\n  }).filter(Boolean);\\n  const countText = String(header?.querySelector('#count')?.textContent || '').replace(/\\\\s+/g, ' ').trim();\\n  const sortClass = String(header?.querySelector('#sort-actions')?.className || '').trim();\\n  const title = String(document.title || '').replace(/_哔哩哔哩_bilibili\\\\s*$/, '').trim();\\n  return {\\n    title,\\n    pageUrl: location.href,\\n    challengeDetected,\\n    moduleFound: Boolean(host && root && header),\\n    threadCount: threads.length,\\n    comments,\\n    reportedTotalCountText: countText,\\n    sortClass,\\n    sort: /\\\\bhot\\\\b/i.test(sortClass) ? 'hot' : 'unknown'\\n  };\\n}\";\n\nconst emptyResult = (status, message, extra = {}) => ({\n  status,\n  sourceUrl,\n  videoBvid: bvid,\n  pageTitle,\n  collectedAt,\n  accountKey,\n  scope,\n  sort,\n  requestedCount: Number.isInteger(requestedCount) ? requestedCount : 0,\n  reportedTotalCount: -1,\n  reportedTotalCountText: '',\n  visibleThreadCount: 0,\n  extractedCount: 0,\n  persistedCount: 0,\n  databaseReadbackCount: 0,\n  videoAnchorVerified: false,\n  invalidRecordCount: 0,\n  duplicateCount: 0,\n  failureCount: 0,\n  scrollCount,\n  challengeDetected,\n  verificationEncountered,\n  verificationWaitSeconds,\n  reachedLimit: false,\n  message,\n  errorSample: [],\n  records: [],\n  ...extra\n});\n\nif (!Number.isInteger(requestedCount) || requestedCount < 1 || requestedCount > 200) {\n  return emptyResult('blocked', 'maxComments 必须是 1–200 的整数；未访问页面或写入数据库。');\n}\nif (!Number.isInteger(maxScrolls) || maxScrolls < 4 || maxScrolls > 30) {\n  return emptyResult('blocked', 'maxScrolls 必须是 4–30 的整数；未访问页面或写入数据库。');\n}\nconst directMatch = inputVideo.match(/^(BV[a-zA-Z0-9]{10})$/);\nconst urlMatch = inputVideo.match(/^https?:\\/\\/(?:www\\.|m\\.)?bilibili\\.com\\/video\\/(BV[a-zA-Z0-9]{10})(?:[/?#]|$)/i);\nbvid = directMatch?.[1] || urlMatch?.[1] || '';\nif (!bvid) {\n  return emptyResult('blocked', '请传入 BVID（BV 加 10 位字符）或 bilibili.com/video/BV… 官方视频链接。未访问页面或写入数据库。');\n}\nsourceUrl = 'https://www.bilibili.com/video/' + bvid;\n\nlet biliAccount;\ntry {\n  biliAccount = await tobub.db.getAccountById(accountId);\n} catch {\n  return emptyResult('blocked', '无法读取 Tobub bili 账号配置；请检查已登录 Profile。未访问页面或写入数据库。');\n}\naccountKey = String(biliAccount?.account_key || '');\nif (accountKey !== 'bili' || Number(biliAccount?.is_active) !== 1) {\n  return emptyResult('blocked', 'Tobub 的 bili 账号配置不匹配或已停用。请在运行设置中选择有效的 bili 账号/Profile。未访问页面或写入数据库。');\n}\n\ntry {\n  await tobub.atoms.navigate({ url: sourceUrl, waitUntil: 'domcontentloaded' });\n} catch {\n  return emptyResult('blocked', '打开 Bilibili 视频失败；未写入数据库。');\n}\n\nconst readPage = async () => {\n  const result = await tobub.atoms.evaluate({ mode: 'function', expression: pageScanExpression });\n  return result?.value ?? result;\n};\nconst waitStartedAt = Date.now();\nconst waitDeadline = waitStartedAt + 90000;\nlet consecutiveReadFailures = 0;\nwhile (Date.now() < waitDeadline) {\n  try {\n    page = await readPage();\n    consecutiveReadFailures = 0;\n  } catch {\n    consecutiveReadFailures++;\n    if (consecutiveReadFailures >= 3) {\n      return emptyResult('blocked', '无法读取视频评论页面；未写入数据库。页面结构或浏览器状态可能已变化。');\n    }\n  }\n  if (page?.challengeDetected) {\n    challengeDetected = true;\n    verificationEncountered = true;\n    await tobub.atoms.waitFor({ delay: 1500 });\n    continue;\n  }\n  if (page?.pageUrl && !/^https:\\/\\/(?:www\\.)?bilibili\\.com\\/video\\//i.test(page.pageUrl)) {\n    return emptyResult('blocked', '页面跳转到非 Bilibili 视频地址，已停止采集且未写入数据库。');\n  }\n  if (page?.moduleFound && (page.threadCount > 0 || page.reportedTotalCountText === '0')) break;\n  if (scrollCount < maxScrolls) {\n    await tobub.atoms.scroll({ direction: 'down', distance: 1200 });\n    scrollCount++;\n  }\n  await tobub.atoms.waitFor({ delay: 1000 });\n}\nverificationWaitSeconds = Math.round((Date.now() - waitStartedAt) / 1000);\nif (page?.challengeDetected) {\n  challengeDetected = true;\n  return emptyResult('blocked', '检测到 Bilibili 安全验证，当前运行已等待 90 秒仍未完成；请在可见浏览器中人工完成验证后重新运行，本次未写入数据库。');\n}\nif (!page?.moduleFound || (page.threadCount < 1 && page.reportedTotalCountText !== '0')) {\n  return emptyResult('blocked', '在 90 秒及滚动上限内未加载到评论区；未写入数据库。请确认视频可访问或页面结构未变化。');\n}\npageTitle = String(page.title || '').slice(0, 300);\nsort = page?.sort === 'hot' ? 'hot' : 'unknown';\nconst reportedTotalCount = /^\\d+$/.test(String(page.reportedTotalCountText || '').trim())\n  ? Number(page.reportedTotalCountText.trim())\n  : -1;\nif (reportedTotalCount === 0 && page.threadCount === 0) {\n  return emptyResult('complete', 'Bilibili 页面显示该视频当前没有一级评论。', {\n    pageTitle, reportedTotalCount, reportedTotalCountText: String(page.reportedTotalCountText || ''),\n    visibleThreadCount: 0, verificationWaitSeconds\n  });\n}\n\nconst absorbComments = rows => {\n  for (const item of rows || []) {\n    const id = String(item?.rpid || '').trim();\n    const text = String(item?.text || '').trim();\n    if (!id || !/^\\d{1,24}$/.test(id) || !text) {\n      invalidRecordCount++;\n      continue;\n    }\n    if (commentsById.has(id)) {\n      duplicateCount++;\n      continue;\n    }\n    if (commentsById.size < requestedCount) {\n      commentsById.set(id, {\n        rpid: id,\n        videoBvid: bvid,\n        text: text.slice(0, 5000),\n        author: String(item.author || '').slice(0, 160),\n        authorId: String(item.authorId || '').slice(0, 40),\n        likeCount: Number.isFinite(Number(item.likeCount)) ? Math.max(0, Number(item.likeCount)) : 0,\n        replyCount: Number.isFinite(Number(item.replyCount)) ? Math.max(0, Number(item.replyCount)) : 0,\n        createdAt: String(item.createdAt || ''),\n        displayedTime: String(item.displayedTime || '').slice(0, 80),\n        isPinned: Boolean(item.isPinned),\n        position: Number(item.position) || commentsById.size + 1,\n        textTruncated: Boolean(item.textTruncated),\n        videoUrl: sourceUrl,\n        persisted: false\n      });\n    }\n  }\n};\nabsorbComments(page.comments);\n\nlet stableScrolls = 0;\nlet scanFailures = 0;\nwhile (commentsById.size < requestedCount && scrollCount < maxScrolls && stableScrolls < 3) {\n  const previousCount = commentsById.size;\n  await tobub.atoms.scroll({ direction: 'down', distance: 1200 });\n  scrollCount++;\n  await tobub.atoms.waitFor({ delay: 900 });\n  try {\n    page = await readPage();\n    scanFailures = 0;\n  } catch {\n    scanFailures++;\n    failureCount++;\n    if (scanFailures >= 3) {\n      errorSample.push('连续三次读取评论卡片失败');\n      break;\n    }\n    continue;\n  }\n  if (page?.challengeDetected) {\n    challengeDetected = true;\n    verificationEncountered = true;\n    return emptyResult('blocked', '采集过程中出现 Bilibili 安全验证；为避免保存不完整数据，本次未写入数据库。请在可见浏览器中人工完成后重试。', {\n      pageTitle: String(page.title || pageTitle).slice(0, 300),\n      reportedTotalCount, reportedTotalCountText: String(page.reportedTotalCountText || ''),\n      visibleThreadCount: Number(page.threadCount) || 0, invalidRecordCount, duplicateCount,\n      failureCount, scrollCount, verificationWaitSeconds\n    });\n  }\n  absorbComments(page?.comments);\n  if (commentsById.size === previousCount) stableScrolls++;\n  else stableScrolls = 0;\n}\npageTitle = String(page?.title || pageTitle).slice(0, 300);\nsort = page?.sort === 'hot' ? 'hot' : 'unknown';\nconst visibleThreadCount = Number(page?.threadCount) || 0;\nconst reportedTotalCountText = String(page?.reportedTotalCountText || '');\nconst finalRecords = Array.from(commentsById.values()).slice(0, requestedCount);\nif (!finalRecords.length) {\n  return emptyResult('blocked', '评论区已加载但未提取到带有有效 rpid 和正文的一级评论；未写入数据库。', {\n    pageTitle, reportedTotalCount, reportedTotalCountText, visibleThreadCount,\n    invalidRecordCount, duplicateCount, failureCount, scrollCount, verificationWaitSeconds\n  });\n}\n\nlet videoItem;\ntry {\n  const parentSaved = await tobub.db.saveContent({\n    platform,\n    contentType: 'video',\n    externalId: bvid,\n    title: pageTitle || bvid,\n    summary: 'Bilibili 视频评论采集关联视频',\n    url: sourceUrl,\n    metadata: { source: 'single_video_comments', videoBvid: bvid, collectedAt },\n    rawData: { videoBvid: bvid, title: pageTitle, url: sourceUrl, collectedAt },\n    tags: ['Bilibili', '视频评论'],\n    observationSource: 'bilibili_single_video_comments',\n    observationMeta: { sourceUrl, videoBvid: bvid, collectedAt, role: 'parent-video' },\n    displayPath: '视频评论/' + bvid,\n    sortOrder: 0\n  });\n  if (!parentSaved?.contentItemId || !parentSaved?.observationId) throw new Error('视频锚点保存失败');\n  videoItem = await tobub.db.getContentItemByExternalId(platform, 'video', bvid);\n  videoAnchorVerified = videoItem?.platform === platform && videoItem?.content_type === 'video' && String(videoItem?.external_id) === bvid;\n  if (!videoAnchorVerified) throw new Error('视频锚点回读失败');\n} catch (error) {\n  failureCount++;\n  errorSample.push(String(error?.message || '视频锚点写入/回读失败').slice(0, 180));\n  return emptyResult('blocked', '评论数据已提取，但视频关联锚点写入或回读未通过；未写入评论记录。', {\n    pageTitle, reportedTotalCount, reportedTotalCountText, visibleThreadCount,\n    extractedCount: finalRecords.length, videoAnchorVerified, invalidRecordCount,\n    duplicateCount, failureCount, scrollCount, verificationWaitSeconds,\n    errorSample\n  });\n}\n\nconst parentId = Number(videoItem.id);\nfor (let i = 0; i < finalRecords.length; i++) {\n  const item = finalRecords[i];\n  const storedTitle = item.text.slice(0, 500);\n  try {\n    const saved = await tobub.db.saveContent({\n      platform,\n      contentType: 'comment',\n      externalId: item.rpid,\n      parentId,\n      title: storedTitle,\n      summary: item.author,\n      url: sourceUrl,\n      metadata: {\n        source: 'bilibili_single_video_comments',\n        videoBvid: bvid,\n        rpid: item.rpid,\n        author: item.author,\n        authorId: item.authorId,\n        likeCount: item.likeCount,\n        replyCount: item.replyCount,\n        createdAt: item.createdAt,\n        displayedTime: item.displayedTime,\n        isPinned: item.isPinned,\n        sort,\n        position: i + 1,\n        textTruncated: item.textTruncated,\n        collectedAt\n      },\n      rawData: { ...item, sort, collectedAt },\n      tags: ['Bilibili', '视频评论', '一级评论', sort === 'hot' ? '热度排序' : '排序未知'],\n      observationSource: 'bilibili_single_video_comments',\n      observationMeta: { sourceUrl, videoBvid: bvid, rpid: item.rpid, sort, position: i + 1, collectedAt },\n      displayPath: '视频评论/' + bvid + '/' + sort + '/' + (i + 1),\n      sortOrder: i + 1\n    });\n    if (!saved?.contentItemId || !saved?.observationId) throw new Error('数据库未返回内容记录 ID');\n    persistedCount++;\n    const stored = await tobub.db.getContentItemByExternalId(platform, 'comment', item.rpid);\n    if (stored?.platform === platform &&\n        stored?.content_type === 'comment' &&\n        String(stored?.external_id) === item.rpid &&\n        Number(stored?.parent_id) === parentId &&\n        stored?.title === storedTitle) {\n      item.persisted = true;\n      databaseReadbackCount++;\n    } else {\n      failureCount++;\n      errorSample.push('评论 ' + item.rpid + ' 的数据库回读内容或视频关联不匹配');\n    }\n  } catch (error) {\n    failureCount++;\n    errorSample.push('评论 ' + item.rpid + ': ' + String(error?.message || '写入/回读失败').slice(0, 140));\n  }\n}\nconst reachedLimit = finalRecords.length >= requestedCount;\nconst allVerified = videoAnchorVerified &&\n  persistedCount === finalRecords.length &&\n  databaseReadbackCount === finalRecords.length &&\n  failureCount === 0;\nconst status = reachedLimit && allVerified ? 'complete' : 'partial';\nreturn {\n  status,\n  sourceUrl,\n  videoBvid: bvid,\n  pageTitle,\n  collectedAt,\n  accountKey,\n  scope,\n  sort,\n  requestedCount,\n  reportedTotalCount,\n  reportedTotalCountText,\n  visibleThreadCount,\n  extractedCount: finalRecords.length,\n  persistedCount,\n  databaseReadbackCount,\n  videoAnchorVerified,\n  invalidRecordCount,\n  duplicateCount,\n  failureCount,\n  scrollCount,\n  challengeDetected,\n  verificationEncountered,\n  verificationWaitSeconds,\n  reachedLimit,\n  message: status === 'complete'\n    ? '已从可见评论区按热度顺序采集 ' + finalRecords.length + ' 条一级评论，并逐条写入数据库、回读核验及关联视频。'\n    : '采集未达到完整条件：请求 ' + requestedCount + ' 条，提取 ' + finalRecords.length + ' 条，数据库确认 ' + databaseReadbackCount + ' 条；请结合滚动上限、页面总数和错误样本检查。',\n  errorSample: errorSample.slice(0, 5),\n  records: finalRecords\n};\n",
+    "platform": "bilibili",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "video": {
+          "type": "string",
+          "title": "BVID 或官方视频链接",
+          "description": "BVID（BV 加 10 位字符），或 https://www.bilibili.com/video/BV…",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "maxComments": {
+          "type": "integer",
+          "title": "最多采集一级评论数（1–200）",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "maxScrolls": {
+          "type": "integer",
+          "title": "最大页面滚动次数（4–30）",
+          "minimum": 4,
+          "maximum": 30
+        }
+      },
+      "required": [
+        "video"
+      ],
+      "additionalProperties": false
+    },
+    "output_schema": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "complete",
+            "partial",
+            "blocked"
+          ]
+        },
+        "sourceUrl": {
+          "type": "string"
+        },
+        "videoBvid": {
+          "type": "string"
+        },
+        "pageTitle": {
+          "type": "string"
+        },
+        "collectedAt": {
+          "type": "string"
+        },
+        "accountKey": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "sort": {
+          "type": "string",
+          "enum": [
+            "hot",
+            "unknown"
+          ]
+        },
+        "requestedCount": {
+          "type": "integer"
+        },
+        "reportedTotalCount": {
+          "type": "integer"
+        },
+        "reportedTotalCountText": {
+          "type": "string"
+        },
+        "visibleThreadCount": {
+          "type": "integer"
+        },
+        "extractedCount": {
+          "type": "integer"
+        },
+        "persistedCount": {
+          "type": "integer"
+        },
+        "databaseReadbackCount": {
+          "type": "integer"
+        },
+        "videoAnchorVerified": {
+          "type": "boolean"
+        },
+        "invalidRecordCount": {
+          "type": "integer"
+        },
+        "duplicateCount": {
+          "type": "integer"
+        },
+        "failureCount": {
+          "type": "integer"
+        },
+        "scrollCount": {
+          "type": "integer"
+        },
+        "challengeDetected": {
+          "type": "boolean"
+        },
+        "verificationEncountered": {
+          "type": "boolean"
+        },
+        "verificationWaitSeconds": {
+          "type": "integer"
+        },
+        "reachedLimit": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "errorSample": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rpid": {
+                "type": "string"
+              },
+              "videoBvid": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "author": {
+                "type": "string"
+              },
+              "authorId": {
+                "type": "string"
+              },
+              "likeCount": {
+                "type": "integer"
+              },
+              "replyCount": {
+                "type": "integer"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "displayedTime": {
+                "type": "string"
+              },
+              "isPinned": {
+                "type": "boolean"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "textTruncated": {
+                "type": "boolean"
+              },
+              "videoUrl": {
+                "type": "string"
+              },
+              "persisted": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "rpid",
+              "videoBvid",
+              "text",
+              "author",
+              "authorId",
+              "likeCount",
+              "replyCount",
+              "createdAt",
+              "displayedTime",
+              "isPinned",
+              "position",
+              "textTruncated",
+              "videoUrl",
+              "persisted"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "status",
+        "sourceUrl",
+        "videoBvid",
+        "pageTitle",
+        "collectedAt",
+        "accountKey",
+        "scope",
+        "sort",
+        "requestedCount",
+        "reportedTotalCount",
+        "reportedTotalCountText",
+        "visibleThreadCount",
+        "extractedCount",
+        "persistedCount",
+        "databaseReadbackCount",
+        "videoAnchorVerified",
+        "invalidRecordCount",
+        "duplicateCount",
+        "failureCount",
+        "scrollCount",
+        "challengeDetected",
+        "verificationEncountered",
+        "verificationWaitSeconds",
+        "reachedLimit",
+        "message",
+        "errorSample",
+        "records"
+      ],
+      "additionalProperties": false
+    },
+    "ui_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "video",
+          "label": "BVID 或官方视频链接",
+          "type": "text",
+          "required": true,
+          "description": "输入 BV… 或 bilibili.com/video/BV…"
+        },
+        {
+          "key": "maxComments",
+          "label": "最多采集一级评论数",
+          "type": "number",
+          "required": false,
+          "default": 50,
+          "description": "范围 1–200；默认 50。"
+        },
+        {
+          "key": "maxScrolls",
+          "label": "最大页面滚动次数",
+          "type": "number",
+          "required": false,
+          "default": 18,
+          "description": "范围 4–30；用于加载后续评论，默认 18。"
+        }
+      ]
+    },
+    "requirements": {
+      "account": "required",
+      "profile": "required"
+    },
+    "defaults": {
+      "params": {
+        "maxComments": 50,
+        "maxScrolls": 18
+      },
+      "browser": {
+        "run_mode": "profile",
+        "auth_mode": "inherit",
+        "headless": false
+      },
+      "execution": {
+        "account_id": 10,
+        "domain_mode": "optional"
+      }
+    },
+    "metadata": {
+      "category": "data-collection",
+      "source": "local",
+      "tags": [
+        "bilibili",
+        "comments",
+        "video",
+        "database"
+      ]
+    }
+  },
+  "platform": {
+    "code": "bilibili",
+    "name": "bilibili",
+    "version": "1",
+    "base_url": "https://www.bilibili.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "bilibili.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "cd88c464b0323a394bf5dd105a5c0bbd306e12a8eba2a8b45ccabaa73b51d319"
+  }
+}
