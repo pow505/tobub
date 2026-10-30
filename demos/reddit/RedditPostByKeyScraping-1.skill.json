@@ -9,6 +9,7 @@
     "rule": "required"
   },
   "skill": {
+    "skill_version": "1",
     "market_skill_id": "user_1786167247717_e3luo1",
     "release_id": "user_1786167247717_e3luo1",
     "name": "RedditPostByKeyScraping",

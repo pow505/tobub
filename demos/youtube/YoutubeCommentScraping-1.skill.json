@@ -9,6 +9,7 @@
     "rule": "required"
   },
   "skill": {
+    "skill_version": "1",
     "market_skill_id": "user_1785638268756_ueav3j",
     "release_id": "user_1785638268756_ueav3j",
     "name": "YoutubeCommentScraping",

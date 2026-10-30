@@ -9,6 +9,7 @@
     "rule": "required"
   },
   "skill": {
+    "skill_version": "1",
     "market_skill_id": "user_1786693823988_teeo99",
     "release_id": "user_1786693823988_teeo99",
     "name": "RedditWatchNewInfoScraping",

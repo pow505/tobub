@@ -9,6 +9,7 @@
     "rule": "required"
   },
   "skill": {
+    "skill_version": "1",
     "market_skill_id": "user_1784993996111_7lsl84",
     "release_id": "user_1784993996111_7lsl84",
     "name": "RedditAccountWarmUp",

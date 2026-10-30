@@ -10,6 +10,7 @@
     "rule": "required"
   },
   "skill": {
+    "skill_version": "1",
     "market_skill_id": "user_1786714137833_0sody7",
     "release_id": "user_1786714137833_0sody7",
     "name": "AmazonFetchProductScraping",

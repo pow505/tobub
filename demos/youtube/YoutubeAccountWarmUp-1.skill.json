@@ -9,6 +9,7 @@
     "rule": "required"
   },
   "skill": {
+    "skill_version": "1",
     "market_skill_id": "user_1785611750077_anmpjb",
     "release_id": "user_1785611750077_anmpjb",
     "name": "YoutubeAccountWarmUp",
