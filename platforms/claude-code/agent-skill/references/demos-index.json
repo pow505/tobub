@@ -7,7 +7,7 @@
       "platform": "amazon",
       "source_path": "demos/amazon/AmazonFetchProductScraping-1.skill.json",
       "file": "../../../demos/amazon/AmazonFetchProductScraping-1.skill.json",
-      "sha256": "bea55c3e5fbc5db520cafd7f0e05dbc6750d3191e0b9d35efb4208a65b7e4450",
+      "sha256": "a684f601b49528fa699a696a24a7d45334143506496e2bd1c6f55d5a3ab17013",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
@@ -1606,7 +1606,7 @@
       "platform": "reddit",
       "source_path": "demos/reddit/RedditAccountWarmUp-1.skill.json",
       "file": "../../../demos/reddit/RedditAccountWarmUp-1.skill.json",
-      "sha256": "8516ddaf83b425481eacd578d109cb2f33f522a10be63386488c9fd7e8cd0715",
+      "sha256": "97ad4b83a43d00d1daf6d5490d7741b309356b694a9c7b1fad1cf597a47e3590",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
@@ -1640,7 +1640,7 @@
       "platform": "reddit",
       "source_path": "demos/reddit/RedditCommentByPScraping-1.skill.json",
       "file": "../../../demos/reddit/RedditCommentByPScraping-1.skill.json",
-      "sha256": "c9936c8cf3f27586f7b6d413cdf9c7400ff7c029308531cf0ae7e279260d70ef",
+      "sha256": "e18dbd5eb7ddde23e98f7a52d8486eadfae0504bc6bb4bee3ac51ac766e873a1",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
@@ -1836,7 +1836,7 @@
       "platform": "reddit",
       "source_path": "demos/reddit/RedditPostByKeyScraping-1.skill.json",
       "file": "../../../demos/reddit/RedditPostByKeyScraping-1.skill.json",
-      "sha256": "12e8ed169ed19aa695714079e42d684ef7f92a00cf9d5c1c0813a764f1a7d23c",
+      "sha256": "c4fd646a253ba7e868688d5ac10c7af0eff8c8be4c25ac44a913c3ffcd54c399",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
@@ -1880,7 +1880,7 @@
       "platform": "reddit",
       "source_path": "demos/reddit/RedditPostByRScraping-1.skill.json",
       "file": "../../../demos/reddit/RedditPostByRScraping-1.skill.json",
-      "sha256": "4ff575bd9f43803f74d262050a18c83ca534b9010ae6b6c28f12cf84a5e00ad8",
+      "sha256": "4b2a60dae76eeccd3070f08ff12885d978366e5b076ee8451b98721f04d920fd",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
@@ -2088,7 +2088,7 @@
       "platform": "reddit",
       "source_path": "demos/reddit/RedditWatchNewInfoScraping-1.skill.json",
       "file": "../../../demos/reddit/RedditWatchNewInfoScraping-1.skill.json",
-      "sha256": "bf81004fd4d04946591692efa067efa288828484634e3298f5d9c7fada710859",
+      "sha256": "d25c1a339cfd52e320f6c14c055f6f869e942a4ca273638eaeec736f9e076057",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
@@ -2224,48 +2224,6 @@
     {
       "package_id": "user:user_1784014217327_vbjr6l@1",
       "platform": "toutiao",
-      "source_path": "demos/toutiao/toutiao-WarmUp.skill.json",
-      "file": "../../../demos/toutiao/toutiao-WarmUp.skill.json",
-      "sha256": "ec674e7df710beb5335b54391d9cf063c31c39ff3fe05734533f3ee0e509db46",
-      "status": "reference-only",
-      "validation": {
-        "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
-        "runtime_version": "1.8.2",
-        "valid": true,
-        "diagnostics": []
-      },
-      "capabilities": [
-        "atoms.scroll",
-        "atoms.waitFor",
-        "browser.close",
-        "browser.executeAtoms",
-        "browser.open",
-        "db.recordAction",
-        "db.saveContent",
-        "reporter.emit"
-      ],
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "times": {
-            "title": "times",
-            "type": "number"
-          },
-          "comments": {
-            "title": "comments",
-            "type": "number"
-          }
-        },
-        "additionalProperties": true
-      },
-      "output_schema": {},
-      "has_platform": true,
-      "has_rule": true,
-      "side_effects": "not-reviewed; inspect code and called Rules before execution"
-    },
-    {
-      "package_id": "user:user_1784014217327_vbjr6l@1",
-      "platform": "toutiao",
       "source_path": "demos/toutiao/头条获取新闻&自动发帖.skill.json",
       "file": "../../../demos/toutiao/头条获取新闻&自动发帖.skill.json",
       "sha256": "ae010d2a9ddb967154da988dae3851ea40907d029591cffb7b0f987f6727071e",
@@ -2358,7 +2316,7 @@
       "platform": "youtube",
       "source_path": "demos/youtube/YoutubeAccountWarmUp-1.skill.json",
       "file": "../../../demos/youtube/YoutubeAccountWarmUp-1.skill.json",
-      "sha256": "035e3f681f9761ba41306f4c6b44604254ba4fea5dfdaed54b340cf3963ab1d7",
+      "sha256": "9d015f39aa7ff02ecc70448c9480d5c5a8e75cc77a32a1008947e87d1b0105b0",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",
@@ -2394,7 +2352,7 @@
       "platform": "youtube",
       "source_path": "demos/youtube/YoutubeCommentScraping-1.skill.json",
       "file": "../../../demos/youtube/YoutubeCommentScraping-1.skill.json",
-      "sha256": "710820508206aea20e23b36fd8e85f800902296a8cf2f2c243cbd215d8134d36",
+      "sha256": "6e8df9d7e97419b4fa7f6a352eaa602da0073b87bc8f8d20b5366f279e98bd9b",
       "status": "reference-only",
       "validation": {
         "scope": "code-io-schemas-and-declared-ai-only; other-requirements/defaults/package/platform/rule/browser-behavior-not-verified",

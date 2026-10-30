@@ -3,7 +3,7 @@
   "runtime_version": "1.8.2",
   "ui_catalog_hash": "a894880090ada5aee3caf3606edd8f5d3a0e3771ed3c020e6617fd778321f672",
   "capability_count": 163,
-  "demo_count": 27,
+  "demo_count": 26,
   "sources": [
     {
       "project": "sdk",
@@ -417,7 +417,7 @@
     },
     {
       "path": "references/demos-index.json",
-      "sha256": "9f19458923cd9be1251aeb792266114e2efc9d9b08f85ad2ab42f53c2e3be826"
+      "sha256": "28bcfa3b94a6daa91cc9af57279a911684f68e18909dacc306bb74bdc1d68c86"
     },
     {
       "path": "references/execution.md",
