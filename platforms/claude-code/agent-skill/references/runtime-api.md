@@ -1989,6 +1989,10 @@ Pass these fields inside the MCP `path`, `query`, or `body` object as shown.
         "domain_mode": {
           "type": "string",
           "description": "Domain Mode."
+        },
+        "agent_context": {
+          "type": "boolean",
+          "description": "Agent Context."
         }
       },
       "additionalProperties": true,

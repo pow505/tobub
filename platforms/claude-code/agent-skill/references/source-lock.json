@@ -1,19 +1,19 @@
 {
   "schema_version": 1,
-  "runtime_version": "1.8.2",
-  "ui_catalog_hash": "a894880090ada5aee3caf3606edd8f5d3a0e3771ed3c020e6617fd778321f672",
+  "runtime_version": "1.8.5",
+  "ui_catalog_hash": "cd9758823741143043fb38461e0b0c6d9b8a7feaa9b7ad529287bf507772b1c2",
   "capability_count": 163,
-  "demo_count": 26,
+  "demo_count": 39,
   "sources": [
     {
       "project": "sdk",
       "path": "package.json",
-      "sha256": "051cc426b1d625620d33580844f0aad2557d365b12d959171f1ddb937b00ec31"
+      "sha256": "a28da848b699532236383fcd31871bf9ba02ffe2dfddde43dcacff414b3f9e6a"
     },
     {
       "project": "sdk",
       "path": "src/interfaces/http/ApiContracts.generated.ts",
-      "sha256": "ec3e05bd21d7f683fc6d86e44e77dde822c997527eb259576b2f7bed299a03f6"
+      "sha256": "6c3216adaaef57a993e13b1bbf99f8cc87e33c5904a974399d012d7074732769"
     },
     {
       "project": "sdk",
@@ -23,7 +23,7 @@
     {
       "project": "sdk",
       "path": "docs/api.md",
-      "sha256": "6e33914dfda2e393d2e4eb697d43aec9879bf0d451e953603cd0f9ade7ec5746"
+      "sha256": "435470e0f50da93b3337b7465179fa10091ca132c35c76df58d52e7eeb345982"
     },
     {
       "project": "repository",
@@ -43,7 +43,7 @@
     {
       "project": "sdk",
       "path": "scripts/build-agent-skill.ts",
-      "sha256": "4884b31c40aff320ea9810a658e77e16545a6b310e0eb2d421caded501d9b14a"
+      "sha256": "0cea6f06057fc1a0ded656add4ae99fce163e5ff5f69599cfb6ca56a924cd6ad"
     },
     {
       "project": "sdk",
@@ -83,12 +83,12 @@
     {
       "project": "ui",
       "path": "scripts/generate-snippet-catalog.mjs",
-      "sha256": "27a078822e848c869a2622cd9ec8f5ac542cc552c4fdfb6a02bb046e5bcee0b0"
+      "sha256": "cf0992003277c94cbf0d433399ba617e29f0e242996a06ba04f61dbc9e5b052a"
     },
     {
       "project": "ui",
       "path": "scripts/snippet-demos.json",
-      "sha256": "2609744c116b5d2df6c57e76ce1236c11c1de2432c43a1f5db38d8f25817b6ee"
+      "sha256": "de4d0f3ebc1d69e8436979be6bf5bd55704a6635e3e7fe468cb802040aea8f83"
     },
     {
       "project": "ui",
@@ -98,7 +98,7 @@
     {
       "project": "ui",
       "path": "src/locales/lang/en-US/snippets.json",
-      "sha256": "22de0323920ebf612d3c3b97b3ddf855f2e1117a817d8255965ef074c8b99f60"
+      "sha256": "4c4c31752b10719080c6b8d03de7617fbe8cc1dff326b7c8078c5962100ff194"
     },
     {
       "project": "sdk",
@@ -378,12 +378,12 @@
     {
       "project": "sdk",
       "path": "src/kernel/ai/contracts/AiMethodCall.ts",
-      "sha256": "2d2caa0fb60ae8a41693400c6bfde3d27d88eb92eba2135bd8fd487f6bfc6e1e"
+      "sha256": "4cfb44d6783feab74f1ad5007b95d81da25aabd6b5ccbc25ea31364ec4dc98d5"
     },
     {
       "project": "sdk",
       "path": "src/kernel/ai/contracts/AiMethodContract.ts",
-      "sha256": "6c130af41ac65c6dc3d9f77200eaa85a1b1ecee846c846f002a864d8466d1eaa"
+      "sha256": "773b7732fead8df49bbec5ed65917c13979832e76fa6b1d23a3c112c227e4ee2"
     }
   ],
   "resources": [
@@ -405,7 +405,7 @@
     },
     {
       "path": "references/capability-catalog.json",
-      "sha256": "e879e24657903be58f6b871fb47e44f5f08d0c71f9c991c487ebb1fd92de9745"
+      "sha256": "4ae25fe524719b04c44e53891fe6203e6e4e509fab2b031bc71db9c8dcfda3c7"
     },
     {
       "path": "references/collection-quality.md",
@@ -413,7 +413,7 @@
     },
     {
       "path": "references/demos-index.json",
-      "sha256": "28bcfa3b94a6daa91cc9af57279a911684f68e18909dacc306bb74bdc1d68c86"
+      "sha256": "4af3e29903a9e73ec0beedd2c8c6e6a60de051880eac346cb2029a1023e0d7f8"
     },
     {
       "path": "references/execution.md",
@@ -437,7 +437,7 @@
     },
     {
       "path": "references/runtime-api.md",
-      "sha256": "2221c1cb20497d973206145012ca8b9b539c621bd4a511616232d6938aea2d9b"
+      "sha256": "b1064633f7c543295ba2706f21d30d3014f75b5b004370da727a14024201f7cf"
     },
     {
       "path": "references/runtime-tools.json",
@@ -457,7 +457,7 @@
     },
     {
       "path": "scripts/demo-resources.mjs",
-      "sha256": "3bcfb5a346e66208127a2290bddc19f29a9191cc7aee389247d409d557fbc43a"
+      "sha256": "7872a1f20a092a26a1633e4f5718d7a2274e524746eb62e54e9037fc19fb54f8"
     },
     {
       "path": "scripts/install.mjs",
@@ -469,7 +469,7 @@
     },
     {
       "path": "scripts/runtime-mcp.mjs",
-      "sha256": "e558ffe08fa4918a1b2b9d92d85b11b7816b2dceffb704208b6b207b2783da79"
+      "sha256": "401d426db4792a1c151865efeff6286fab58be1a4783cce6da41de9c8c54407d"
     },
     {
       "path": "scripts/search-capability.mjs",

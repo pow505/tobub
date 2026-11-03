@@ -139,6 +139,8 @@ Make every Skill contribution easy to understand, review, and run safely:
 - test it inside compatible Tobub software before opening a pull request;
 - never commit credentials, cookies, access tokens, private data, or unauthorized content.
 
+Maintainers should install the local pre-commit check once with `bash scripts/install-git-hooks.sh`. It verifies the staged demo and Claude Code/Codex Agent Skill files before commit. If a demo changes, rebuild both generated packages from the SDK using the commands in the platform package maintenance guides, then stage the generated files.
+
 ## Compatibility and safety
 
 Skills interact with third-party platforms. Their terms, APIs, rate limits, privacy requirements, robots rules, and local laws still apply. Use test accounts and minimum permissions when validating a Skill. A Skill should fail closed when authentication, required input, or platform state is uncertain.

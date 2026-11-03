@@ -38,6 +38,9 @@ export async function readDemo(root, index, demo, repositoryRoot, pathRoot = roo
   // Reject aliases as well as file symlinks: an indexed demo must be the actual repository/bundle resource.
   if (await realpath(expected) !== expected) throw new Error(`Demo must not use symlinks: ${demo.source_path}`);
   const bytes = await readFile(expected);
-  if (createHash('sha256').update(bytes).digest('hex') !== demo.sha256) throw new Error(`Demo resource was changed: ${demo.source_path}`);
+  const actualHash = createHash('sha256').update(bytes).digest('hex');
+  if (actualHash !== demo.sha256) {
+    throw new Error('Demo resource was changed: ' + demo.source_path + '. Rebuild the generated Agent Skill references from the current demos and commit references/demos-index.json and references/source-lock.json.');
+  }
   return bytes;
 }

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "runtime_version": "1.8.2",
+  "runtime_version": "1.8.5",
   "items": [
     {
       "id": "account.*",
@@ -301,6 +301,10 @@
         {
           "code": "const result = await tobub.ai.chat({ input: [{ role: 'system', content: 'Be concise.' }, { role: 'user', content: [{ type: 'text', text: 'Summarize this page.' }] }], instructions: 'Return a concise answer.', settings: { temperature: 0.2, topP: 0.9, maxOutputTokens: 800, stopSequences: ['END'], seed: 7 }, tools: [{ name: 'lookup', description: 'Look up a referenced item.', inputSchema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'], additionalProperties: false } }], toolChoice: { name: 'lookup' }, providerOptions: { openai_compatible: { model: 'gpt-4o-mini' } }, metadata: { traceId: 'skill-demo' } });",
           "description": "Complete request: tools and provider options"
+        },
+        {
+          "code": "const result = await tobub.ai.chat('Answer this question.', { agentContext: { query: 'product policy', documentIds: ['product-policy'] } });",
+          "description": "Select Agent knowledge query and documents"
         }
       ],
       "tags": [
@@ -546,6 +550,34 @@
                 "additionalProperties": {
                   "type": "string"
                 }
+              },
+              "agentContext": {
+                "oneOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "query": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 8000
+                      },
+                      "documentIds": {
+                        "type": "array",
+                        "maxItems": 100,
+                        "uniqueItems": true,
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        }
+                      }
+                    }
+                  }
+                ]
               }
             }
           }
@@ -566,19 +598,6 @@
           }
         },
         "additionalProperties": true
-      },
-      "requirements": {
-        "ai": {
-          "contractVersion": 1,
-          "methods": [
-            "chat"
-          ],
-          "capabilities": [
-            "input.text",
-            "output.text"
-          ],
-          "dataPolicy": "external-provider"
-        }
       }
     },
     {
@@ -842,6 +861,34 @@
                 "additionalProperties": {
                   "type": "string"
                 }
+              },
+              "agentContext": {
+                "oneOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "query": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 8000
+                      },
+                      "documentIds": {
+                        "type": "array",
+                        "maxItems": 100,
+                        "uniqueItems": true,
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        }
+                      }
+                    }
+                  }
+                ]
               }
             }
           }
@@ -862,20 +909,6 @@
           }
         },
         "additionalProperties": true
-      },
-      "requirements": {
-        "ai": {
-          "contractVersion": 1,
-          "methods": [
-            "chatStream"
-          ],
-          "capabilities": [
-            "input.text",
-            "output.text",
-            "feature.streaming"
-          ],
-          "dataPolicy": "external-provider"
-        }
       }
     },
     {
@@ -1053,19 +1086,6 @@
           }
         },
         "additionalProperties": true
-      },
-      "requirements": {
-        "ai": {
-          "contractVersion": 1,
-          "methods": [
-            "embed"
-          ],
-          "capabilities": [
-            "input.text",
-            "output.embedding"
-          ],
-          "dataPolicy": "external-provider"
-        }
       }
     },
     {
@@ -1219,19 +1239,6 @@
           }
         },
         "additionalProperties": true
-      },
-      "requirements": {
-        "ai": {
-          "contractVersion": 1,
-          "methods": [
-            "generateImage"
-          ],
-          "capabilities": [
-            "input.text",
-            "output.image"
-          ],
-          "dataPolicy": "external-provider"
-        }
       }
     },
     {
@@ -1250,6 +1257,10 @@
         {
           "code": "const result = await tobub.ai.generateObject({ input: [{ role: 'user', content: 'Extract the title and count.' }], instructions: 'Use only values present in the input.', schemaName: 'PageSummary', schema: { type: 'object', properties: { title: { type: 'string' }, count: { type: 'integer' } }, required: ['title', 'count'], additionalProperties: false }, settings: { temperature: 0, maxOutputTokens: 500, seed: 11 }, providerOptions: { openai_compatible: { model: 'gpt-4o-mini' } }, metadata: { traceId: 'object-demo' } });",
           "description": "Complete schema and request options"
+        },
+        {
+          "code": "const result = await tobub.ai.generateObject('Extract the title.', { type: 'object', properties: { title: { type: 'string' } }, required: ['title'], additionalProperties: false }, { agentContext: false });",
+          "description": "Disable Agent context for objective extraction"
         }
       ],
       "tags": [
@@ -1428,6 +1439,34 @@
               "type": "string"
             }
           },
+          "agentContext": {
+            "oneOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 8000
+                  },
+                  "documentIds": {
+                    "type": "array",
+                    "maxItems": 100,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    }
+                  }
+                }
+              }
+            ]
+          },
           "schema": {
             "type": "object"
           },
@@ -1449,19 +1488,6 @@
           }
         },
         "additionalProperties": true
-      },
-      "requirements": {
-        "ai": {
-          "contractVersion": 1,
-          "methods": [
-            "generateObject"
-          ],
-          "capabilities": [
-            "input.text",
-            "output.structured"
-          ],
-          "dataPolicy": "external-provider"
-        }
       }
     },
     {
@@ -1645,19 +1671,6 @@
           "data": {}
         },
         "additionalProperties": true
-      },
-      "requirements": {
-        "ai": {
-          "contractVersion": 1,
-          "methods": [
-            "generateSpeech"
-          ],
-          "capabilities": [
-            "input.text",
-            "output.audio"
-          ],
-          "dataPolicy": "external-provider"
-        }
       }
     },
     {
@@ -1906,20 +1919,6 @@
             }
           }
         }
-      },
-      "requirements": {
-        "ai": {
-          "contractVersion": 1,
-          "methods": [
-            "locateObjects"
-          ],
-          "capabilities": [
-            "input.image",
-            "output.structured",
-            "vision"
-          ],
-          "dataPolicy": "external-provider"
-        }
       }
     },
     {
@@ -2123,20 +2122,6 @@
               }
             }
           }
-        }
-      },
-      "requirements": {
-        "ai": {
-          "contractVersion": 1,
-          "methods": [
-            "ocr"
-          ],
-          "capabilities": [
-            "input.image",
-            "output.structured",
-            "vision"
-          ],
-          "dataPolicy": "external-provider"
         }
       }
     },
@@ -2374,19 +2359,6 @@
           }
         },
         "additionalProperties": true
-      },
-      "requirements": {
-        "ai": {
-          "contractVersion": 1,
-          "methods": [
-            "transcribe"
-          ],
-          "capabilities": [
-            "input.audio",
-            "output.text"
-          ],
-          "dataPolicy": "external-provider"
-        }
       }
     },
     {

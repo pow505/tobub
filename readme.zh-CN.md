@@ -137,6 +137,8 @@ Tobub 应用还支持 Docker / 自部署、本地数据控制与 OpenAPI 集成�
 - 在兼容的 Tobub 软件中测试后再提交 Pull Request；
 - 不要提交密码、Cookie、Token、个人数据或未经授权的内容。
 
+维护者请先运行一次 `bash scripts/install-git-hooks.sh` 安装本地提交前检查。提交 demo 或 Claude Code/Codex Agent Skill 文件时，hook 会检查暂存内容。demo 有变化时，先按平台包维护指南从 SDK 重新生成两套包，再暂存生成文件。
+
 ## 安全与平台合规
 
 Skills 会与第三方平台交互，必须遵守平台条款、API 限制、隐私要求、robots 规则和当地法律。测试时请使用测试账号和最小权限。当认证、输入或平台状态不确定时，Skill 应安全失败。

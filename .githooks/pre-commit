@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+staged_paths="$(git -C "$repo_root" diff --cached --name-only)"
+should_verify=false
+
+while IFS= read -r path; do
+  case "$path" in
+    demos/*|platforms/claude-code/agent-skill/*|platforms/codex/agent-skill/*)
+      should_verify=true
+      break
+      ;;
+  esac
+done <<< "$staged_paths"
+
+if [[ "$should_verify" != true ]]; then
+  exit 0
+fi
+
+tree="$(git -C "$repo_root" write-tree)"
+snapshot="$(mktemp -d "${TMPDIR:-/tmp}/tobub-pre-commit.XXXXXX")"
+trap 'rm -rf "$snapshot"' EXIT
+
+git -C "$repo_root" archive "$tree" | tar -x -C "$snapshot"
+
+failed=false
+if ! node "$snapshot/platforms/claude-code/agent-skill/scripts/verify-package.mjs" --repository "$snapshot"; then
+  failed=true
+fi
+if ! node "$snapshot/platforms/codex/agent-skill/scripts/verify-package.mjs" --repository "$snapshot"; then
+  failed=true
+fi
+
+if [[ "$failed" == true ]]; then
+  sdk_root="${TOBUB_SDK_DIR:-$repo_root/../../html/tobub-sdk}"
+  ui_root="${TOBUB_UI_DIR:-$repo_root/../../html/tobub-ui}"
+  cat >&2 <<EOF_HINT
+
+Pre-commit check failed for the staged Tobub demo or Agent Skill package.
+Rebuild both generated packages from the SDK, then stage the generated files:
+  (cd "$sdk_root" && pnpm skill:build --platform claude-code --ui "$ui_root" --repository "$repo_root")
+  (cd "$sdk_root" && pnpm skill:build --platform codex --ui "$ui_root" --repository "$repo_root")
+EOF_HINT
+  exit 1
+fi
