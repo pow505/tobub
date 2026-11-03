@@ -1,21 +1,20 @@
 {
-  "package_type": "tobub_skill",
+  "created_at": "2026-08-14T13:28:57.834Z",
   "manifest_version": 1,
   "package_id": "user:user_1786714137833_0sody7@1",
+  "package_type": "tobub_skill",
   "package_version": "1",
-  "source": "user",
-  "created_at": "2026-08-14T13:28:57.834Z",
   "requirements": {
     "platform": "required",
     "rule": "required"
   },
   "skill": {
-    "skill_version": "1",
     "market_skill_id": "user_1786714137833_0sody7",
     "release_id": "user_1786714137833_0sody7",
     "name": "AmazonFetchProductScraping",
+    "skill_version": "1",
     "source_type": "local",
-    "skill_code": "// Code Tab\nawait tobub.adapter.bootstrap()\n\nawait tobub.atoms.waitFor({ loadState: 'domcontentloaded' }, { timeout: 30000 })\n\ntry {\n  await tobub.atoms.click({ selector: 'button.a-button-text' })\n} catch {}\n\nawait tobub.atoms.click({\n  selector: 'form#nav-search-bar-form input#twotabsearchtextbox',\n}, { timeout: 30000 })\n\nawait tobub.atoms.fill({\n  selector: 'form#nav-search-bar-form input#twotabsearchtextbox',\n  value: 'nike',\n}, { timeout: 30000 })\n\nawait tobub.atoms.press({ key: 'Enter' })\n\nawait tobub.atoms.waitFor({ delay: [3000, 5600] })\n\nfor (let i = 0; i < 999; i++) {\n  await tobub.adapter.action('searchScroll')\n\n  try {\n    await tobub.atoms.waitFor({\n      selector: 'div[role=\"navigation\"]',\n      selectorState: 'visible',\n    }, { timeout: 5000 })\n\n    await tobub.atoms.click({\n      selector: 'a.s-pagination-next',\n    }, { timeout: 10000 })\n\n    break\n  } catch {\n    // 目标元素未出现，继续滚动\n  }\n}\n\nawait tobub.debug.pause()\n",
+    "skill_code": "// Code Tab\nawait tobub.adapter.bootstrap()\n\nawait tobub.atoms.waitFor({ loadState: 'domcontentloaded' }, { timeout: 30000 })\n\ntry {\n  await tobub.atoms.click({ selector: 'button.a-button-text' })\n} catch {}\n\nawait tobub.atoms.click({\n  selector: 'form#nav-search-bar-form input#twotabsearchtextbox',\n}, { timeout: 30000 })\n\nawait tobub.atoms.fill({\n  selector: 'form#nav-search-bar-form input#twotabsearchtextbox',\n  value: 'nike',\n}, { timeout: 30000 })\n\nawait tobub.atoms.press({ key: 'Enter' })\n\nawait tobub.atoms.waitFor({ delay: [3000, 5600] })\n\nfor (let i = 0; i < 999; i++) {\n  await tobub.adapter.action('searchScroll')\n\n  try {\n    await tobub.atoms.waitFor({\n      selector: 'div[role=\"navigation\"]',\n      selectorState: 'visible',\n    }, { timeout: 5000 })\n\n    await tobub.atoms.click({\n      selector: 'a.s-pagination-next',\n    }, { timeout: 10000 })\n\n    break\n  } catch {\n    // 目标元素未出现，继续滚动\n  }\n}",
     "platform": "amazon",
     "input_schema": {
       "type": "object",
@@ -35,11 +34,11 @@
       "version": 1,
       "fields": [
         {
+          "default": "nike",
           "key": "product",
           "label": "product",
-          "type": "input",
           "required": true,
-          "default": "nike"
+          "type": "input"
         }
       ]
     },
@@ -57,6 +56,7 @@
     },
     "metadata": {}
   },
+  "source": "user",
   "platform": {
     "code": "amazon",
     "name": "amazon",
@@ -82,31 +82,17 @@
     "schema_version": "1",
     "hash": "e8eff8d92a07c3e0e28a07a703e2afda59e430d8b7378ea3c8d7ecb8c74eb9cf",
     "rules": {
-      "platform": "amazon",
-      "version": "1.0.0",
-      "meta": {
-        "name": "amazon",
-        "baseUrl": "https://www.amazon.com",
-        "capabilities": []
-      },
-      "routes": {
-        "home": {
-          "url": "https://www.amazon.com"
-        }
-      },
-      "selectors": {},
-      "extractors": {},
       "actions": {
         "searchScroll": {
           "steps": [
             {
               "atom": "scroll",
               "options": {
-                "mode": "mouse",
                 "distance": [
                   600,
                   1000
                 ],
+                "mode": "mouse",
                 "steps": [
                   8,
                   15
@@ -127,7 +113,21 @@
             }
           ]
         }
-      }
+      },
+      "extractors": {},
+      "meta": {
+        "baseUrl": "https://www.amazon.com",
+        "capabilities": [],
+        "name": "amazon"
+      },
+      "platform": "amazon",
+      "routes": {
+        "home": {
+          "url": "https://www.amazon.com"
+        }
+      },
+      "selectors": {},
+      "version": "1.0.0"
     }
   }
 }

@@ -10,7 +10,7 @@
   <a href="https://tobub.com">官网</a> ·
   <a href="https://github.com/pow505/tobub/releases/latest">下载 Tobub</a> ·
   <a href="./demos/">Skill 示例</a> ·
-  <a href="readme.md">English</a>
+  <a href="readme.md">English-1.8.5</a>
 </p>
 
 ## Tobub 是什么？
