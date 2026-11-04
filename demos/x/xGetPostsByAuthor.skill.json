@@ -1,0 +1,475 @@
+{
+  "package_type": "tobub_skill",
+  "manifest_version": 1,
+  "package_id": "user:x-latest-tweets-to-database@1.0.0",
+  "package_version": "1.0.0",
+  "source": "user",
+  "created_at": "2026-11-04T02:34:40.767Z",
+  "requirements": {
+    "platform": "required",
+    "rule": "none"
+  },
+  "skill": {
+    "market_skill_id": "x-latest-tweets-to-database",
+    "release_id": "local-20261104",
+    "name": "X Author Latest Posts Collector",
+    "skill_version": "1.0.0",
+    "source_type": "local",
+    "skill_code": "const input=String(tobub.params.userIds??'44196397').trim();\nconst maxTweetsPerUser=Number(tobub.params.maxTweetsPerUser??10);\nconst maxScrollsPerUser=Math.min(12,Math.max(6,Math.ceil(maxTweetsPerUser/8)+2));\nconst waitSeconds=4;\nconst includeRetweets=tobub.params.includeRetweets===true;\nif(!input)throw new Error('Enter at least one X numeric user ID, @handle, or profile URL.');\nif(input.length>4096)throw new Error('userIds can contain no more than 4096 characters.');\nif(!Number.isInteger(maxTweetsPerUser)||maxTweetsPerUser<1||maxTweetsPerUser>50)throw new Error('maxTweetsPerUser must be an integer between 1 and 50.');\nconst tokens=input.split(/[,\\s;]+/).map(x=>x.trim()).filter(Boolean);\nif(!tokens.length||tokens.length>10)throw new Error('Enter up to 10 targets, separated by commas, semicolons, or line breaks.');\nconst allowedHosts=new Set(['x.com','www.x.com','mobile.x.com','twitter.com','www.twitter.com','mobile.twitter.com']);\nfunction parseTarget(token){\n  let value=token.trim(),path='';\n  const isUrl=/^[a-z][a-z0-9+.-]*:\\/\\//i.test(value)||/^(?:www\\.|mobile\\.)?(?:x|twitter)\\.com\\//i.test(value);\n  if(isUrl){\n    let parsed;\n    try{parsed=new URL(/^[a-z][a-z0-9+.-]*:\\/\\//i.test(value)?value:'https://'+value);}catch{throw new Error('Invalid X profile URL: '+token);}\n    if(!allowedHosts.has(parsed.hostname.toLowerCase())||!['http:','https:'].includes(parsed.protocol))throw new Error('Only x.com or twitter.com profile URLs are supported: '+token);\n    path=decodeURIComponent(parsed.pathname||'').replace(/\\/+$/,'');\n    const idMatch=path.match(/^\\/i\\/user\\/(\\d+)$/i);\n    if(idMatch)return{input:token,kind:'id',value:idMatch[1].replace(/^0+(?=\\d)/,''),key:'id:'+idMatch[1].replace(/^0+(?=\\d)/,''),url:'https://x.com/i/user/'+idMatch[1]};\n    const handleMatch=path.match(/^\\/@?([A-Za-z0-9_]{1,15})$/);\n    if(!handleMatch)throw new Error('Profile URL must use https://x.com/<handle> or /i/user/<numeric ID>: '+token);\n    value=handleMatch[1];\n  }else value=value.replace(/^@/,'');\n  if(/^\\d{1,30}$/.test(value)){\n    const id=value.replace(/^0+(?=\\d)/,'');\n    if(id==='0')throw new Error('X user ID cannot be 0.');\n    return{input:token,kind:'id',value:id,key:'id:'+id,url:'https://x.com/i/user/'+id};\n  }\n  if(!/^[A-Za-z0-9_]{1,15}$/.test(value))throw new Error('Invalid X user ID or handle: '+token);\n  return{input:token,kind:'handle',value,key:'handle:'+value.toLowerCase(),url:'https://x.com/'+encodeURIComponent(value)};\n}\nconst targets=[],targetKeys=new Set();\nfor(const token of tokens){const target=parseTarget(token);if(!targetKeys.has(target.key)){targets.push(target);targetKeys.add(target.key);}}\nif(!targets.length)throw new Error('No valid, unique X user IDs or handles were found.');\nconst capturedAt=new Date().toISOString();\nconst recordBudget=Math.min(500,targets.length*maxTweetsPerUser);\nconst writer=await tobub.data.open({name:'X Latest Posts',mode:'event',outputs:[{type:'database'},{type:'file',format:'jsonl'}],policy:{batchSize:50,flushIntervalMs:500,maxRecords:recordBudget,maxBytes:25000000,retentionDays:90},metadata:{platform:'Xcom',capturedAt,requestedUsers:targets.map(x=>x.input),scope:'Profile post timeline'}});\nconst users=[],tweets=[];\nlet totalDatabaseSaved=0,totalCollectionSaved=0,totalSaveFailures=0;\nlet fatalSaveError='';\nconst snapshotExpression=\"(()=>{\\n  const isVisible=e=>{\\n    const r=e.getBoundingClientRect(),s=getComputedStyle(e);\\n    return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'&&s.opacity!=='0';\\n  };\\n  const header=document.querySelector('[data-testid=\\\"UserName\\\"]');\\n  const path=decodeURIComponent(location.pathname||'').split('/').filter(Boolean);\\n  const firstPath=path[0]||'';\\n  let ownerHandle=firstPath&&firstPath!=='i'?firstPath:'';\\n  if(!ownerHandle){\\n    const links=Array.from(header?.querySelectorAll('a[href]')||[]);\\n    for(const a of links){\\n      const p=(a.getAttribute('href')||'').split('?')[0].split('/').filter(Boolean);\\n      if(p[0]&&p[0]!=='i'&&p[0]!=='status'){ownerHandle=p[0];break;}\\n    }\\n  }\\n  const profileIdTestId=Array.from(document.querySelectorAll('[data-testid]'))\\n    .map(e=>e.getAttribute('data-testid')||'')\\n    .find(x=>/^\\\\d+-(?:follow|unfollow)$/.test(x))||'';\\n  const profileIdMatch=profileIdTestId.match(/^(\\\\d+)-/);\\n  const bodyText=(document.body?.innerText||'').slice(0,12000);\\n  const metric=(a,k)=>{\\n    const e=a.querySelector('[data-testid=\\\"'+k+'\\\"]');\\n    return String(e?.getAttribute('aria-label')||e?.innerText||'').trim();\\n  };\\n  const cards=Array.from(document.querySelectorAll('article[data-testid=\\\"tweet\\\"]'))\\n    .filter(isVisible)\\n    .map(a=>{\\n      const author=a.querySelector('[data-testid=\\\"User-Name\\\"]');\\n      const links=Array.from(author?.querySelectorAll('a[href]')||[]);\\n      let authorHandle='';\\n      for(const link of links){\\n        const p=(link.getAttribute('href')||'').split('?')[0].split('/').filter(Boolean);\\n        if(p[0]&&p[0]!=='i'&&p[0]!=='status'){authorHandle=p[0];break;}\\n      }\\n      const time=a.querySelector('time');\\n      const timeLink=time?.closest('a[href]');\\n      const statusHref=timeLink?.getAttribute('href')||\\n        Array.from(a.querySelectorAll('a[href*=\\\"/status/\\\"]')).map(x=>x.getAttribute('href')).find(Boolean)||'';\\n      const statusMatch=statusHref.match(/\\\\/status\\\\/(\\\\d+)/);\\n      const textNode=a.querySelector('[data-testid=\\\"tweetText\\\"]');\\n      const socialContext=String(a.querySelector('[data-testid=\\\"socialContext\\\"]')?.innerText||'').trim();\\n      const mediaUrls=Array.from(a.querySelectorAll('[data-testid=\\\"tweetPhoto\\\"] img[src]'))\\n        .map(x=>x.src).filter(Boolean).slice(0,8);\\n      return {\\n        id:statusMatch?.[1]||'',\\n        text:String(textNode?.innerText||'').trim(),\\n        authorName:String(author?.innerText||'').split('\\\\n')[0].trim(),\\n        authorHandle,\\n        createdAt:String(time?.getAttribute('datetime')||''),\\n        statusHref,\\n        context:socialContext,\\n        isRetweet:/reposted|retweeted|retweet/i.test(socialContext),\\n        isPinned:/pinned/i.test(socialContext),\\n        textTruncated:!!a.querySelector('[data-testid=\\\"tweet-text-show-more-link\\\"]'),\\n        metrics:{reply:metric(a,'reply'),repost:metric(a,'retweet'),like:metric(a,'like'),view:metric(a,'analytics')},\\n        mediaUrls,\\n        hasMedia:mediaUrls.length>0||Boolean(a.querySelector('[data-testid=\\\"videoComponent\\\"]')||a.querySelector('[data-testid=\\\"card.wrapper\\\"]'))\\n      };\\n    });\\n  return {\\n    url:location.href,\\n    title:document.title,\\n    ownerHandle,\\n    profileHeader:String(header?.innerText||'').trim(),\\n    profileId:profileIdMatch?.[1]||'',\\n    loggedIn:!!document.querySelector('[data-testid=\\\"SideNav_AccountSwitcher_Button\\\"]'),\\n    bodyText,\\n    endSignal:/you(?:'|’)re all caught up|no more posts|end of posts|you have reached the end/i.test(bodyText),\\n    emptySignal:/hasn(?:'|’)t posted|no posts yet|doesn(?:'|’)t have any posts/i.test(bodyText),\\n    restrictedSignal:/account is suspended|this account doesn(?:'|’)t exist|these posts are protected|user not found/i.test(bodyText),\\n    cards\\n  };\\n})()\";\nconst scrollExpression=\"(()=>{window.scrollBy(0,Math.max(600,window.innerHeight*0.85));return true})()\";\nfunction unwrap(result){return result&&result.value!==undefined?result.value:(result&&result.result!==undefined?result.result:result);}\nasync function readPage(){return unwrap(await tobub.atoms.evaluate({mode:'expression',expression:snapshotExpression}));}\nfunction localizedError(error,fallback){const message=String(error?.message||error||'');return /[^\\x00-\\x7F]/.test(message)?fallback:message;}\nasync function expandLongText(maxClicks){\n  const count=Number(unwrap(await tobub.atoms.evaluate({mode:'expression',expression:`document.querySelectorAll('[data-testid=\"tweet-text-show-more-link\"]').length`})))||0;\n  const attempts=Math.min(count,maxClicks);\n  let clicked=0;\n  for(let i=attempts-1;i>=0;i--){try{await tobub.atoms.click({selector:'[data-testid=\"tweet-text-show-more-link\"]',nth:i,visibleOnly:true},{timeout:2500});clicked++;}catch{}}\n  if(clicked)await tobub.atoms.waitFor({delay:300});\n  return{pending:count,clicked};\n}\nasync function saveTweet(tweet,target){\n  let contentId=null,coreSaved=false,collectionSaved=false,saveError='';\n  try{\n    const result=await tobub.db.saveContent({platform:'Xcom',contentType:'tweet',externalId:tweet.id,title:(tweet.text||'[Media-only post]').slice(0,160),summary:(tweet.text||'').slice(0,1000),url:tweet.url,rawData:tweet,metadata:{requestedUserId:target.input,resolvedUserId:tweet.resolvedUserId,authorHandle:tweet.authorHandle,createdAt:tweet.createdAt,capturedAt,isRetweet:tweet.isRetweet,isPinned:tweet.isPinned,metrics:tweet.metrics},tags:['X platform','Tweet',tweet.authorHandle?'User: '+tweet.authorHandle:'Unknown user']});\n    contentId=Number(result?.contentItemId)||null;\n    coreSaved=contentId!==null&&contentId>0;\n    if(!coreSaved)saveError='The content database did not return a valid content item ID.';\n  }catch{saveError='Failed to write to the content database.';}\n  try{\n    await writer.append({id:tweet.id+':'+capturedAt,type:'x-tweet-snapshot',payload:{...tweet,savedToContentDb:coreSaved,contentItemId:contentId},meta:{requestedUserId:target.input,resolvedUserId:tweet.resolvedUserId,authorHandle:tweet.authorHandle,capturedAt}});\n    collectionSaved=true;\n  }catch{saveError+=(saveError?'; ':'')+'Failed to write to the dataset.';}\n  tweet.contentItemId=contentId;\n  tweet.savedToContentDb=coreSaved;\n  tweet.savedToCollection=collectionSaved;\n  tweet.persisted=coreSaved&&collectionSaved;\n  if(coreSaved)totalDatabaseSaved++;else totalSaveFailures++;\n  if(collectionSaved)totalCollectionSaved++;else totalSaveFailures++;\n  if(saveError){tweet.saveError=saveError;if(!fatalSaveError)fatalSaveError=saveError;}\n  return tweet;\n}\nfor(const target of targets){\n  const userResult={requestedUserId:target.input,requestedKind:target.kind,requestedValue:target.value,profileUrl:target.url,resolvedUserId:'',resolvedHandle:'',cardsSeen:0,uniquePosts:0,selected:0,saved:0,duplicateCount:0,malformedCount:0,skippedRetweets:0,scrolls:0,truncatedCount:0,status:'partial',stopReason:'Not started',completionBasis:'',error:''};\n  const observedIds=new Set(),pool=new Map();\n  let page=null,noProgress=0,malformed=0,skippedRetweets=0,duplicates=0,cardsSeen=0,scrolls=0,expansionAttempts=0,perUserError='';\n  try{\n    await tobub.atoms.navigate({url:target.url,waitUntil:'domcontentloaded'});\n    await tobub.atoms.waitFor({delay:1000});\n    let profileReady=await tobub.atoms.condition({type:'exists',selector:'[data-testid=\"UserName\"]',pollInterval:250,throwOnTimeout:false},{timeout:Math.max(waitSeconds*1000,15000)});\n    if(!profileReady?.satisfied){\n      await tobub.atoms.navigate({url:target.url,waitUntil:'domcontentloaded'});\n      await tobub.atoms.waitFor({delay:1000});\n      profileReady=await tobub.atoms.condition({type:'exists',selector:'[data-testid=\"UserName\"]',pollInterval:250,throwOnTimeout:false},{timeout:15000});\n    }\n    if(!profileReady?.satisfied)throw new Error('Timed out waiting for the X profile header after one retry.');\n    await tobub.atoms.evaluate({mode:'expression',expression:scrollExpression});\n    const ready=await tobub.atoms.condition({type:'count',selector:'article[data-testid=\"tweet\"]',comparison:'gte',value:1,pollInterval:250,throwOnTimeout:false},{timeout:Math.max(waitSeconds*1000,10000)});\n    page=await readPage();\n    if(!page||!page.profileHeader||(!page.ownerHandle&&!page.profileId))throw new Error('The X profile did not finish loading; profile header not found.');\n    if(page.restrictedSignal)throw new Error('X indicates that this account does not exist, is protected, or is suspended.');\n    if(target.kind==='id'&&page.profileId&&page.profileId!==target.value)throw new Error(\"The profile's numeric ID does not match the requested ID; collection stopped to avoid saving posts from the wrong account.\");\n    if(target.kind==='id'&&!page.profileId)throw new Error('The page did not provide a verifiable numeric user ID.');\n    if(target.kind==='handle'&&page.ownerHandle.toLowerCase()!==target.value.toLowerCase())throw new Error('The profile handle does not match the requested handle. Collection stopped.');\n    if(target.kind==='handle'&&!page.ownerHandle)throw new Error('The page did not provide a verifiable username.');\n    userResult.resolvedUserId=String(page.profileId||'');\n    userResult.resolvedHandle=String(page.ownerHandle||'');\n    userResult.profileUrl=String(page.url||target.url);\n    if(ready?.satisfied||Array.isArray(page.cards)&&page.cards.length){\n      const expansion=await expandLongText(maxTweetsPerUser+10);\n      expansionAttempts+=expansion.clicked;\n      page=await readPage();\n    }\n    const processSnapshot=async snap=>{\n      let added=0;\n      const visibleCards=Array.isArray(snap?.cards)?snap.cards:[];\n      if(!visibleCards.length)return 0;\n      const extracted=await tobub.atoms.extractList({itemSelector:'article[data-testid=\"tweet\"]',idField:'id',dedupe:'field',maxItems:500,perItemTimeout:3000,includeErrors:true,errorPolicy:'skip',fields:[\n        {name:'id',selector:'[data-testid=\"User-Name\"] a[href*=\"/status/\"]',nth:0,source:'href',transforms:[{type:'match',pattern:{pattern:'/status/(\\\\d+)'},groupIndex:1}],required:true},\n        {name:'url',selector:'[data-testid=\"User-Name\"] a[href*=\"/status/\"]',nth:0,source:'href',transforms:[{type:'absoluteUrl',baseUrl:'https://x.com'}],required:true},\n        {name:'text',selector:'[data-testid=\"tweetText\"]',source:'text',fallback:''},\n        {name:'createdAt',selector:'time',source:{attr:'datetime'},fallback:''},\n        {name:'reply',selector:'[data-testid=\"reply\"]',source:{attr:'aria-label'},fallback:''},\n        {name:'repost',selector:'[data-testid=\"retweet\"]',source:{attr:'aria-label'},fallback:''},\n        {name:'like',selector:'[data-testid=\"like\"]',source:{attr:'aria-label'},fallback:''},\n        {name:'view',selector:'[data-testid=\"analytics\"]',source:{attr:'aria-label'},fallback:''},\n        {name:'textTruncated',selector:'[data-testid=\"tweet-text-show-more-link\"]',source:'exists'},\n        {name:'hasMedia',selector:'[data-testid=\"tweetPhoto\"],[data-testid=\"videoComponent\"],[data-testid=\"card.wrapper\"]',source:'exists'},\n        {name:'mediaUrls',selector:'[data-testid=\"tweetPhoto\"] img[src]',many:true,source:'src'}\n      ]},{timeout:15000});\n      const byId=new Map();\n      for(const row of Array.isArray(extracted?.records)?extracted.records:[]){\n        const fields={...(row?.fields||{}),...(row?.jsonFields||{})};\n        if(fields.id)byId.set(String(fields.id),fields);\n      }\n      const cards=[];\n      for(const visible of visibleCards){\n        const fields=byId.get(String(visible?.id||''));\n        if(!fields){cardsSeen++;malformed++;continue;}\n        const extractedUrl=String(fields.url||'');\n        let statusHref=visible.statusHref||'';\n        try{statusHref=new URL(extractedUrl).pathname||statusHref;}catch{}\n        cards.push({...visible,id:String(fields.id),text:String(fields.text||''),createdAt:String(fields.createdAt||visible.createdAt||''),statusHref,metrics:{reply:String(fields.reply||visible.metrics?.reply||''),repost:String(fields.repost||visible.metrics?.repost||''),like:String(fields.like||visible.metrics?.like||''),view:String(fields.view||visible.metrics?.view||'')},textTruncated:fields.textTruncated===true||visible.textTruncated===true,hasMedia:fields.hasMedia===true||visible.hasMedia===true,mediaUrls:Array.isArray(fields.mediaUrls)&&fields.mediaUrls.length?fields.mediaUrls:visible.mediaUrls||[]});\n      }\n      const localIds=new Set();\n      for(const card of cards){\n        cardsSeen++;\n        const id=String(card?.id||'');\n        const fallbackKey=[String(card?.authorHandle||''),String(card?.createdAt||''),String(card?.text||'').slice(0,120)].join('|');\n        const key=id||fallbackKey;\n        if(localIds.has(key)){duplicates++;continue;}\n        localIds.add(key);\n        if(!id){malformed++;continue;}\n        if(observedIds.has(id))continue;\n        observedIds.add(id);\n        added++;\n        const isRetweet=card.isRetweet===true;\n        if(isRetweet&&!includeRetweets){skippedRetweets++;continue;}\n        if(!String(card.text||'').trim()&&!card.hasMedia){malformed++;continue;}\n        if(target.kind==='handle'&&card.authorHandle&&card.authorHandle.toLowerCase()!==target.value.toLowerCase()&&!isRetweet){malformed++;continue;}\n        if(target.kind==='id'&&card.authorHandle&&page.ownerHandle&&card.authorHandle.toLowerCase()!==page.ownerHandle.toLowerCase()&&!isRetweet){malformed++;continue;}\n        const tweet={id,requestedUserId:target.input,resolvedUserId:String(page.profileId||''),resolvedHandle:String(page.ownerHandle||''),authorName:String(card.authorName||''),authorHandle:String(card.authorHandle||''),text:String(card.text||''),createdAt:String(card.createdAt||''),url:card.statusHref?new URL(card.statusHref,page.url).href:'',isRetweet,isPinned:card.isPinned===true,textTruncated:card.textTruncated===true,metrics:{reply:String(card.metrics?.reply||''),repost:String(card.metrics?.repost||''),like:String(card.metrics?.like||''),view:String(card.metrics?.view||'')},hasMedia:card.hasMedia===true,mediaUrls:Array.isArray(card.mediaUrls)?card.mediaUrls:[],capturedAt};\n        if(!tweet.url||!/\\/status\\/\\d+/.test(tweet.url)){malformed++;continue;}\n        pool.set(id,tweet);\n      }\n      return added;\n    };\n    await processSnapshot(page);\n    let stopReason='';\n    const targetWithBuffer=maxTweetsPerUser+1;\n    while(pool.size<targetWithBuffer&&scrolls<maxScrollsPerUser){\n      await tobub.atoms.evaluate({mode:'expression',expression:scrollExpression});\n      await tobub.atoms.waitFor({delay:waitSeconds*1000});\n      const before=observedIds.size;\n      page=await readPage();\n      if(Array.isArray(page?.cards)&&page.cards.some(card=>card.textTruncated)){\n        const expansion=await expandLongText(maxTweetsPerUser+10-expansionAttempts);\n        expansionAttempts+=expansion.clicked;\n        if(expansion.clicked)page=await readPage();\n      }\n      const added=await processSnapshot(page);\n      scrolls++;\n      const newObserved=observedIds.size-before;\n      if(newObserved===0||added===0)noProgress++;else noProgress=0;\n      if(pool.size>=targetWithBuffer){stopReason='Requested post count reached';break;}\n      if(noProgress>=2){stopReason=page?.endSignal?'Timeline end confirmed':'No new content';break;}\n    }\n    if(!stopReason){\n      if(pool.size>=targetWithBuffer)stopReason='Requested post count reached';\n      else if(page?.endSignal)stopReason='Timeline end confirmed';\n      else if(scrolls>=maxScrollsPerUser)stopReason='Internal scroll limit reached';\n      else stopReason='Timeline stopped loading';\n    }\n    const ordered=Array.from(pool.values()).sort((a,b)=>{\n      const at=Date.parse(a.createdAt)||0,bt=Date.parse(b.createdAt)||0;\n      if(bt!==at)return bt-at;\n      return String(b.id).localeCompare(String(a.id));\n    }).slice(0,maxTweetsPerUser);\n    const selectedTruncated=ordered.filter(x=>x.textTruncated).length;\n    for(const tweet of ordered){\n      try{\n        const saved=await saveTweet(tweet,target);\n        tweets.push(saved);\n        if(saved.persisted)userResult.saved++;\n      }catch{totalSaveFailures++;fatalSaveError='Failed to save post.';}\n    }\n    const hasEmptySignal=page?.emptySignal===true;\n    const enough=ordered.length>=maxTweetsPerUser;\n    const endedVerified=stopReason==='Timeline end confirmed'&&(page?.endSignal===true||hasEmptySignal);\n    let userStatus='partial',completionBasis='';\n    if(perUserError){userStatus='partial';completionBasis='Profile read failed';}\n    else if(enough&&!malformed&&!selectedTruncated){userStatus='complete';completionBasis='Requested post count reached';}\n    else if(ordered.length===0&&hasEmptySignal&&!malformed){userStatus='empty';completionBasis='Timeline is empty';}\n    else if(endedVerified&&ordered.length>0&&!malformed&&!selectedTruncated){userStatus='complete';completionBasis='Timeline end confirmed';}\n    else{userStatus='partial';completionBasis=selectedTruncated?'Post text is still truncated':malformed?'Post card data is incomplete':stopReason;}\n    userResult.cardsSeen=cardsSeen;\n    userResult.uniquePosts=pool.size;\n    userResult.selected=ordered.length;\n    userResult.duplicateCount=duplicates;\n    userResult.malformedCount=malformed;\n    userResult.skippedRetweets=skippedRetweets;\n    userResult.scrolls=scrolls;\n    userResult.truncatedCount=selectedTruncated;\n    userResult.status=userStatus;\n    userResult.stopReason=stopReason;\n    userResult.completionBasis=completionBasis;\n    if(perUserError)userResult.error=perUserError;\n    else if(userStatus==='partial'&&ordered.length<maxTweetsPerUser)userResult.error='The requested count was not reached before the internal scroll or no-progress limit; X did not provide a verifiable timeline-end signal.';\n  }catch(error){\n    perUserError=localizedError(error,'Failed to load the X profile or extract posts.');\n    userResult.status='partial';\n    userResult.stopReason='Profile or content read failed';\n    userResult.completionBasis='Profile read failed';\n    userResult.error=perUserError;\n    userResult.cardsSeen=cardsSeen;\n    userResult.uniquePosts=pool.size;\n    userResult.duplicateCount=duplicates;\n    userResult.malformedCount=malformed;\n    userResult.skippedRetweets=skippedRetweets;\n    userResult.scrolls=scrolls;\n    const ordered=Array.from(pool.values()).sort((a,b)=>(Date.parse(b.createdAt)||0)-(Date.parse(a.createdAt)||0)).slice(0,maxTweetsPerUser);\n    for(const tweet of ordered){\n      try{const saved=await saveTweet(tweet,target);tweets.push(saved);if(saved.persisted)userResult.saved++;}catch{totalSaveFailures++;fatalSaveError='Failed to save post.';}\n    }\n  }\n  users.push(userResult);\n}\nlet collection=null;\ntry{\n  collection=await writer.close();\n}catch(error){\n  fatalSaveError+=(fatalSaveError?'; ':'')+'Failed to close the dataset.';\n}\nconst collectionStatus=String(collection?.status||collection?.data_collection?.status||'');\nconst collectionId=String(collection?.id||collection?.data_collection?.id||'');\nconst collectionOutputs=Array.isArray(collection?.outputs)?collection.outputs:Array.isArray(collection?.data_collection?.outputs)?collection.data_collection.outputs:[];\nconst outputRecordCount=collectionOutputs.reduce((n,x)=>n+(Number(x?.recordCount??x?.record_count)||0),0);\nconst collectionRecords=Number(collection?.record_count??collection?.recordCount??collection?.data_collection?.record_count??collection?.data_collection?.recordCount??0)||outputRecordCount;\nconst collectionDropped=Number(collection?.dropped_count??collection?.droppedCount??collection?.data_collection?.dropped_count??collection?.data_collection?.droppedCount??0)||0;\nconst outputStatuses=collectionOutputs.map(x=>String(x?.status||''));\nif(collectionDropped>0||outputStatuses.some(x=>x==='failed'))totalSaveFailures++;\nconst anyPartial=users.some(x=>x.status==='partial')||totalSaveFailures>0||tweets.some(x=>!x.persisted);\nconst status=tweets.length===0?(users.some(x=>x.status==='partial')?'partial':'empty'):anyPartial?'partial':'complete';\nconst note=\"Collection covers each target account's posts timeline, sorted by publication time, and returns up to the configured number of posts per user. Retweets are excluded by default; the Replies tab is not collected. Results are marked partial if the internal scroll limit is reached, the page stops making progress, post text remains truncated, or database writes are incomplete.\";\nreturn{status,scope:'Profile post timeline',capturedAt,requestedUserCount:targets.length,maxTweetsPerUser,includeRetweets,users,tweets,counts:{cardsSeen:users.reduce((n,x)=>n+x.cardsSeen,0),selected:tweets.length,databaseSaved:totalDatabaseSaved,collectionSaved:totalCollectionSaved,persisted:tweets.filter(x=>x.persisted).length,saveFailures:totalSaveFailures,duplicates:users.reduce((n,x)=>n+x.duplicateCount,0),malformed:users.reduce((n,x)=>n+x.malformedCount,0),skippedRetweets:users.reduce((n,x)=>n+x.skippedRetweets,0),truncated:tweets.filter(x=>x.textTruncated).length},collection:{id:collectionId,status:collectionStatus,recordCount:collectionRecords,droppedCount:collectionDropped,outputs:collectionOutputs},error:fatalSaveError,note};",
+    "platform": "Xcom",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "userIds": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "title": "X user ID / @handle",
+          "description": "By default, collects posts from Elon Musk (44196397). Supports numeric user IDs, @handles, and X/Twitter profile URLs; up to 10 targets separated by commas, semicolons, or line breaks. Any input overrides the default.",
+          "default": "44196397"
+        },
+        "maxTweetsPerUser": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "title": "Latest posts per user (1–50)",
+          "description": "Maximum number of latest posts to save for each target user."
+        },
+        "includeRetweets": {
+          "type": "boolean",
+          "title": "Include retweets",
+          "description": "Off by default; when enabled, visible retweets in the timeline are also saved."
+        }
+      }
+    },
+    "output_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "capturedAt": {
+          "type": "string"
+        },
+        "collection": {
+          "additionalProperties": false,
+          "properties": {
+            "droppedCount": {
+              "type": "integer"
+            },
+            "id": {
+              "type": "string"
+            },
+            "outputs": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "recordCount": {
+              "type": "integer"
+            },
+            "status": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "status",
+            "recordCount",
+            "droppedCount",
+            "outputs"
+          ],
+          "type": "object"
+        },
+        "counts": {
+          "additionalProperties": false,
+          "properties": {
+            "cardsSeen": {
+              "type": "integer"
+            },
+            "collectionSaved": {
+              "type": "integer"
+            },
+            "databaseSaved": {
+              "type": "integer"
+            },
+            "duplicates": {
+              "type": "integer"
+            },
+            "malformed": {
+              "type": "integer"
+            },
+            "persisted": {
+              "type": "integer"
+            },
+            "saveFailures": {
+              "type": "integer"
+            },
+            "selected": {
+              "type": "integer"
+            },
+            "skippedRetweets": {
+              "type": "integer"
+            },
+            "truncated": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "cardsSeen",
+            "selected",
+            "databaseSaved",
+            "collectionSaved",
+            "persisted",
+            "saveFailures",
+            "duplicates",
+            "malformed",
+            "skippedRetweets",
+            "truncated"
+          ],
+          "type": "object"
+        },
+        "error": {
+          "type": "string"
+        },
+        "includeRetweets": {
+          "type": "boolean"
+        },
+        "maxTweetsPerUser": {
+          "type": "integer"
+        },
+        "note": {
+          "type": "string"
+        },
+        "requestedUserCount": {
+          "type": "integer"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "partial",
+            "empty"
+          ],
+          "type": "string"
+        },
+        "tweets": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "authorHandle": {
+                "type": "string"
+              },
+              "authorName": {
+                "type": "string"
+              },
+              "capturedAt": {
+                "type": "string"
+              },
+              "contentItemId": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "hasMedia": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "isPinned": {
+                "type": "boolean"
+              },
+              "isRetweet": {
+                "type": "boolean"
+              },
+              "mediaUrls": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "metrics": {
+                "additionalProperties": false,
+                "properties": {
+                  "like": {
+                    "type": "string"
+                  },
+                  "reply": {
+                    "type": "string"
+                  },
+                  "repost": {
+                    "type": "string"
+                  },
+                  "view": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "reply",
+                  "repost",
+                  "like",
+                  "view"
+                ],
+                "type": "object"
+              },
+              "persisted": {
+                "type": "boolean"
+              },
+              "requestedUserId": {
+                "type": "string"
+              },
+              "resolvedHandle": {
+                "type": "string"
+              },
+              "resolvedUserId": {
+                "type": "string"
+              },
+              "saveError": {
+                "type": "string"
+              },
+              "savedToCollection": {
+                "type": "boolean"
+              },
+              "savedToContentDb": {
+                "type": "boolean"
+              },
+              "text": {
+                "type": "string"
+              },
+              "textTruncated": {
+                "type": "boolean"
+              },
+              "url": {
+                "format": "uri",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "requestedUserId",
+              "resolvedUserId",
+              "resolvedHandle",
+              "authorName",
+              "authorHandle",
+              "text",
+              "createdAt",
+              "url",
+              "isRetweet",
+              "isPinned",
+              "textTruncated",
+              "metrics",
+              "hasMedia",
+              "mediaUrls",
+              "capturedAt",
+              "contentItemId",
+              "savedToContentDb",
+              "savedToCollection",
+              "persisted"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "users": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "cardsSeen": {
+                "type": "integer"
+              },
+              "completionBasis": {
+                "type": "string"
+              },
+              "duplicateCount": {
+                "type": "integer"
+              },
+              "error": {
+                "type": "string"
+              },
+              "malformedCount": {
+                "type": "integer"
+              },
+              "profileUrl": {
+                "type": "string"
+              },
+              "requestedKind": {
+                "enum": [
+                  "id",
+                  "handle"
+                ],
+                "type": "string"
+              },
+              "requestedUserId": {
+                "type": "string"
+              },
+              "requestedValue": {
+                "type": "string"
+              },
+              "resolvedHandle": {
+                "type": "string"
+              },
+              "resolvedUserId": {
+                "type": "string"
+              },
+              "saved": {
+                "type": "integer"
+              },
+              "scrolls": {
+                "type": "integer"
+              },
+              "selected": {
+                "type": "integer"
+              },
+              "skippedRetweets": {
+                "type": "integer"
+              },
+              "status": {
+                "enum": [
+                  "complete",
+                  "partial",
+                  "empty"
+                ],
+                "type": "string"
+              },
+              "stopReason": {
+                "type": "string"
+              },
+              "truncatedCount": {
+                "type": "integer"
+              },
+              "uniquePosts": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "requestedUserId",
+              "requestedKind",
+              "requestedValue",
+              "profileUrl",
+              "resolvedUserId",
+              "resolvedHandle",
+              "cardsSeen",
+              "uniquePosts",
+              "selected",
+              "saved",
+              "duplicateCount",
+              "malformedCount",
+              "skippedRetweets",
+              "scrolls",
+              "truncatedCount",
+              "status",
+              "stopReason",
+              "completionBasis",
+              "error"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "status",
+        "scope",
+        "capturedAt",
+        "requestedUserCount",
+        "maxTweetsPerUser",
+        "includeRetweets",
+        "users",
+        "tweets",
+        "counts",
+        "collection",
+        "error",
+        "note"
+      ],
+      "type": "object"
+    },
+    "ui_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "userIds",
+          "label": "X user ID / @handle (default: Elon Musk)",
+          "target": "params.userIds",
+          "type": "text",
+          "required": false,
+          "description": "Default target is Elon Musk (44196397). Supports multiple targets; entered values override the default.",
+          "default": "44196397"
+        },
+        {
+          "key": "maxTweetsPerUser",
+          "label": "Latest posts per user (1–50)",
+          "target": "params.maxTweetsPerUser",
+          "type": "number",
+          "required": false,
+          "default": 10,
+          "description": "Maximum number of latest posts to save for each target user."
+        },
+        {
+          "key": "includeRetweets",
+          "label": "Include retweets",
+          "target": "params.includeRetweets",
+          "type": "switch",
+          "required": false,
+          "default": false,
+          "description": "Off by default; when enabled, visible retweets in the timeline are also saved."
+        }
+      ]
+    },
+    "requirements": {
+      "account": "required",
+      "profile": "required",
+      "domain_rule": "optional"
+    },
+    "defaults": {
+      "params": {
+        "maxTweetsPerUser": 10,
+        "includeRetweets": false,
+        "userIds": "44196397"
+      },
+      "browser": {
+        "run_mode": "profile",
+        "auth_mode": "inherit",
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "optional"
+      }
+    },
+    "metadata": {
+      "category": "social",
+      "source": "local",
+      "description": "Uses the signed-in X account to open each target profile timeline, collect the latest posts by publication time, attempt to expand long posts and verify user identity, then save posts to the Tobub content database and SQLite/JSONL dataset. The default target is Elon Musk (user ID 44196397); multiple targets can be collected in one run.",
+      "tags": [
+        "X platform",
+        "Tweet",
+        "Latest posts",
+        "Database",
+        "Collection"
+      ],
+      "market_skill_id": "x-latest-tweets-to-database"
+    }
+  },
+  "platform": {
+    "code": "Xcom",
+    "name": "X",
+    "version": "1",
+    "base_url": "https://www.x.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "x.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "3c621ba001540ba5760104ba52aff7f38db46fff65e5780a79490071ba020293"
+  }
+}
