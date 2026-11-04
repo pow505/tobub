@@ -1,0 +1,338 @@
+{
+  "created_at": "2026-11-04T00:00:00.000Z",
+  "manifest_version": 1,
+  "package_id": "user:local_08b76ceb-a6b0-41fe-a536-4df3909e63f2@1.0.0",
+  "package_type": "tobub_skill",
+  "package_version": "1.0.0",
+  "source": "user",
+  "requirements": {
+    "platform": "required",
+    "rule": "none"
+  },
+  "skill": {
+    "market_skill_id": "local_08b76ceb-a6b0-41fe-a536-4df3909e63f2",
+    "release_id": "local_08b76ceb-a6b0-41fe-a536-4df3909e63f2-1.0.0",
+    "name": "小红书指定作者作品采集",
+    "skill_version": "1.0.0",
+    "source_type": "local",
+    "platform": "xiaohongshu",
+    "requirements": {
+      "account": "required",
+      "profile": "required"
+    },
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "authorName": {
+          "type": "string",
+          "title": "作者名称或小红书号",
+          "minLength": 1,
+          "maxLength": 100,
+          "default": "5609670158"
+        },
+        "authorId": {
+          "type": "string",
+          "title": "作者主页 ID 或链接（同名时填写）",
+          "maxLength": 512
+        },
+        "maxWorks": {
+          "type": "integer",
+          "title": "最大作品数",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 50
+        }
+      },
+      "required": [
+        "authorName"
+      ]
+    },
+    "output_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "complete",
+            "partial",
+            "empty"
+          ]
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "stopReason": {
+          "type": "string",
+          "enum": [
+            "timeline_end",
+            "max_works_limit",
+            "no_progress",
+            "scroll_limit",
+            "login_required",
+            "no_post_cards",
+            "page_error",
+            "search_failed",
+            "author_not_found",
+            "ambiguous_author",
+            "profile_mismatch"
+          ]
+        },
+        "author": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "xiaohongshuId": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "contentItemId": {
+                  "oneOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "xiaohongshuId",
+                "url",
+                "contentItemId"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "candidateAuthors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "xiaohongshuId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "xiaohongshuId",
+              "url"
+            ]
+          }
+        },
+        "works": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "coverUrl": {
+                "type": "string"
+              },
+              "authorId": {
+                "type": "string"
+              },
+              "authorName": {
+                "type": "string"
+              },
+              "publishedAt": {
+                "type": "string"
+              },
+              "likeCount": {
+                "type": "string"
+              },
+              "contentItemId": {
+                "oneOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "saved": {
+                "type": "boolean"
+              },
+              "xiaohongshuId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "url",
+              "coverUrl",
+              "authorId",
+              "authorName",
+              "publishedAt",
+              "likeCount",
+              "contentItemId",
+              "saved",
+              "xiaohongshuId"
+            ]
+          }
+        },
+        "counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cardsSeen": {
+              "type": "integer"
+            },
+            "worksFound": {
+              "type": "integer"
+            },
+            "savedCount": {
+              "type": "integer"
+            },
+            "duplicateCount": {
+              "type": "integer"
+            },
+            "malformedCount": {
+              "type": "integer"
+            },
+            "extractionFailures": {
+              "type": "integer"
+            },
+            "saveFailures": {
+              "type": "integer"
+            },
+            "scrolls": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "cardsSeen",
+            "worksFound",
+            "savedCount",
+            "duplicateCount",
+            "malformedCount",
+            "extractionFailures",
+            "saveFailures",
+            "scrolls"
+          ]
+        },
+        "error": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "complete",
+        "stopReason",
+        "author",
+        "candidateAuthors",
+        "works",
+        "counts",
+        "error"
+      ]
+    },
+    "ui_schema": {
+      "version": 1,
+      "fields": [
+        {
+          "key": "authorName",
+          "label": "作者名称或小红书号",
+          "type": "input",
+          "default": "5609670158",
+          "required": true
+        },
+        {
+          "key": "authorId",
+          "label": "作者主页 ID 或链接（同名时填写）",
+          "type": "input",
+          "required": false
+        },
+        {
+          "key": "maxWorks",
+          "label": "最大作品数",
+          "type": "number",
+          "default": 50,
+          "required": false
+        }
+      ]
+    },
+    "defaults": {
+      "params": {
+        "authorName": "5609670158",
+        "maxWorks": 50
+      },
+      "browser": {
+        "run_mode": "profile",
+        "auth_mode": "inherit",
+        "headless": false
+      },
+      "execution": {
+        "domain_mode": "atoms-only"
+      }
+    },
+    "metadata": {
+      "category": "personal-content-collection",
+      "source": "local",
+      "tags": [
+        "xiaohongshu",
+        "author-posts",
+        "notes",
+        "database",
+        "read-only"
+      ]
+    },
+    "skill_code": "const input = tobub.params || {};\nconst authorNameInput = String(input.authorName ?? '').trim();\nconst authorIdInput = String(input.authorId ?? '').trim();\nconst maxWorks = Number(input.maxWorks ?? 50);\nif (!authorNameInput) throw new Error('请填写作者名称或小红书号；如有同名账号，可补充作者主页 ID 或链接。');\nif (!Number.isInteger(maxWorks) || maxWorks < 1 || maxWorks > 500) {\n  throw new Error('最大作品数必须是 1 到 500 的整数。');\n}\n\nfunction normalizeAuthorId(value) {\n  const looksLikeUrl = /^[a-z][a-z0-9+.-]*:\\/\\//i.test(value)\n    || /(^|\\/)(www\\.)?xiaohongshu\\.com\\//i.test(value);\n  if (!looksLikeUrl) {\n    const id = value.replace(/^@/, '');\n    if (!/^[A-Za-z0-9_-]{6,80}$/.test(id)) {\n      throw new Error('作者 ID 格式无效；请填写小红书作者主页链接或主页 ID。');\n    }\n    return id;\n  }\n  let url;\n  try {\n    url = new URL(/^[a-z][a-z0-9+.-]*:\\/\\//i.test(value) ? value : 'https://' + value);\n  } catch {\n    throw new Error('作者主页链接无效。');\n  }\n  const host = url.hostname.toLowerCase();\n  if (!['xiaohongshu.com', 'www.xiaohongshu.com'].includes(host)) {\n    throw new Error('作者主页链接必须来自 xiaohongshu.com。');\n  }\n  if (!['http:', 'https:'].includes(url.protocol)) {\n    throw new Error('作者主页链接必须使用 HTTP 或 HTTPS。');\n  }\n  let path = url.pathname;\n  try { path = decodeURIComponent(path); } catch {}\n  const match = path.match(/^\\/user\\/profile\\/([^/]+)\\/?$/i);\n  if (!match) {\n    throw new Error('请复制作者主页链接，格式应为 xiaohongshu.com/user/profile/作者ID。');\n  }\n  return match[1];\n}\n\nconst expectedAuthorId = authorIdInput ? normalizeAuthorId(authorIdInput) : '';\nlet authorId = expectedAuthorId;\nlet profileUrl = expectedAuthorId\n  ? 'https://www.xiaohongshu.com/user/profile/' + encodeURIComponent(expectedAuthorId)\n  : 'https://www.xiaohongshu.com/explore';\nconst maxScrollPasses = 120;\nconst seen = new Set();\nconst works = [];\nlet authorName = authorNameInput;\nlet xiaohongshuId = /^\\d{6,20}$/.test(authorNameInput) ? authorNameInput : '';\nlet candidateAuthors = [];\nlet authorContentItemId = null;\nlet authorSaveAttempted = false;\nlet cardsSeen = 0;\nlet duplicateCount = 0;\nlet malformedCount = 0;\nlet extractionFailures = 0;\nlet saveFailures = 0;\nlet scrolls = 0;\nlet stopReason = 'search_failed';\nlet error = '';\nlet terminalSeen = false;\nlet probe = null;\nlet authorIdentityVerified = false;\n\nfunction unwrap(value) {\n  if (value && value.value !== undefined) return value.value;\n  if (value && value.result !== undefined) return value.result;\n  return value;\n}\nfunction safeText(value) {\n  return String(value ?? '').replace(/\\s+/g, ' ').trim();\n}\nfunction getNoteId(value) {\n  try {\n    const parts = new URL(String(value), 'https://www.xiaohongshu.com').pathname.split('/').filter(Boolean);\n    const exploreIndex = parts.indexOf('explore');\n    if (exploreIndex >= 0 && parts[exploreIndex + 1]) return parts[exploreIndex + 1];\n    const discoveryIndex = parts.indexOf('discovery');\n    if (discoveryIndex >= 0 && parts[discoveryIndex + 1] === 'item' && parts[discoveryIndex + 2]) {\n      return parts[discoveryIndex + 2];\n    }\n  } catch {}\n  return '';\n}\nfunction normalizeSiteUrl(value, fallbackId) {\n  const raw = String(value ?? '').trim();\n  if (!raw && fallbackId) return 'https://www.xiaohongshu.com/explore/' + encodeURIComponent(fallbackId);\n  try {\n    const url = new URL(raw, 'https://www.xiaohongshu.com');\n    if (!['xiaohongshu.com', 'www.xiaohongshu.com'].includes(url.hostname.toLowerCase())) return '';\n    return url.href;\n  } catch {\n    return fallbackId ? 'https://www.xiaohongshu.com/explore/' + encodeURIComponent(fallbackId) : '';\n  }\n}\n\nconst probeExpression = [\n  '(()=>{',\n  'const body=(document.body&&document.body.innerText)||\"\";',\n  'const candidates=[\"div.feeds-container > section.note-item\",\"section.note-item\",\"div.feeds-container section\",\"div.note-item\",\"[data-note-id]\"];',\n  'const ranked=candidates.map(selector=>{',\n  'let nodes=[];try{nodes=Array.from(document.querySelectorAll(selector));}catch{}',\n  'let score=0;',\n  'for(const node of nodes.slice(0,8)){',\n  'const links=Array.from(node.querySelectorAll(\"a[href]\"));',\n  'if(links.some(a=>/\\\\/(?:explore|discovery\\\\/item)\\\\//.test(a.getAttribute(\"href\")||\"\")))score+=8;',\n  'if(node.querySelector(\"img\"))score+=2;',\n  'if(String(node.innerText||\"\").trim().length>2)score+=1;',\n  '}',\n  'return{selector,count:nodes.length,score};',\n  '}).filter(x=>x.count>0).sort((a,b)=>b.score-a.score||b.count-a.count);',\n  'const itemSelector=ranked.length?ranked[0].selector:\"\";',\n  'const cards=itemSelector?Array.from(document.querySelectorAll(itemSelector)).slice(0,8):[];',\n  'function choose(selectors,predicate){for(const selector of selectors){for(const card of cards){let el=null;try{el=card.querySelector(selector);}catch{}if(el&&predicate(el))return selector;}}return\"\";}',\n  'const linkSelector=choose([\"a[href*=\\\\\\\"/explore/\\\\\\\"]\",\"a[href*=\\\\\\\"/discovery/item/\\\\\\\"]\",\"a[href*=\\\\\\\"/note/\\\\\\\"]\"],el=>/\\\\/(?:explore|discovery\\\\/item)\\\\//.test(el.getAttribute(\"href\")||\"\"));',\n  'const titleSelector=choose([\"div.footer a.title\",\"a.title\",\"a[href*=\\\\\\\"/explore/\\\\\\\"]\",\"a[href*=\\\\\\\"/discovery/item/\\\\\\\"]\",\"[class*=\\\\\\\"title\\\\\\\"]\"],el=>String(el.innerText||el.textContent||\"\").trim().length>0)||linkSelector;',\n  'const timeSelector=choose([\"time\",\".name-time-wrapper .time\",\"[class*=\\\\\\\"time\\\\\\\"]\",\"[class*=\\\\\\\"date\\\\\\\"]\"],el=>String(el.innerText||el.getAttribute(\"datetime\")||\"\").trim().length>0);',\n  'const likeSelector=choose([\"span.like-wrapper span.count\",\"[class*=\\\\\\\"like\\\\\\\"] .count\",\"[class*=\\\\\\\"like\\\\\\\"]\"],el=>String(el.innerText||el.getAttribute(\"aria-label\")||\"\").trim().length>0);',\n  'const coverSelector=choose([\"img\"],el=>Boolean(el.getAttribute(\"src\")||el.getAttribute(\"data-src\")||el.getAttribute(\"data-original\")));',\n  'const idAttrs=[\"data-note-id\",\"data-id\",\"note-id\"];',\n  'const idAttr=idAttrs.find(attr=>cards.some(card=>card.getAttribute(attr)))||\"\";',\n  'const coverEl=coverSelector&&cards.length?cards.map(card=>card.querySelector(coverSelector)).find(Boolean):null;',\n  'const coverAttr=coverEl?(coverEl.getAttribute(\"data-src\")?\"data-src\":coverEl.getAttribute(\"data-original\")?\"data-original\":\"src\"):\"\";',\n  'const timeEl=timeSelector&&cards.length?cards.map(card=>card.querySelector(timeSelector)).find(Boolean):null;',\n  'const timeAttr=timeEl&&timeEl.getAttribute(\"datetime\")?\"datetime\":\"\";',\n  'const nameSelectors=[\"div.user-info h1\",\"div.user-info h2\",\"[class*=\\\\\\\"nickname\\\\\\\"]\",\"[class*=\\\\\\\"nick-name\\\\\\\"]\",\"[class*=\\\\\\\"user-name\\\\\\\"]\",\"h1\",\"h2\"];',\n  'let profileName=\"\";',\n  'for(const selector of nameSelectors){let el=null;try{el=document.querySelector(selector);}catch{}const text=String(el&&(el.innerText||el.textContent)||\"\").replace(/\\\\s+/g,\" \").trim();if(text&&text.length<=60&&!/关注|粉丝|获赞/.test(text)){profileName=text;break;}}',\n  'const pathId=(location.pathname.match(/\\\\/user\\\\/profile\\\\/([^/]+)/)||[])[1]||\"\";',\n  'const xiaohongshuId=(body.match(/小红书号\\\\s*[:：]?\\\\s*([A-Za-z0-9_-]+)/)||[])[1]||\"\";',\n  'const endSignal=/暂时没有更多|没有更多了|没有更多作品|已经到底了|暂无笔记|暂无作品/.test(body);',\n  'const loginGate=/扫码登录|登录后查看更多|请先登录|登录后查看/.test(body);',\n  'return{url:location.href,pathname:location.pathname,profileId:pathId,profileName,xiaohongshuId,itemSelector,cardCount:itemSelector?document.querySelectorAll(itemSelector).length:0,selectorCounts:ranked,selectors:{link:linkSelector,title:titleSelector,time:timeSelector,like:likeSelector,cover:coverSelector,idAttr,coverAttr,timeAttr},endSignal,loginGate,bodyText:body.slice(0,2400)};',\n  '})()'\n].join('');\n\nconst searchProbeExpression = [\n  '(()=>{',\n  'const body=(document.body&&document.body.innerText)||\"\";',\n  'const tab=document.querySelector(\"#user\");',\n  'const anchors=Array.from(document.querySelectorAll(\"a[href*=\\\\\\\"/user/profile/\\\\\\\"]\")).filter(a=>a.querySelector(\".user-item-box\")&&a.querySelector(\".user-name\"));',\n  'const candidates=anchors.map(a=>{',\n  'const rawHref=a.getAttribute(\"href\")||\"\";',\n  'let id=\"\",url=\"\";try{const u=new URL(rawHref,location.origin);url=u.href;id=(u.pathname.match(/\\\\/user\\\\/profile\\\\/([^/]+)/)||[])[1]||\"\";}catch{}',\n  'const name=String(a.querySelector(\".user-name\")?.innerText||a.querySelector(\".user-name\")?.textContent||\"\").replace(/\\\\s+/g,\" \").trim();',\n  'const text=String(a.innerText||a.textContent||\"\").replace(/\\\\s+/g,\" \").trim();',\n  'const xiaohongshuId=(text.match(/小红书号\\\\s*[:：]?\\\\s*([A-Za-z0-9_-]+)/)||[])[1]||\"\";',\n  'return{id,name,xiaohongshuId,url,href:rawHref,text};',\n  '}).filter(x=>x.id&&x.name);',\n  'const unique=new Map();for(const item of candidates){if(!unique.has(item.id))unique.set(item.id,item);}',\n  'return{url:location.href,pathname:location.pathname,isSearchPage:/^\\\\/search_result/.test(location.pathname),hasUserTab:Boolean(tab),userTabActive:Boolean(tab&&tab.querySelector(\".channel-content.active\")),candidates:Array.from(unique.values()).slice(0,30),bodyText:body.slice(0,2000)};',\n  '})()'\n].join('');\n\nasync function observePage() {\n  return unwrap(await tobub.atoms.evaluate({ mode: 'expression', expression: probeExpression }));\n}\nasync function observeSearchPage() {\n  return unwrap(await tobub.atoms.evaluate({ mode: 'expression', expression: searchProbeExpression }));\n}\nasync function ensureAuthorRecord() {\n  if (authorSaveAttempted) return;\n  authorSaveAttempted = true;\n  try {\n    const saved = await tobub.db.saveContent({\n      platform: 'xiaohongshu',\n      contentType: 'user',\n      externalId: authorId,\n      title: authorName || authorId,\n      summary: '',\n      url: profileUrl,\n      metadata: { authorId, authorName, xiaohongshuId, source: 'author_profile', capturedAt: new Date().toISOString() },\n      rawData: { authorId, authorName, xiaohongshuId, profileUrl }\n    });\n    const id = Number(saved?.contentItemId);\n    if (Number.isInteger(id) && id > 0) authorContentItemId = id;\n    else saveFailures++;\n  } catch {\n    saveFailures++;\n  }\n}\nfunction makeFields(currentProbe) {\n  const selectors = currentProbe?.selectors ?? {};\n  const fields = [];\n  if (selectors.idAttr) fields.push({ name: 'id', source: { attr: selectors.idAttr } });\n  if (selectors.link) {\n    fields.push({ name: 'link', selector: selectors.link, source: 'href', transforms: [{ type: 'absoluteUrl', baseUrl: 'https://www.xiaohongshu.com' }] });\n  }\n  if (selectors.title) fields.push({ name: 'title', selector: selectors.title, source: 'text', transforms: [{ type: 'normalizeWhitespace' }], fallback: '' });\n  if (selectors.cover && selectors.coverAttr) fields.push({ name: 'cover', selector: selectors.cover, source: { attr: selectors.coverAttr }, fallback: '' });\n  if (selectors.time) {\n    fields.push({\n      name: 'publishedAt',\n      selector: selectors.time,\n      source: selectors.timeAttr ? { attr: selectors.timeAttr } : 'text',\n      fallback: ''\n    });\n  }\n  if (selectors.like) fields.push({ name: 'likes', selector: selectors.like, source: 'text', fallback: '' });\n  return fields;\n}\n\ntry {\n  await tobub.atoms.navigate({ url: 'https://www.xiaohongshu.com/explore', waitUntil: 'domcontentloaded' });\n  await tobub.atoms.waitFor({ delay: [1200, 1800] });\n  const homeProbe = await observeSearchPage();\n  if (!homeProbe?.pathname?.startsWith('/explore') || !homeProbe?.url?.includes('xiaohongshu.com')) {\n    stopReason = 'search_failed';\n    error = '无法从小红书首页开始搜索作者。';\n    throw new Error(error);\n  }\n\n  const searchBoxReady = await tobub.atoms.condition({\n    type: 'visible',\n    selector: '#search-input-in-feeds',\n    pollInterval: 200,\n    throwOnTimeout: false\n  }, { timeout: 10000 });\n  if (!searchBoxReady?.satisfied) {\n    const pageState = await observeSearchPage();\n    stopReason = 'search_failed';\n    error = '小红书首页搜索框未在 10 秒内显示；当前页面：' + safeText(pageState?.pathname || '未知');\n    throw new Error(error);\n  }\n  await tobub.atoms.fill(\n    { selector: '#search-input-in-feeds', value: authorNameInput, verify: true },\n    { timeout: 10000 }\n  );\n  await tobub.atoms.press({ selector: '#search-input-in-feeds', key: 'Enter' }, { timeout: 10000 });\n  await tobub.atoms.waitFor({ delay: [1500, 2200] });\n  let searchProbe = await observeSearchPage();\n  for (let attempt = 0; attempt < 3 && (!searchProbe?.isSearchPage || !searchProbe?.hasUserTab); attempt++) {\n    await tobub.atoms.waitFor({ delay: [700, 1100] });\n    searchProbe = await observeSearchPage();\n  }\n  if (!searchProbe?.isSearchPage || !searchProbe?.hasUserTab) {\n    stopReason = 'search_failed';\n    error = '首页搜索没有进入小红书搜索结果页；未访问主页，也未写入作品。';\n    throw new Error(error);\n  }\n\n  await tobub.atoms.click({ selector: '#user', visibleOnly: true }, { timeout: 10000 });\n  await tobub.atoms.waitFor({ delay: [1000, 1600] });\n  searchProbe = await observeSearchPage();\n  for (let attempt = 0; attempt < 3 && !searchProbe?.userTabActive; attempt++) {\n    await tobub.atoms.waitFor({ delay: [500, 900] });\n    searchProbe = await observeSearchPage();\n  }\n  if (!searchProbe?.userTabActive) {\n    stopReason = 'search_failed';\n    error = '已进入搜索结果，但无法打开“用户”结果页；未访问主页，也未写入作品。';\n    throw new Error(error);\n  }\n\n  candidateAuthors = (searchProbe.candidates ?? []).slice(0, 15).map(candidate => ({\n    id: String(candidate.id ?? ''),\n    name: safeText(candidate.name),\n    xiaohongshuId: safeText(candidate.xiaohongshuId),\n    url: 'https://www.xiaohongshu.com/user/profile/' + encodeURIComponent(String(candidate.id ?? ''))\n  })).filter(candidate => candidate.id && candidate.name);\n  const foundCandidates = searchProbe.candidates ?? [];\n  let targetAuthor = null;\n  if (expectedAuthorId) {\n    targetAuthor = foundCandidates.find(candidate => candidate.id === expectedAuthorId) ?? null;\n    if (!targetAuthor) {\n      stopReason = 'author_not_found';\n      error = '搜索结果中没有找到提供的作者 ID；未访问主页，也未写入作品。';\n      throw new Error(error);\n    }\n  } else {\n    const numericXhsId = /^\\d{6,20}$/.test(authorNameInput);\n    const exactMatches = numericXhsId\n      ? foundCandidates.filter(candidate => safeText(candidate.xiaohongshuId) === authorNameInput)\n      : foundCandidates.filter(candidate => safeText(candidate.name) === safeText(authorNameInput));\n    if (exactMatches.length === 1) {\n      targetAuthor = exactMatches[0];\n    } else if (exactMatches.length > 1) {\n      stopReason = 'ambiguous_author';\n      error = '搜索到多个同名作者；请补充作者 ID 或主页链接以精准匹配。';\n      throw new Error(error);\n    } else {\n      stopReason = 'author_not_found';\n      error = '搜索结果中没有找到名称或小红书号完全匹配的作者；请检查输入，或补充主页 ID。';\n      throw new Error(error);\n    }\n  }\n\n  authorId = String(targetAuthor.id);\n  authorName = safeText(targetAuthor.name);\n  xiaohongshuId = safeText(targetAuthor.xiaohongshuId) || (/^\\d{6,20}$/.test(authorNameInput) ? authorNameInput : '');\n  profileUrl = 'https://www.xiaohongshu.com/user/profile/' + encodeURIComponent(authorId);\n  const clickSelector = 'a[href*=\"/user/profile/' + authorId + '\"]';\n  const prepareClickExpression = '(()=>{const a=document.querySelector(' + JSON.stringify(clickSelector) + ');if(!a)return null;a.setAttribute(\"target\",\"_self\");return a.href;})()';\n  const preparedHref = unwrap(await tobub.atoms.evaluate({ mode: 'expression', expression: prepareClickExpression }));\n  if (!preparedHref) {\n    stopReason = 'author_not_found';\n    error = '找到作者卡片后无法打开其主页链接；未写入作品。';\n    throw new Error(error);\n  }\n  await tobub.atoms.click({ selector: clickSelector, visibleOnly: true }, { timeout: 10000 });\n  await tobub.atoms.waitFor({ delay: [1500, 2200] });\n  probe = await observePage();\n  for (let attempt = 0; attempt < 2 && (!probe?.itemSelector || !probe?.cardCount); attempt++) {\n    await tobub.atoms.waitFor({ delay: [900, 1400] });\n    probe = await observePage();\n  }\n  let pageAuthorId = String(probe?.profileId ?? '');\n  try { pageAuthorId = decodeURIComponent(pageAuthorId); } catch {}\n  if (!probe?.pathname?.startsWith('/user/profile/') || !pageAuthorId) {\n    stopReason = 'profile_mismatch';\n    error = '点击用户搜索结果后没有进入可验证的作者主页；未写入作品。';\n    throw new Error(error);\n  }\n  if (pageAuthorId !== authorId) {\n    stopReason = 'profile_mismatch';\n    error = '从搜索结果进入的主页 ID 与目标作者不一致，已停止以避免采集错作者。';\n    throw new Error(error);\n  }\n  const pageXhsId = safeText(probe?.xiaohongshuId);\n  if (/^\\d{6,20}$/.test(authorNameInput) && pageXhsId !== authorNameInput) {\n    stopReason = 'profile_mismatch';\n    error = '主页显示的小红书号与输入号码不一致，已停止以避免采集错作者。';\n    throw new Error(error);\n  }\n  if (pageXhsId) xiaohongshuId = pageXhsId;\n  authorIdentityVerified = true;\n  stopReason = 'scroll_limit';\n  if (probe?.profileName) authorName = safeText(probe.profileName);\n  await ensureAuthorRecord();\n  if (!probe?.itemSelector || !probe?.cardCount) {\n    if (probe?.endSignal && !probe?.loginGate) {\n      terminalSeen = true;\n      stopReason = 'timeline_end';\n    } else if (probe?.loginGate) {\n      stopReason = 'login_required';\n      error = '页面要求登录；请确认 xhs Profile 的登录态后重试。';\n    } else {\n      stopReason = 'no_post_cards';\n      error = '主页已打开，但没有识别到作品卡片；页面结构可能已变化，未写入作品记录。';\n    }\n  } else {\n    const fields = makeFields(probe);\n    if (!fields.length) throw new Error('页面中没有可用于读取作品的字段。');\n    const selector = probe.itemSelector;\n    const idField = probe.selectors?.idAttr ? 'id' : probe.selectors?.link ? 'link' : undefined;\n    let noProgress = 0;\n    for (let pass = 0; pass < maxScrollPasses && works.length < maxWorks; pass++) {\n      if (pass > 0) {\n        await tobub.atoms.scroll({\n          mode: 'viewport',\n          distance: tobub.utils.randInt(560, 960),\n          steps: tobub.utils.randInt(4, 8),\n          stepPauseRange: [35, 75]\n        });\n        scrolls++;\n        await tobub.atoms.waitFor({ delay: [800, 1400] });\n        probe = await observePage();\n      }\n      const batch = await tobub.atoms.extractList({\n        itemSelector: selector,\n        fields,\n        ...(idField ? { idField } : {}),\n        dedupe: idField ? 'field' : 'content',\n        maxItems: 500,\n        perItemTimeout: 2200,\n        includeErrors: true,\n        errorPolicy: 'skip'\n      });\n      const records = Array.isArray(batch?.records) ? batch.records : [];\n      const reportedFailures = Number(batch?.failedCount);\n      const errorListCount = Array.isArray(batch?.errors) ? batch.errors.length : 0;\n      const rowErrorCount = records.reduce((count, row) => {\n        if (Array.isArray(row?.errors)) return count + row.errors.length;\n        return count + (row?.error ? 1 : 0);\n      }, 0);\n      extractionFailures += Math.max(\n        Number.isFinite(reportedFailures) ? Math.max(0, reportedFailures) : 0,\n        errorListCount,\n        rowErrorCount\n      );\n      cardsSeen += records.length;\n      let added = 0;\n      for (const row of records) {\n        if (works.length >= maxWorks) break;\n        const data = { ...(row?.fields ?? {}), ...(row?.jsonFields ?? {}) };\n        const link = String(data.link ?? '').trim();\n        const id = String(getNoteId(link) || data.id || row?.id || '').trim();\n        if (!id) {\n          malformedCount++;\n          continue;\n        }\n        if (seen.has(id)) {\n          duplicateCount++;\n          continue;\n        }\n        const url = normalizeSiteUrl(link, id);\n        if (!url) {\n          malformedCount++;\n          continue;\n        }\n        seen.add(id);\n        const title = safeText(data.title) || '小红书作品 ' + id;\n        const coverUrl = safeText(data.cover);\n        const note = {\n          id,\n          title,\n          url,\n          coverUrl,\n          authorId,\n          authorName,\n          xiaohongshuId,\n          publishedAt: safeText(data.publishedAt),\n          likeCount: safeText(data.likes)\n        };\n        await ensureAuthorRecord();\n        let contentItemId = null;\n        let saved = false;\n        try {\n          const result = await tobub.db.saveContent({\n            platform: 'xiaohongshu',\n            contentType: 'note',\n            externalId: id,\n            ...(authorContentItemId ? { parentId: authorContentItemId } : {}),\n            title,\n            summary: '',\n            url,\n            metadata: {\n              authorId,\n              authorName,\n              xiaohongshuId,\n              publishedAt: note.publishedAt,\n              likeCount: note.likeCount,\n              coverUrl,\n              source: 'author_profile',\n              capturedAt: new Date().toISOString()\n            },\n            rawData: { ...data, ...note }\n          });\n          const resultId = Number(result?.contentItemId);\n          if (Number.isInteger(resultId) && resultId > 0) {\n            contentItemId = resultId;\n            saved = true;\n          } else {\n            saveFailures++;\n          }\n        } catch {\n          saveFailures++;\n        }\n        works.push({ ...note, contentItemId, saved });\n        added++;\n      }\n      if (probe?.endSignal && added === 0) {\n        terminalSeen = true;\n        stopReason = 'timeline_end';\n        break;\n      }\n      if (works.length >= maxWorks) {\n        stopReason = 'max_works_limit';\n        break;\n      }\n      if (!added) noProgress++;\n      else noProgress = 0;\n      if (noProgress >= 3) {\n        stopReason = 'no_progress';\n        break;\n      }\n      if (pass === maxScrollPasses - 1) stopReason = 'scroll_limit';\n    }\n  }\n} catch (e) {\n  error = safeText(e?.message ?? e).slice(0, 240) || '读取主页或保存记录失败。';\n  if (!stopReason || stopReason === 'scroll_limit') stopReason = 'page_error';\n}\nconst savedCount = works.filter(item => item.saved).length;\nconst complete = terminalSeen && extractionFailures === 0 && saveFailures === 0 && malformedCount === 0;\nconst status = complete && works.length === 0\n  ? 'empty'\n  : complete\n    ? 'complete'\n    : works.length > 0 || saveFailures > 0\n      ? 'partial'\n      : 'partial';\nif (!error && stopReason === 'max_works_limit') {\n  error = maxWorks >= 500\n    ? '达到当前技能最大上限 500；本轮未确认采完。若需采集更多作品，须先提高技能上限后重跑。'\n    : '达到本次设置的作品数上限；本轮未确认采完，可将上限调高至 500 后重跑。';\n}\nif (!error && stopReason === 'no_progress' && !terminalSeen) {\n  error = '连续滚动后未发现新作品，页面没有给出明确的列表结束标记。';\n}\nif (extractionFailures > 0) {\n  const detail = '发现 ' + extractionFailures + ' 次作品字段提取失败，结果未确认完整。';\n  error = error ? error + '；' + detail : detail;\n}\nreturn {\n  status,\n  complete,\n  stopReason,\n  author: authorIdentityVerified ? {\n    id: authorId,\n    name: authorName,\n    xiaohongshuId,\n    url: profileUrl,\n    contentItemId: authorContentItemId\n  } : null,\n  candidateAuthors,\n  works,\n  counts: {\n    cardsSeen,\n    worksFound: works.length,\n    savedCount,\n    duplicateCount,\n    malformedCount,\n    extractionFailures,\n    saveFailures,\n    scrolls\n  },\n  error\n};\n"
+  },
+  "platform": {
+    "code": "xiaohongshu",
+    "name": "xiaohongshu",
+    "version": "1",
+    "base_url": "https://www.xiaohongshu.com",
+    "capabilities": [],
+    "domains": [
+      {
+        "domain": "xiaohongshu.com",
+        "domain_type": "primary"
+      }
+    ],
+    "config": {},
+    "definition_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}
